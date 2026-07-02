@@ -59,6 +59,19 @@ function lcLabel(lc: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * The user-facing project reference, with its picked label — e.g.
+ * "SOP# SOP-2026-0004". Uses the live change-control number `ccNo` when the
+ * owner has set one, else the system `code` (the same rule the app header and
+ * digest read by). Personal projects have no shared reference.
+ */
+function refDisplay(project: any): string {
+  if (project?.isPersonal) return 'Personal';
+  const num = (project?.ccNo || '').trim() || project?.code || '';
+  const label = (project?.refLabel || '').trim();
+  return label ? `${label} ${num}` : num;
+}
+
 export function buildProjectReportHtml(project: any, phases: any[], exportedBy = ''): string {
   const generated = new Date().toLocaleString();
   const now = new Date();
@@ -158,7 +171,7 @@ export function buildProjectReportHtml(project: any, phases: any[], exportedBy =
     })
     .join('');
 
-  const ref = project?.isPersonal ? 'Personal' : project?.code || '';
+  const ref = refDisplay(project);
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
@@ -267,7 +280,7 @@ function csvCell(v: any): string {
 export function buildProjectReportCsv(project: any, phases: any[] = [], exportedBy = ''): string {
   const now = new Date();
   const tasks: any[] = [...(Array.isArray(project?.tasks) ? project.tasks : [])].sort(byTcd);
-  const ref = project?.isPersonal ? 'Personal' : project?.code || '';
+  const ref = refDisplay(project);
   const total = tasks.length;
   const done = tasks.filter((t) => t.status === 'done').length;
   const pct = total ? Math.round((done / total) * 100) : 0;
@@ -389,8 +402,12 @@ function triggerDownload(content: string, mime: string, filename: string) {
 }
 
 function safeName(project: any): string {
-  return String(project?.code || project?.name || 'project')
+  // Live reference number (ccNo when set, else system code) so the file matches
+  // what the user sees in-app — the label is dropped, only the number is used.
+  const ref = (project?.ccNo || '').trim() || project?.code || project?.name || 'project';
+  return String(ref)
     .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
     .toLowerCase();
 }
 
