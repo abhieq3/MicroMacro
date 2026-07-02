@@ -19,11 +19,10 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-/* Rotating, unattributed wisdom — Sundar Pichai, drawn from his interviews and
-   talks plus the books he has recommended (The Ride of a Lifetime, The Hard
-   Thing About Hard Things, Shoe Dog, Sapiens, Man's Search for Meaning),
-   curated to what Pragati is for: doing the work — focus on the user,
-   simplicity, helpfulness, doing hard things that matter, optimism, resilience.
+/* Rotating, unattributed wisdom — Jensen Huang, drawn from his keynotes,
+   interviews, and commencement addresses (Stanford GSB, Caltech, NTU),
+   curated to what Pragati is for: doing the work — mission first, resilience,
+   urgency, ownership, intellectual honesty, first principles, craft.
    No name is ever shown, only the line. Never repeats on a device until the
    whole library has been shown (see unseenQuoteIndices / pickUnseen below). See
    src/lib/quotes.ts for the sourcing rules. */
@@ -33,8 +32,9 @@ function getInitials(name: string) {
 // v3 = Bezos + his reading list, v4 = Elon Musk + the books he recommends,
 // v5 = Naval Ravikant + the thinkers and books he champions,
 // v6 = Elon Musk + the books, authors, and leaders he admires,
-// v7 = Jensen Huang, v8 = Sundar Pichai + the books he recommends.
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v8';
+// v7 = Jensen Huang, v8 = Sundar Pichai + the books he recommends,
+// v9 = Jensen Huang only.
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v9';
 
 /** Indices not yet shown on this device; resets only once the whole set is
  *  exhausted. Takes the library size so a re-curation of the list stays in

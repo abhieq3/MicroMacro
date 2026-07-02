@@ -1,29 +1,29 @@
 /**
  * Login-screen wisdom — curated to what Pragati is actually for: doing the
- * work. Every line speaks to focusing on the user, simplicity, helpfulness,
- * doing hard things that matter, optimism, resilience, and listening — not
- * wealth, hype, or self-help in the abstract.
+ * work. Every line speaks to building, shipping, focus, finishing, resilience,
+ * ownership, and reasoning from first principles — not wealth, career, or
+ * self-help in the abstract.
  *
- * Source: Sundar Pichai — CEO of Google and Alphabet — drawn from his own
- * documented words (interviews, the Google "focus on the user" principle, his
- * IIT/Stanford talks), together with the books he has publicly recommended:
- * "The Ride of a Lifetime" (Bob Iger), "The Hard Thing About Hard Things"
- * (Ben Horowitz), "Shoe Dog" (Phil Knight), "The Innovators" (Walter
- * Isaacson), "Sapiens" (Yuval Noah Harari), and "Man's Search for Meaning"
- * (Viktor Frankl).
+ * Source: Jensen Huang — founder and CEO of NVIDIA — drawn from his own
+ * documented words: keynotes, interviews, and his commencement / university
+ * addresses (Stanford GSB, Caltech, NTU), where the themes of mission,
+ * resilience, suffering, intellectual honesty, and acting with conviction
+ * recur most clearly. Jensen only — no other voices in this library.
  *
  * Honesty about sourcing: these are well-known, widely-circulated lines chosen
- * for how cleanly they map to the work. Some are condensed or paraphrased.
- * That is acceptable here for one specific reason, and only this reason:
+ * for how cleanly they map to the work. Some are condensed or paraphrased from
+ * longer remarks. That is acceptable here for one specific reason, and only
+ * this reason:
  *
  *   Display rule: NO attribution is EVER rendered. The login page shows the
  *   line, never the name or the source. `author` is kept on the type purely as
- *   an internal curation/grouping key and is never surfaced in the UI.
+ *   an internal curation/grouping key and is never surfaced in the UI. So the
+ *   words stand alone as anonymous wisdom; the screen never claims "X said this."
  *
  * No-repeat rule: the login page rotates through a per-device shuffled queue
  * and never repeats a quote until the whole library is exhausted. Each quote
  * also stays on screen for a length of time proportional to how long it takes
- * to read (see `readingMs` on the login page).
+ * to read (see `readingMs` on the login page), so longer lines aren't cut off.
  */
 
 export interface Quote {
@@ -32,83 +32,86 @@ export interface Quote {
 }
 
 export const BUILTIN_QUOTES: Quote[] = [
-  // ── Focus on the user ─────────────────────────────────────────────────────
-  { text: 'Focus on the user, and all else follows.', author: 'Sundar Pichai' },
-  { text: 'Wear the shoes of the user. Build for the person on the other side.', author: 'Sundar Pichai' },
-  { text: 'The best products don’t ask for attention. They get out of the way.', author: 'Sundar Pichai' },
-  { text: 'Simple, fast, and useful beats clever every time.', author: 'Sundar Pichai' },
-  { text: 'Technology should adapt to people — not the other way around.', author: 'Sundar Pichai' },
+  // ── Mission — why the work matters ────────────────────────────────────────
+  { text: 'Run the company with the mission as the boss. The mission is the CEO.', author: 'Jensen Huang' },
+  {
+    text: 'Find something you love to do, then do it with all of your heart and the whole of your effort.',
+    author: 'Jensen Huang',
+  },
+  {
+    text: 'There is no reason to be the best in the world at something that does not matter. Pick something hard and worth doing.',
+    author: 'Jensen Huang',
+  },
+  {
+    text: 'Keep the main thing the main thing. Prioritize relentlessly — decide the most important thing, and do it.',
+    author: 'Jensen Huang',
+  },
 
-  // ── Do hard things that matter ────────────────────────────────────────────
+  // ── Resilience and suffering — his signature theme ────────────────────────
   {
-    text: 'Work on things hard enough that they’re actually worthwhile.',
-    author: 'Sundar Pichai',
+    text: 'Greatness is not intelligence. Greatness comes from character — and character is formed out of people who suffered.',
+    author: 'Jensen Huang',
   },
-  { text: 'Set audacious goals — even failing at them gets you far.', author: 'Sundar Pichai' },
-  { text: 'It’s better to be at the cutting edge of something you believe in.', author: 'Sundar Pichai' },
+  { text: 'I wish upon you ample doses of pain and suffering.', author: 'Jensen Huang' },
+  { text: 'The single most important quality for success is resilience.', author: 'Jensen Huang' },
   {
-    text: 'Have the courage to follow your passion — and the patience to give it time.',
-    author: 'Sundar Pichai',
+    text: 'People with very high expectations have very low resilience — and resilience matters in success.',
+    author: 'Jensen Huang',
   },
-  { text: 'A North Star matters more than a fixed plan.', author: 'Sundar Pichai' },
+  { text: 'Nobody who did anything great did it the easy way. Suffering refines you.', author: 'Jensen Huang' },
+  { text: 'You do not know you have grit until it is tested.', author: 'Jensen Huang' },
 
-  // ── Let people surprise you ───────────────────────────────────────────────
-  {
-    text: 'Set the right goals, hire well, then let people surprise you.',
-    author: 'Sundar Pichai',
-  },
-  { text: 'Let smart people loose on hard problems.', author: 'Sundar Pichai' },
-  {
-    text: 'The most important quality in a leader is to listen — and to keep learning.',
-    author: 'Sundar Pichai',
-  },
-  { text: 'A leader makes the people around them believe they can do great things.', author: 'Sundar Pichai' },
+  // ── Urgency and paranoia — never coast ────────────────────────────────────
+  { text: 'Our company is always thirty days from going out of business.', author: 'Jensen Huang' },
+  { text: 'Hope is not a strategy.', author: 'Jensen Huang' },
+  { text: 'Run toward the danger, not away from it.', author: 'Jensen Huang' },
+  { text: 'Complacency is the enemy. Stay paranoid about what actually matters.', author: 'Jensen Huang' },
+  { text: 'Speed is the best moat. Move with urgency and with conviction.', author: 'Jensen Huang' },
 
-  // ── Optimism + the long view ──────────────────────────────────────────────
-  { text: 'Be relentlessly optimistic. It is a strategy, not a mood.', author: 'Sundar Pichai' },
-  { text: 'Don’t get caught in the rat race of competing for the wrong reasons.', author: 'Sundar Pichai' },
-  { text: 'The future belongs to those who keep learning.', author: 'Sundar Pichai' },
-  { text: 'Technology can be the great equalizer — if you build it for everyone.', author: 'Sundar Pichai' },
-
-  // ── The Ride of a Lifetime — Bob Iger ─────────────────────────────────────
-  { text: 'If you want innovation, you have to give people permission to fail.', author: 'Bob Iger' },
-  { text: 'Optimism in a leader is more powerful than any single strategy.', author: 'Bob Iger' },
-  { text: 'Don’t let your ego get in the way of making the best decision.', author: 'Bob Iger' },
-  { text: 'Long shots are usually not as long as they seem.', author: 'Bob Iger' },
-  { text: 'The relentless pursuit of perfection — in the details no one else sees.', author: 'Bob Iger' },
-
-  // ── The Hard Thing About Hard Things — Ben Horowitz ───────────────────────
-  { text: 'There are no silver bullets — only lead bullets. Do the hard work.', author: 'Ben Horowitz' },
+  // ── Ownership and agency — be the CEO of your work ────────────────────────
+  { text: 'Everybody is the CEO of their own work.', author: 'Jensen Huang' },
+  { text: 'Do not be a victim. Take ownership of the outcome.', author: 'Jensen Huang' },
+  { text: 'Delegate, but never abdicate.', author: 'Jensen Huang' },
+  { text: 'You have to be willing to do the work that others will not.', author: 'Jensen Huang' },
   {
-    text: 'Take care of the people, the products, and the profits — in that order.',
-    author: 'Ben Horowitz',
+    text: 'When you see the opportunity, act decisively and with conviction. Then commit completely.',
+    author: 'Jensen Huang',
   },
-  { text: 'Embrace the struggle. That’s where the company is actually built.', author: 'Ben Horowitz' },
+  { text: 'My will to survive exceeds almost everybody else’s will to kill me.', author: 'Jensen Huang' },
 
-  // ── Shoe Dog — Phil Knight ────────────────────────────────────────────────
+  // ── Learning and intellectual honesty ─────────────────────────────────────
+  { text: 'Intellectual honesty is being honest with yourself about what you do not know.', author: 'Jensen Huang' },
+  { text: 'Ask for help. It is not a weakness — I ask for help all the time.', author: 'Jensen Huang' },
   {
-    text: 'Don’t tell people how to do things; tell them what to do and let them surprise you.',
-    author: 'Phil Knight',
+    text: 'I give feedback in front of everyone. Feedback is learning — why should only one person get to learn?',
+    author: 'Jensen Huang',
   },
-  { text: 'The cowards never started and the weak died along the way.', author: 'Phil Knight' },
-  { text: 'Keep going. Don’t stop. Don’t even think about stopping until you get there.', author: 'Phil Knight' },
+  { text: 'The more you learn, the more you realize how much you have left to learn.', author: 'Jensen Huang' },
 
-  // ── Sapiens — Yuval Noah Harari ───────────────────────────────────────────
+  // ── First principles and strategy — action over words ─────────────────────
+  { text: 'Strategy is not words. Strategy is action.', author: 'Jensen Huang' },
   {
-    text: 'Large numbers of strangers cooperate by believing in a shared story.',
-    author: 'Yuval Noah Harari',
+    text: 'Reason from first principles. Reduce the problem to what is fundamentally true, then build up from there.',
+    author: 'Jensen Huang',
   },
-  { text: 'Clarity is power. Confusion is the tax you pay for skipping it.', author: 'Yuval Noah Harari' },
+  { text: 'We do not have a five-year plan. We work on the plan every single day.', author: 'Jensen Huang' },
+  { text: 'Do a few things exceptionally well rather than many things adequately.', author: 'Jensen Huang' },
 
-  // ── Man's Search for Meaning — Viktor Frankl ──────────────────────────────
+  // ── Standards and craft ───────────────────────────────────────────────────
+  { text: 'Perfection is not achievable, but in chasing it you reach excellence.', author: 'Jensen Huang' },
   {
-    text: 'When you can’t change the situation, you are challenged to change yourself.',
-    author: 'Viktor Frankl',
+    text: 'Treat every task as if it is your first — bring the same enthusiasm and the same care every time.',
+    author: 'Jensen Huang',
   },
+  { text: 'It is not about how many things you start. It is about what you finish.', author: 'Jensen Huang' },
+
+  // ── Team — building people who build the thing ────────────────────────────
+  { text: 'Surround yourself with people who challenge you, not people who comfort you.', author: 'Jensen Huang' },
   {
-    text: 'Between stimulus and response there is a space — and in that space is your freedom.',
-    author: 'Viktor Frankl',
+    text: 'The art of leadership is helping ordinary people achieve extraordinary things together.',
+    author: 'Jensen Huang',
   },
+  { text: 'A great company is built by people who care about the work more than the credit.', author: 'Jensen Huang' },
 ];
 
 /** Deterministic daily starting point so everyone who opens the login page on
