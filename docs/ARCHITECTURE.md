@@ -57,7 +57,7 @@ flowchart TD
 | Capability | Contributor | Lead | Admin | Master Admin |
 | ---------- | :---------: | :--: | :---: | :----------: |
 | Work assigned tasks | ✅ | ✅ | ✅ | ✅ |
-| My Day + personal projects + Mind map | ✅ | ✅ | ✅ | ✅ |
+| My Day + personal projects | ✅ | ✅ | ✅ | ✅ |
 | Bird's-eye view (team / project) | — | ✅ | ✅ | ✅ |
 | Create shared projects / teams, assign work | — | ✅ | ✅ | ✅ |
 | See **every** team, shared project and task (workspace scope) | — | — | ✅ | ✅ |
@@ -94,12 +94,12 @@ src/
                      my-day, master-admin, audit, …)
     api/             route handlers — the only place that mutates data
   components/        shared UI (AppShell, ActivityGraph, BirdsEyeView,
-                     MindMap, ExportMenu, DatePicker, Select, ui.tsx, …)
+                     ExportMenu, DatePicker, Select, ui.tsx, …)
   lib/               auth, db, validations, serialize, audit, tenants,
                      data builders (leadDashboard, projectDetail,
                      contributions, lifecycles)
   models/            Mongoose schemas — single source of truth for
-                     persistence (User, Project, Task, Team, MindMap,
+                     persistence (User, Project, Task, Team,
                      Tenant, AuditLog, Notification, …)
 docs/                launch checklist, rollout, performance, demo env,
                      E2E, this file
@@ -110,7 +110,6 @@ docs/                launch checklist, rollout, performance, demo env,
 | Component | Where it mounts | Purpose |
 | --- | --- | --- |
 | `BirdsEyeView` | Dashboard (workspace scope), team detail, project detail | Hierarchical SVG tree of team → project → task, with curved Bézier edges, zoom, and PDF/SVG export. Pure SVG, no graph library. |
-| `MindMap` | My Day (collapsible panel) | Per-user node-link canvas. Click to add, drag to move, side-handle to connect. Autosaves via PUT `/api/scratch/mindmap`. Owner-private. |
 | `ActivityGraph` | Dashboard (lead contributor modal), Settings | GitHub-style heatmap of completed work + role-based achievements. Lazy-loaded via `next/dynamic` and pre-warmed by `preloadActivityGraphData()`. |
 
 ## Compliance touchpoints

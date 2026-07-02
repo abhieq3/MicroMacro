@@ -84,16 +84,15 @@ Reads go straight from server components to Mongoose data builders; mutations fl
 - **Owner-gated deletions** — tasks and phases can only be deleted by the **project owner** (and workspace admins). Leads manage work; only the owner can destroy it. Deleting a phase never deletes its tasks — they move to *Unphased*, and the action lands in the audit trail.
 - **Lifecycle templates** — a library of structured workflows (engineering change, incident management, audits, validation, sprints, training programs, vendor qualification, …) plus Personal templates for ICs — or define your own.
 - **Append-only audit trail** — every record change carries who, what, when, and why; there's no update/delete route for an audit row by application design. Personal projects never enter the cross-user log. Editing a project's reference number writes a before/after record.
-- **Mind map on My Day** — a personal node-link canvas for capturing thoughts before they become tasks. Owner-private, autosaves per user.
-- **Whiteboard & Notes** — a full-screen sketch surface and a full-screen note list, both reachable from a FAB on My Day, both owner-private.
+- **Whiteboard & Notes** — a full-screen sketch surface and a full-screen note list, both reachable from a FAB on My Day, both owner-private (off by default for a focused launch; re-enable with `NEXT_PUBLIC_SCRATCHPAD_ENABLED=1`).
 - **Public profiles** — a within-workspace profile at `/<username>` with a contribution heatmap, an optional GitHub link, and Follow / Unfollow for colleagues.
 - **Sidebar calendar** — a compact month grid pinned above My Day, dotted with what's due (mine / team / overdue) and a hover card listing the day's work.
 - **Dashboard "Up Next"** — colour-coded urgency pills (overdue / today / ≤2d / future) on every due-row, with filter chips (week / next week / month / until-date).
 - **Activity graph** — GitHub-style contribution heatmap with role-based achievements (Milestone Achiever, On-Time Streak, Project Finisher, Mentor, Load Balancer, …).
 - **Reports** — Excel (interactive), PDF, CSV, HTML exports for both projects and teams. Print preview before save.
 - **Productivity touches** — resizable sidebar, global keyboard shortcuts (`⌘K` for the command palette, `G D/P/T/M` to navigate, `?` for the shortcut sheet), custom team avatars, and per-page loading skeletons that mirror each real layout.
-- **A login screen that earns its pixels** — a rotating library of unattributed lines on doing the work, drawn from Elon Musk, the books and authors that shaped him (Asimov's Foundation, Douglas Adams, Heinlein, Tolkien, Thiel's Zero to One) and the inventors and leaders he names as heroes (Tesla, Franklin, Newton, Ford, Feynman, Einstein, Jobs, Churchill), themed to building/shipping/focus/deleting the unessential. Never repeats on a device until the whole library has cycled; no name is ever shown, only the line. The library ships with the binary — no CMS, no feed, no env var.
-- **AI, deep but minimal** — the rule-based engine decides everything (an architectural invariant); Gemini may only *rephrase* the already-decided Morning Brief headline (one cached call per user per day, instant fallback without a key). Plus the conversational Copilot and mind-map→tasks suggestions.
+- **A login screen that earns its pixels** — a rotating library of unattributed lines on doing the work, drawn from Jensen Huang's keynotes, interviews, and commencement addresses, themed to mission, resilience, urgency, ownership, and first principles. Never repeats on a device until the whole library has cycled; no name is ever shown, only the line. The library ships with the binary — no CMS, no feed, no env var.
+- **AI, deep but minimal** — the rule-based engine decides everything (an architectural invariant); Gemini may only *rephrase* the already-decided Morning Brief headline (one cached call per user per day, instant fallback without a key). Plus the conversational Copilot.
 - **Daily rundown, four channels, free forever** — every user gets a role-aware **Morning Brief** (contributors: what's on my plate; leads: team pulse; admins: workspace rundown) rendered on the dashboard, as an optional **Web Push** notification (VAPID — no vendor, no cost), as a personal **calendar feed** (subscribe once in Outlook/Google/Apple), and as an opt-in **08:30 IST email** capped to the provider's free tier. Mail is provider-agnostic (`MAIL_PROVIDER=brevo|resend|webhook`) so an org can bring its own relay. See [Daily email digest](#daily-email-digest) and [`docs/SCALING.md`](./docs/SCALING.md).
 
 ## Security & data integrity
@@ -197,7 +196,7 @@ src/
 │   │   ├── projects/         # list · new · [id] detail
 │   │   ├── teams/             # list · [id] detail
 │   │   ├── people/           # admin-only user directory
-│   │   ├── my-day/           # personal tasks + mind map + whiteboard + notes
+│   │   ├── my-day/           # personal tasks + notes (whiteboard behind a flag)
 │   │   ├── settings/         # profile, security, preferences
 │   │   ├── audit/            # immutable operations log
 │   │   └── [username]/       # public-within-workspace profile

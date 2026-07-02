@@ -124,7 +124,7 @@ function buildSteps(role: string): Step[] {
       target: '[data-tour="nav-my-day"]',
       mobileTarget: '[data-mobile-tour="nav-my-day"]',
       title: 'My Day is yours alone',
-      body: 'A private scratchpad (plus a mind-map canvas) to empty your head, then turn the lines that matter into tracked tasks. Only you can see it.',
+      body: 'A private scratchpad to empty your head, then turn the lines that matter into tracked tasks. Only you can see it.',
       icon: Sun,
       iconBg: '#FEF9C3',
       iconColor: '#A16207',
@@ -164,7 +164,7 @@ function buildSteps(role: string): Step[] {
                 'Create teams & shared projects; assign and rebalance work',
                 "Bird's-eye any team or project; export Excel / PDF reports",
                 'Edit any task in your scope; spot work that may slip before it does',
-                'My Day, mind map & personal projects — private to you',
+                'My Day & personal projects — private to you',
               ],
               context: [
                 'Deleting tasks & phases is for the project owner (and admins)',
@@ -174,7 +174,7 @@ function buildSteps(role: string): Step[] {
           : {
               yours: [
                 'Work your assigned tasks; drag Kanban cards to update status',
-                'Personal projects + mind map + My Day — private to you',
+                'Personal projects + My Day — private to you',
                 'Follow colleagues; grow your streak & contribution graph',
                 'Press ? anywhere for keyboard shortcuts',
               ],
