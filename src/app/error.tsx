@@ -50,8 +50,8 @@ export default function ErrorBoundary({
         </div>
         <h1 className="text-2xl font-bold text-slate-900">Something went wrong</h1>
         <p className="text-sm text-slate-500 leading-relaxed">
-          We hit an unexpected error rendering this page. The team has been notified; you can try again or
-          head back to the dashboard.
+          We hit an unexpected error rendering this page. The team has been notified — we run toward this
+          kind of danger, not away from it. Try again, or head back to the dashboard.
         </p>
         {error.digest && <p className="text-[11px] font-mono text-slate-400">ref: {error.digest}</p>}
         <div className="flex items-center justify-center gap-2">

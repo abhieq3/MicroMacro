@@ -18,6 +18,8 @@ type Forecast = {
   p50?: string;
   p80?: string;
   p90?: string;
+  /** Speed of light — theoretical fastest finish with zero queueing. */
+  sol?: string;
   longPole?: { kind: string; label: string; share: number } | null;
   confidence?: 'high' | 'medium' | 'low';
   vsTarget?: 'on_track' | 'tight' | 'at_risk' | null;
@@ -76,6 +78,10 @@ export function ForecastChip({ projectId }: { projectId: string }) {
   const tone = TONE[f.vsTarget || 'neutral'] || TONE.neutral;
   const tip = [
     `Likely ~${fmt(f.p50)}  ·  80% by ${fmt(f.p80)}  ·  90% by ${fmt(f.p90)}`,
+    // Speed of light: the theoretical fastest finish (no queueing, everyone at
+    // their demonstrated-fast pace). The gap to the forecast is the actionable
+    // slack — rebalance, unblock, split.
+    f.sol ? `Speed of light: ${fmt(f.sol)} — the gap to it is queueing you can act on` : null,
     f.targetDate ? `Target ${fmt(f.targetDate)} — ${targetLabel(f.vsTarget)}` : null,
     f.longPole ? `Long pole: ${f.longPole.label}` : null,
     `Confidence: ${f.confidence}`,

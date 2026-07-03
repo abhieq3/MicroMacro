@@ -9,6 +9,7 @@ import {
   cycleSamplesByAssignee,
   fitDurationModels,
   simulateProjectFinish,
+  speedOfLightDays,
   type ForecastTaskInput,
 } from '@/lib/ai/projectForecast';
 
@@ -108,14 +109,22 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       priority: t.priority,
     }));
 
+    const now = new Date();
     const core = simulateProjectFinish({
       tasks: inputs,
       byAssignee,
       global,
-      now: new Date(),
+      now,
       trials: 4000,
       seed: seedFrom(params.id),
     });
+
+    // Speed of light — the theoretical fastest finish (phases in sequence,
+    // zero queueing, every task at its assignee's demonstrated-fast pace).
+    // The gap to the P50 forecast is the actionable slack: contention,
+    // queueing, variance. See lib/ai/projectForecast.ts for the physics.
+    const solDays = speedOfLightDays({ tasks: inputs, byAssignee, global });
+    const sol = new Date(+now + solDays * DAY()).toISOString();
 
     // ── The long pole: prefer naming a person if one assignee binds often;
     //    otherwise name the binding phase. ───────────────────────────────────
@@ -160,6 +169,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       p50Days: Math.round(core.p50Days),
       p80Days: Math.round(core.p80Days),
       p90Days: Math.round(core.p90Days),
+      sol,
+      solDays: Math.round(solDays),
       longPole,
       confidence,
       openTasks: core.openTasks,

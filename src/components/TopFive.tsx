@@ -154,12 +154,19 @@ export function TopFivePanel({ myUserId }: { myUserId: string }) {
         </div>
       </div>
 
-      {/* ── Mine — write or review ─────────────────────────────────────── */}
+      {/* ── Mine — write or review. Early in the week (Mon–Tue) an unwritten
+             list gets a soft tint: enough to catch the eye on the Monday
+             dashboard visit, never a bell ping — the practice should be
+             obvious, not noisy. ──────────────────────────────────────────── */}
       {data && !mine && !editing && (
         <button
           type="button"
           onClick={startEdit}
-          className="w-full text-left px-4 py-3.5 hover:bg-slate-50/70 dark:hover:bg-white/[0.03] transition-colors border-b border-slate-100 dark:border-white/[0.06]"
+          className={`w-full text-left px-4 py-3.5 transition-colors border-b border-slate-100 dark:border-white/[0.06] ${
+            new Date().getDay() >= 1 && new Date().getDay() <= 2
+              ? 'bg-blue-50/50 dark:bg-blue-500/[0.06] hover:bg-blue-50 dark:hover:bg-blue-500/[0.09]'
+              : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'
+          }`}
         >
           <div className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">
             What are the five things on your mind this week?

@@ -299,6 +299,51 @@ export function simulateProjectFinish(opts: {
   };
 }
 
+/* ── Speed of light ──────────────────────────────────────────────────────────
+   Jensen Huang's planning benchmark, applied to a schedule: measure the plan
+   against the physics, not against the last plan. The speed-of-light finish is
+   the theoretical fastest completion, where:
+
+     - Phase sequencing IS physics — a validation phase genuinely cannot start
+       before the build phase ends, so phases still run in order.
+     - Queueing is NOT physics — "one person, one task at a time" is an org
+       constraint, so within a phase everything runs in parallel.
+     - Every task runs at its assignee's demonstrated-FAST pace: the P10 of
+       their learned log-normal (exp(μ − 1.2816σ)), scaled by how much of the
+       task actually remains. Fast, but grounded in what that person has
+       really done — not fantasy.
+
+   With fixed durations no Monte Carlo is needed: the finish is simply the sum
+   over phases of the slowest task in each phase. Deterministic, auditable.
+
+   The point is the GAP: SOL vs the P50 forecast is queueing + contention +
+   variance — exactly the part of the schedule a lead can act on (rebalance,
+   unblock, split a phase). SOL itself is not a promise; it's the benchmark
+   that makes the slack visible. */
+const SOL_Z = -1.2816; // 10th percentile of the standard normal
+
+export function speedOfLightDays(opts: {
+  tasks: ForecastTaskInput[];
+  byAssignee: Map<string, DurationProfile>;
+  global: DurationProfile;
+}): number {
+  const open = opts.tasks.filter((t) => t.status !== 'done');
+  if (open.length === 0) return 0;
+
+  // Slowest fast-task per phase, phases summed in order.
+  const phaseMax = new Map<number, number>();
+  for (const t of open) {
+    const profile = (t.assigneeId && opts.byAssignee.get(String(t.assigneeId))) || opts.global;
+    const factor = STATUS_REMAINING[t.status] ?? 1.0;
+    const fast = Math.max(0.5, Math.exp(profile.muLog + SOL_Z * profile.sigmaLog) * factor);
+    const idx = t.phaseIndex || 0;
+    if (fast > (phaseMax.get(idx) ?? 0)) phaseMax.set(idx, fast);
+  }
+  let total = 0;
+  for (const v of phaseMax.values()) total += v;
+  return total;
+}
+
 function pickTop(m: Map<string, number>): { key: string; count: number } | null {
   let best: { key: string; count: number } | null = null;
   for (const [key, count] of m) if (!best || count > best.count) best = { key, count };

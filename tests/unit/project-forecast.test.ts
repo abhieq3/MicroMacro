@@ -12,6 +12,7 @@ import { describe, it } from 'node:test';
 import {
   fitDurationModels,
   simulateProjectFinish,
+  speedOfLightDays,
   cycleSamplesByAssignee,
   type ForecastTaskInput,
 } from '../../src/lib/ai/projectForecast';
@@ -157,5 +158,71 @@ describe('cycleSamplesByAssignee', () => {
     ]);
     assert.deepEqual(m.get('a'), [5]);
     assert.equal(m.has('b'), false);
+  });
+});
+
+describe('speedOfLightDays — the theoretical fastest finish', () => {
+  // Hand-built profiles so the expected fast durations are exact:
+  // fast = exp(muLog − 1.2816·sigmaLog), floored at 0.5 days.
+  const profile = (medianDays: number, sigma = 0.5) => ({
+    n: 10,
+    muLog: Math.log(medianDays),
+    sigmaLog: sigma,
+  });
+  const fast = (medianDays: number, sigma = 0.5) =>
+    Math.max(0.5, Math.exp(Math.log(medianDays) - 1.2816 * sigma));
+
+  it('runs a phase fully parallel — the slowest task sets the phase, not the sum', () => {
+    const byAssignee = new Map([
+      ['a', profile(8)],
+      ['b', profile(2)],
+    ]);
+    const tasks: ForecastTaskInput[] = [
+      { id: 't1', assigneeId: 'a', status: 'todo', phaseIndex: 0 },
+      { id: 't2', assigneeId: 'b', status: 'todo', phaseIndex: 0 },
+      { id: 't3', assigneeId: 'b', status: 'todo', phaseIndex: 0 },
+    ];
+    const days = speedOfLightDays({ tasks, byAssignee, global: profile(5) });
+    // Zero queueing: three tasks, one phase → exactly the slowest fast-task.
+    assert.ok(Math.abs(days - fast(8)) < 1e-9);
+  });
+
+  it('keeps phase sequencing — phases add, because that part is physics', () => {
+    const byAssignee = new Map([['a', profile(4)]]);
+    const tasks: ForecastTaskInput[] = [
+      { id: 't1', assigneeId: 'a', status: 'todo', phaseIndex: 0 },
+      { id: 't2', assigneeId: 'a', status: 'todo', phaseIndex: 1 },
+    ];
+    const days = speedOfLightDays({ tasks, byAssignee, global: profile(5) });
+    assert.ok(Math.abs(days - 2 * fast(4)) < 1e-9);
+  });
+
+  it('scales by status remaining and ignores done work', () => {
+    const byAssignee = new Map([['a', profile(6)]]);
+    const tasks: ForecastTaskInput[] = [
+      { id: 't1', assigneeId: 'a', status: 'review', phaseIndex: 0 }, // 25% left
+      { id: 't2', assigneeId: 'a', status: 'done', phaseIndex: 0 }, // gone
+    ];
+    const days = speedOfLightDays({ tasks, byAssignee, global: profile(5) });
+    assert.ok(Math.abs(days - Math.max(0.5, fast(6) * 0.25)) < 1e-9);
+    assert.equal(speedOfLightDays({ tasks: [], byAssignee, global: profile(5) }), 0);
+  });
+
+  it('sits at or below the Monte-Carlo P50 when queueing exists', () => {
+    // Four todo tasks on ONE person, one phase: the simulator must serialise
+    // them; the speed-of-light run doesn't. SOL is the benchmark the forecast
+    // can never beat — the gap is the queueing a lead can act on.
+    const { byAssignee, global } = fitDurationModels(
+      new Map([['a', [3, 4, 5, 4, 3, 4, 5, 4, 6, 4]]]),
+    );
+    const tasks: ForecastTaskInput[] = [1, 2, 3, 4].map((i) => ({
+      id: `t${i}`,
+      assigneeId: 'a',
+      status: 'todo' as const,
+      phaseIndex: 0,
+    }));
+    const sol = speedOfLightDays({ tasks, byAssignee, global });
+    const sim = simulateProjectFinish({ tasks, byAssignee, global, now: NOW, trials: 1000, seed: 42 });
+    assert.ok(sol < sim.p50Days, `SOL (${sol.toFixed(1)}d) must undercut P50 (${sim.p50Days.toFixed(1)}d)`);
   });
 });
