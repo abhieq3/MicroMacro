@@ -138,6 +138,10 @@ describe('renderDigestEmail', () => {
     assert.match(out.html, /Fix &lt;A&gt; &amp; B/); // escaped in HTML
     assert.match(out.text, /Fix <A> & B/); // raw in plain text
     assert.match(out.html, /https:\/\/x\.test\/tasks\/t1/);
+    // The single-focus block speaks the same language as the dashboard
+    // spotlight — this is the morning brief, so "Your morning priority".
+    assert.match(out.html, /Your morning priority/);
+    assert.match(out.text, /YOUR MORNING PRIORITY/);
   });
 
   it('shows an all-clear message when nothing is due', () => {

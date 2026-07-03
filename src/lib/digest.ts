@@ -567,7 +567,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   // ── The one thing ─────────────────────────────────────────────────────
   const focusHtml = focus
     ? `<div style="margin:0 0 22px;border:1px solid ${focus.bucket === 'overdue' ? '#fecaca' : '#bfdbfe'};border-left:4px solid ${focus.bucket === 'overdue' ? '#dc2626' : '#1565C0'};border-radius:12px;padding:14px 16px;background:${focus.bucket === 'overdue' ? '#fff7f7' : '#f8fbff'};">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">Start here</div>
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">Your morning priority</div>
         <div style="font-size:16px;font-weight:700;color:#0f172a;line-height:1.35;">${
           appUrl
             ? `<a href="${appUrl}/tasks/${focus.id}" style="color:#0f172a;text-decoration:none;">${escapeHtml(focus.title)}</a>`
@@ -675,7 +675,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   }
   if (focus) {
     const pn = projLabel(focus.projectId);
-    lines.push('START HERE', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
+    lines.push('YOUR MORNING PRIORITY', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
   }
   if (foresightLine) {
     lines.push('FORESIGHT', `  ${foresightLine.replace(/^Foresight:\s*/i, '')}`, '');
