@@ -317,6 +317,7 @@ function TaskRow({
         <span className="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
         <input
           value={task.title}
+          maxLength={300}
           onChange={(e) => onChange({ ...task, title: e.target.value })}
           className="flex-1 text-sm text-slate-600 bg-transparent outline-none border-b border-transparent focus:border-blue-300 transition-colors"
         />
@@ -496,6 +497,7 @@ function PhaseRow({
             <input
               ref={taskRef}
               value={newTask}
+              maxLength={300}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -503,6 +505,9 @@ function PhaseRow({
                   addTask();
                 }
               }}
+              // Typed-but-not-entered text must survive: without this, typing a
+              // task and clicking straight to "Create project" silently drops it.
+              onBlur={addTask}
               placeholder="Add task… (press Enter)"
               className="flex-1 text-xs text-slate-600 bg-transparent outline-none border-b border-transparent focus:border-blue-300 transition-colors placeholder:text-slate-300"
             />
