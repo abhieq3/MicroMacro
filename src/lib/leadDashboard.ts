@@ -12,6 +12,7 @@ import { cached, cacheBust } from '@/lib/cache';
 import {
   buildWorkMixerFromDashboardData,
   scoreWorkCandidate,
+  classifyWorkCandidate,
   taskToCandidate,
   type WorkMixerResult,
 } from '@/lib/workMixer';
@@ -364,7 +365,17 @@ async function computeLeadDashboardData(jwtUser: {
     // blocked/waiting, due-soon, critical/business-critical, staleness. The
     // dashboard uses this to lead with the one thing that matters and to show
     // WHY, instead of a naive status sort.
-    const lev = scoreWorkCandidate(taskToCandidate(t), now);
+    const candidate = taskToCandidate(t);
+    const lev = scoreWorkCandidate(candidate, now);
+    // `pressing` = is there a genuine near-term CAUSE to act, not just a high
+    // static score? A task can score well purely on attributes (critical /
+    // business-critical / needs-QA-sign-off) while its date is weeks out — that
+    // has no business hijacking someone's morning. So the morning spotlight
+    // only spawns when the work is actually overdue, due this week, blocked,
+    // waiting, or stalled. Same engine, same instant — just the time/flow
+    // signals, not the always-on flags.
+    const ws = classifyWorkCandidate(candidate, now);
+    const pressing = ws.overdue || ws.dueSoon || ws.blocked || ws.waiting || ws.stalled;
     return {
       id: String(t._id),
       title: t.title,
@@ -384,6 +395,7 @@ async function computeLeadDashboardData(jwtUser: {
       subtaskTitles: ((t as any).subtasks || []).slice(0, 3).map((s: any) => s.title),
       gxpCritical: !!(t as any).gxpCritical,
       leverage: lev.score,
+      pressing,
       reasons: lev.reasons.slice(0, 2),
       // Slip-risk early warning — learned from each assignee's delivery
       // history in the SAME rows we already loaded (no extra queries; see

@@ -80,9 +80,13 @@ interface TeamTask {
    *  factor behind the call (shown as the chip's tooltip). */
   slipRisk?: { reason: string } | null;
   /** Leverage score + the reasons that built it, from the Work Mixer engine.
-   *  Drives the "Start here" focus card — the single highest-leverage thing. */
+   *  Drives the morning-priority spotlight — the single highest-leverage thing. */
   leverage?: number;
   reasons?: string[];
+  /** True only when there's a near-term CAUSE to act — overdue, due this week,
+   *  blocked, waiting, or stalled — not merely a high static score. The morning
+   *  spotlight requires this so a task weeks out never hijacks the morning. */
+  pressing?: boolean;
 }
 
 interface DashProject {
@@ -505,13 +509,17 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   );
 
   // ── The one thing ───────────────────────────────────────────────────────
-  // My single highest-leverage open task, ranked by the Work Mixer engine
-  // (overdue, blocked, due-soon, critical, stale). This is the morning
-  // decision — what to do first — surfaced with the reason so it's never a
-  // black box. Personal to the viewer: even a lead's day starts with their
-  // own plate. Null when nothing carries real pressure.
+  // My single highest-leverage open task — but only when it carries a real,
+  // near-term CAUSE (overdue, due this week, blocked, waiting, or stalled).
+  // A task can score high purely on static flags (critical / business-critical
+  // / needs-QA-sign-off) while its date is weeks out; that must NOT spawn the
+  // morning spotlight, or the ritual cries wolf. So we require `pressing`, then
+  // pick the highest leverage among what's genuinely pressing. Null when
+  // nothing is — silence is the correct state on a calm morning.
   const focusTask = useMemo(() => {
-    const mine = openTasks.filter((t) => t.assigneeId === myId && (t.leverage ?? 0) > 0);
+    const mine = openTasks.filter(
+      (t) => t.assigneeId === myId && t.pressing && (t.leverage ?? 0) > 0,
+    );
     if (mine.length === 0) return null;
     return mine.reduce((best, t) => ((t.leverage ?? 0) > (best.leverage ?? 0) ? t : best));
   }, [openTasks, myId]);

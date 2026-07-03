@@ -182,3 +182,41 @@ describe('buildWorkMixer', () => {
     assert.equal(overdue!.candidates.length, 10);
   });
 });
+
+describe('morning-spotlight "pressing" gate — near-term cause, not static score', () => {
+  // The dashboard's morning spotlight spawns only when this composition is true.
+  // Kept identical to leadDashboard: overdue || dueSoon || blocked || waiting || stalled.
+  const pressing = (c: WorkCandidate) => {
+    const s = classifyWorkCandidate(c, NOW);
+    return s.overdue || s.dueSoon || s.blocked || s.waiting || s.stalled;
+  };
+
+  it('does NOT flag a high-scoring task whose date is weeks out (the reported bug)', () => {
+    // Critical + business-critical + needs-QA-sign-off, due in 20 days, active.
+    const c = task({
+      dueDate: daysAhead(20),
+      priority: 'critical',
+      gxpCritical: true,
+      requiresQaSignoff: true,
+      lastMeaningfulActivityAt: daysAgo(1),
+    });
+    // It still SCORES high on attributes...
+    assert.ok(scoreWorkCandidate(c, NOW).score >= SCORE_WEIGHTS.critical);
+    // ...but there is no near-term cause, so the spotlight must not spawn.
+    assert.equal(pressing(c), false);
+  });
+
+  it('flags genuine near-term causes', () => {
+    assert.equal(pressing(task({ dueDate: daysAgo(1) })), true); // overdue
+    assert.equal(pressing(task({ dueDate: daysAhead(2) })), true); // due within 3
+    assert.equal(pressing(task({ dueDate: daysAhead(6) })), true); // due this week
+    assert.equal(pressing(task({ status: 'blocked' })), true); // blocked
+    assert.equal(pressing(task({ status: 'review' })), true); // waiting on review
+    assert.equal(pressing(task({ lastMeaningfulActivityAt: daysAgo(10) })), true); // stalled
+  });
+
+  it('a calm active task with no date pressure is not pressing', () => {
+    assert.equal(pressing(task({ dueDate: daysAhead(30), priority: 'high' })), false);
+    assert.equal(pressing(task({ priority: 'high', lastMeaningfulActivityAt: daysAgo(1) })), false);
+  });
+})
