@@ -389,9 +389,10 @@ export function pickFocus(sections: DigestSections): DigestTask | null {
 /* ── Subscription welcome ──────────────────────────────────────────────────
    Sent exactly once, the moment a user turns the daily brief on. It doubles as
    the delivery test: if this lands, tomorrow's brief lands. Deliberately spare
-   — clean, precise, first-principles (Naval-style). No feature tour, no insight
-   card, no pep talk: state what it is, why it exists, and how to turn it off.
-   Fully responsive (single 600px column, fluid below). Pure. */
+   and written in the house voice (Jensen's): the brief exists to serve the
+   morning ritual — highest-priority work first, same way every day. No feature
+   tour, no insight card, no pep talk. Fully responsive (single 600px column,
+   fluid below). Pure. */
 export function renderWelcomeEmail(input: {
   name: string;
   role?: string;
@@ -414,12 +415,12 @@ export function renderWelcomeEmail(input: {
   <tr><td style="height:4px;background:#1565C0;background:linear-gradient(90deg,#1565C0,#43A047);font-size:0;line-height:0;">&nbsp;</td></tr>
   <tr><td style="padding:30px 28px 24px;">
     <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#1565C0;margin:0 0 16px;">Pragati</div>
-    <h1 style="margin:0 0 14px;font-size:21px;line-height:1.35;color:#0f172a;">Your daily brief is on.</h1>
-    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">Attention is the one thing you can’t make more of. The brief protects it: each morning, <strong>one email</strong> — the task that matters most, then the rest in order, overdue first. Not ten dashboards. One list.</p>
-    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">It arrives at <strong>${escapeHtml(
+    <h1 style="margin:0 0 14px;font-size:21px;line-height:1.35;color:#0f172a;">Your morning brief is on.</h1>
+    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">The best morning ritual we know of is also the simplest: <strong>do your highest-priority work first</strong> — same way, every day, before the day starts doing you. The brief exists to serve exactly that.</p>
+    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">Each morning at <strong>${escapeHtml(
       input.hourLabel,
-    )}</strong>. Read it in a minute, act, close the tab.</p>
-    <p style="margin:0 0 22px;font-size:14px;color:#64748b;line-height:1.65;">The goal isn’t to do more. It’s to do the one right thing — and to know it’s the right thing.</p>
+    )}</strong>: one email. The task that matters most on top, the rest in order, overdue first. Read it in a minute, pick the main thing, start.</p>
+    <p style="margin:0 0 22px;font-size:14px;color:#64748b;line-height:1.65;">Keep the main thing the main thing. Everything else is just email — including this one.</p>
     ${cta ? `<div style="margin:0 0 4px;">${cta}</div>` : ''}
   </td></tr>
   <tr><td style="padding:0 28px 28px;border-top:1px solid #f1f5f9;">
@@ -430,11 +431,11 @@ export function renderWelcomeEmail(input: {
 </body></html>`;
 
   const text = [
-    'Your daily brief is on.',
+    'Your morning brief is on.',
     '',
-    "Attention is the one thing you can't make more of. The brief protects it: each morning, one email — the task that matters most, then the rest in order, overdue first. Not ten dashboards. One list.",
-    `It arrives at ${input.hourLabel}. Read it in a minute, act, close the tab.`,
-    "The goal isn't to do more. It's to do the one right thing — and to know it's the right thing.",
+    'The best morning ritual we know of is also the simplest: do your highest-priority work first — same way, every day, before the day starts doing you. The brief exists to serve exactly that.',
+    `Each morning at ${input.hourLabel}: one email. The task that matters most on top, the rest in order, overdue first. Read it in a minute, pick the main thing, start.`,
+    'Keep the main thing the main thing. Everything else is just email — including this one.',
     input.appUrl ? `\nOpen Pragati: ${input.appUrl}` : '',
     'Switch it off any time in Settings → Daily task email.',
   ]

@@ -47,6 +47,7 @@ import {
   UsersRound,
   ShieldCheck,
   NotebookPen,
+  Presentation,
   LogOut,
   Menu,
   X,
@@ -292,7 +293,8 @@ export default function AppShell({
   }, [router]);
 
   // ── Global keyboard shortcuts ───────────────────────────────────────────────
-  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, ?: shortcuts modal
+  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, G→W: Whiteboard,
+  // ?: shortcuts modal
   // Skipped when focus is on a text input / textarea / contenteditable.
   useEffect(() => {
     function isTextFocused(): boolean {
@@ -340,6 +342,8 @@ export default function AppShell({
           T: '/teams',
           m: '/my-day',
           M: '/my-day',
+          w: '/whiteboard',
+          W: '/whiteboard',
         };
         if (dest[e.key]) {
           e.preventDefault();
@@ -370,10 +374,22 @@ export default function AppShell({
   // admin-only surface, appended via adminExtra below.
   // My Day is NOT in the main nav list — it renders pinned just above the user
   // footer so it's always reachable without scrolling.
+  // Whiteboard is first-class for every role — the app's thinking surface
+  // (the NVIDIA meeting rule: no slides, stand at a board and reason in the
+  // open). It sits right after the three record surfaces because thinking
+  // precedes tracking.
+  const whiteboardItem: NavItem = {
+    href: '/whiteboard',
+    label: 'Whiteboard',
+    icon: Presentation,
+    iconColor: '#0E7490',
+    iconBg: '#E0F7FA',
+  };
   const leadNav: NavItem[] = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
+    whiteboardItem,
   ];
   const adminExtra: NavItem[] = [
     {
@@ -421,6 +437,7 @@ export default function AppShell({
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
+    whiteboardItem,
   ];
 
   const myDayItem: NavItem = {
@@ -1154,6 +1171,15 @@ export default function AppShell({
                 >
                   <UserCircle size={18} className="text-slate-400" /> Profile &amp; settings
                 </Link>
+                {/* Whiteboard doesn't fit the 5-tab bottom bar, so the sheet is
+                its mobile entry point — the canvas itself is touch-native. */}
+                <Link
+                  href="/whiteboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
+                </Link>
                 {/* Admin-only links — these never fit in the 4-tab bottom nav, so
                 this is the only mobile entry point for Logs (and Platform for
                 master-admins). */}
@@ -1325,6 +1351,7 @@ export default function AppShell({
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
                     { keys: ['G', 'M'], label: 'My Day' },
+                    { keys: ['G', 'W'], label: 'Whiteboard' },
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (

@@ -57,7 +57,8 @@ flowchart TD
 | Capability | Contributor | Lead | Admin | Master Admin |
 | ---------- | :---------: | :--: | :---: | :----------: |
 | Work assigned tasks | ✅ | ✅ | ✅ | ✅ |
-| My Day + personal projects | ✅ | ✅ | ✅ | ✅ |
+| My Day + Whiteboard + personal projects | ✅ | ✅ | ✅ | ✅ |
+| Top 5 Things (write yours; read your teams' open feed) | ✅ | ✅ | ✅ | ✅ |
 | Bird's-eye view (team / project) | — | ✅ | ✅ | ✅ |
 | Create shared projects / teams, assign work | — | ✅ | ✅ | ✅ |
 | See **every** team, shared project and task (workspace scope) | — | — | ✅ | ✅ |
@@ -91,7 +92,7 @@ activated.
 src/
   app/
     (authed)/        role-gated pages (dashboard, projects, teams, people,
-                     my-day, master-admin, audit, …)
+                     my-day, whiteboard, master-admin, audit, …)
     api/             route handlers — the only place that mutates data
   components/        shared UI (AppShell, ActivityGraph, BirdsEyeView,
                      ExportMenu, DatePicker, Select, ui.tsx, …)
@@ -99,7 +100,7 @@ src/
                      data builders (leadDashboard, projectDetail,
                      contributions, lifecycles)
   models/            Mongoose schemas — single source of truth for
-                     persistence (User, Project, Task, Team,
+                     persistence (User, Project, Task, Team, Top5,
                      Tenant, AuditLog, Notification, …)
 docs/                launch checklist, rollout, performance, demo env,
                      E2E, this file
@@ -110,6 +111,7 @@ docs/                launch checklist, rollout, performance, demo env,
 | Component | Where it mounts | Purpose |
 | --- | --- | --- |
 | `BirdsEyeView` | Dashboard (workspace scope), team detail, project detail | Hierarchical SVG tree of team → project → task, with curved Bézier edges, zoom, and PDF/SVG export. Pure SVG, no graph library. |
+| `Whiteboard` | `/whiteboard` (first-class nav, every role) | Full-page canvas — pen/highlighter/shapes/text, undo/redo, PNG export, debounced autosave via PUT `/api/scratch/whiteboard`. Owner-private. |
 | `ActivityGraph` | Dashboard (lead contributor modal), Settings | GitHub-style heatmap of completed work + role-based achievements. Lazy-loaded via `next/dynamic` and pre-warmed by `preloadActivityGraphData()`. |
 
 ## Compliance touchpoints

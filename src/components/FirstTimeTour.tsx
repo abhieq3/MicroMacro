@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Check,
   Info,
+  Presentation,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'pragati-tour-v5';
@@ -61,8 +62,8 @@ function buildSteps(role: string): Step[] {
       mobileTarget: '[data-mobile-tour="nav-dashboard"]',
       title: 'Your Dashboard',
       body: isLead
-        ? "Your whole scope at a glance — project health, who's loaded, what's overdue or about to slip, and the Bird's-eye button for the full tree."
-        : "Your work at a glance — what's due today, what's coming up next, and the projects you're part of.",
+        ? "Your whole scope at a glance — project health, who's loaded, what's overdue or about to slip, and the Bird's-eye button for the full tree. Plus Top 5 Things: the team's weekly signals, unfiltered — read them like a radar."
+        : "Your work at a glance — what's due today, what's coming up next, and the projects you're part of. Each week, write your Top 5 Things: five lines on what you're seeing. They go straight to the whole team — no layers in between.",
       icon: LayoutDashboard,
       iconBg: '#E3F2FD',
       iconColor: '#1565C0',
@@ -90,6 +91,15 @@ function buildSteps(role: string): Step[] {
       icon: Users,
       iconBg: '#E8F5E9',
       iconColor: '#2E7D32',
+      side: 'right',
+    },
+    {
+      target: '[data-tour="nav-whiteboard"]',
+      title: 'Think here first',
+      body: 'A full-screen whiteboard, yours alone. Sketch the problem before you argue the solution — no slides, no deck, markers and thinking. When it’s solved, wipe it clean and move on.',
+      icon: Presentation,
+      iconBg: '#E0F7FA',
+      iconColor: '#0E7490',
       side: 'right',
     },
   ];

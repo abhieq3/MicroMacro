@@ -449,3 +449,12 @@ export const TicketUpdateSchema = z.object({
 
 export type TicketCreateInput = z.infer<typeof TicketCreateSchema>;
 export type TicketUpdateInput = z.infer<typeof TicketUpdateSchema>;
+
+/* ── Top 5 Things (T5T) ───────────────────────────────────────────────────────
+   Input contract for PUT /api/top5 — the weekly "top five things on my mind"
+   list (see lib/top5 for the practice and the week-key rules). Short lines
+   only: a T5T is a snapshot of thinking, not a report. */
+export const Top5UpsertSchema = z.object({
+  items: z.array(z.string().trim().min(1).max(240)).min(1).max(5),
+});
+export type Top5UpsertInput = z.infer<typeof Top5UpsertSchema>;

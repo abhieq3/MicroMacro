@@ -26,21 +26,10 @@ import {
   Layers,
   FolderKanban,
 } from 'lucide-react';
-import { WhiteboardIcon } from '@/components/WhiteboardIcon';
 import { formatDate } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import { notifyCalendarChange } from '@/components/SidebarCalendar';
-import dynamicImport from 'next/dynamic';
-
-const Whiteboard = dynamicImport(() => import('@/components/Whiteboard').then((m) => m.Whiteboard), {
-  ssr: false,
-  loading: () => (
-    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/40 h-[460px] flex items-center justify-center text-xs text-slate-400">
-      Loading whiteboard…
-    </div>
-  ),
-});
 
 interface Note {
   id: string;
@@ -60,20 +49,49 @@ interface UserNote {
   updatedAt: string;
 }
 
-const ENCOURAGEMENTS = [
-  "Let's make today count",
+/* Time-of-day encouragement in the house voice (Jensen's): mornings are for
+   the highest-priority work — same ritual, every day; afternoons for finishing;
+   evenings belong to your people, not your backlog; and past midnight the app
+   is allowed one raised eyebrow. Rotated by day-of-year within each window so
+   the line changes daily but never mid-morning. */
+const MORNING_LINES = [
+  'Do your highest-priority work first',
+  'Same ritual, every morning: the main thing first',
+  'Pick the one thing that matters, then start',
+  'Morning brain is for the hard problem',
+  'First principles before first meeting',
+];
+const AFTERNOON_LINES = [
+  'Finish beats start — close something out',
   'One clear thought at a time',
   'Small steps, real progress',
   'Capture it, then conquer it',
-  'A clear mind moves fast',
-  'Today is yours to shape',
   'Progress beats perfection',
-  'Start light — empty your head',
+];
+const EVENING_LINES = [
+  'Wrap it up — the people at home outrank the backlog',
+  'Write tomorrow’s first move, then log off',
+  'The work will keep. Dinner won’t',
+  'Park your thoughts here and go home proud',
+];
+const LATE_NIGHT_LINES = [
+  'Still here? Write it down and go to bed',
+  'Nothing on this list beats eight hours of sleep',
+  'The board will still be here at sunrise. You should not be',
 ];
 function encouragement() {
   const d = new Date();
+  const h = d.getHours();
+  const pool =
+    h >= 5 && h < 12
+      ? MORNING_LINES
+      : h >= 12 && h < 18
+        ? AFTERNOON_LINES
+        : h >= 18 && h < 23
+          ? EVENING_LINES
+          : LATE_NIGHT_LINES;
   const dayOfYear = Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 0).getTime()) / 86_400_000);
-  return ENCOURAGEMENTS[dayOfYear % ENCOURAGEMENTS.length];
+  return pool[dayOfYear % pool.length];
 }
 
 function useDateLabel() {
@@ -408,77 +426,6 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
           </div>
       </>
     </div>
-  );
-}
-
-/* ── Whiteboard FAB & drawer ────────────────────────────────────────────── */
-function WhiteboardFAB() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
-
-  return (
-    <>
-      {/* Extended FAB — icon + label so it reads unmistakably as the whiteboard */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        title="Open whiteboard"
-        aria-label="Open whiteboard"
-        className="fixed bottom-6 right-[5.5rem] z-40 rounded-2xl border border-slate-200 bg-white grid place-items-center text-blue-700 transition-all hover:-translate-y-0.5 hover:border-blue-200 active:scale-95 dark:border-white/10 dark:bg-[#262624] dark:text-blue-300"
-        style={{
-          width: 52,
-          height: 52,
-          boxShadow: '0 12px 32px rgba(15,23,42,0.16), 0 2px 8px rgba(15,23,42,0.08)',
-        }}
-      >
-        <WhiteboardIcon size={24} className="text-current" />
-      </button>
-
-      {/* Whiteboard drawer */}
-      {open && (
-        <ModalPortal>
-          <div className="fixed inset-0 z-50 flex">
-            <div
-              className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-              onClick={() => setOpen(false)}
-            />
-            <div className="relative w-full h-full bg-white dark:bg-[#1e1e1c] shadow-2xl flex flex-col fade-in-soft">
-              <div
-                className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
-                style={{ background: 'linear-gradient(to right, rgba(21,101,192,0.06), transparent)' }}
-              >
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center">
-                  <WhiteboardIcon size={16} className="text-white" filled />
-                </div>
-                <div>
-                  <div className="text-sm font-black text-slate-800 dark:text-white/90">Whiteboard</div>
-                  <div className="text-[10px] text-slate-400 dark:text-white/30">
-                    Drag to draw · shapes · text · export PNG
-                  </div>
-                </div>
-                <button
-                  onClick={() => setOpen(false)}
-                  className="ml-auto p-1.5 rounded-lg text-slate-400 dark:text-white/35 hover:text-slate-700 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="flex-1 min-h-0 overflow-hidden p-4">
-                <Whiteboard />
-              </div>
-            </div>
-          </div>
-        </ModalPortal>
-      )}
-    </>
   );
 }
 
@@ -916,15 +863,11 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
         </div>
       </div>
 
-      {/* Secondary "workbench" tools — sticky notes + whiteboard. Off for a
-          focused launch (see lib/features); the core My Day capture + brief
-          stay. Re-enable per-deployment with NEXT_PUBLIC_SCRATCHPAD_ENABLED=1. */}
-      {SCRATCHPAD_ENABLED && (
-        <>
-          <NotesFAB />
-          <WhiteboardFAB />
-        </>
-      )}
+      {/* Secondary sticky-notes tool — off for a focused launch (see
+          lib/features); re-enable per-deployment with
+          NEXT_PUBLIC_SCRATCHPAD_ENABLED=1. The whiteboard graduated to its own
+          first-class page at /whiteboard — thinking is not a secondary tool. */}
+      {SCRATCHPAD_ENABLED && <NotesFAB />}
 
       {/* Promote modal */}
       {promote && (

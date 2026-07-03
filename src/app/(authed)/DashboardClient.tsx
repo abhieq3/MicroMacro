@@ -51,6 +51,7 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
+import { TopFivePanel } from '@/components/TopFive';
 // The Morning Brief stays available through its other channels (push, email,
 // calendar feed) — the dashboard card was removed by owner decision: the
 // Up Next panel and the summary chips already answer "what's on today" here.
@@ -188,30 +189,13 @@ function greeting(now = new Date()): string {
   if (h < 21) return 'Good evening';
   return 'Good evening';
 }
-// A meaningful one-liner driven by the user's actual state — not filler. On a
-// festival day we lead with the festive note before nudging toward the work.
-function greetingSubline({
-  open,
-  overdue,
-  dueToday,
-  now = new Date(),
-}: {
-  open: number;
-  overdue: number;
-  dueToday: number;
-  now?: Date;
-}) {
-  const fest = festivalFor(now);
-  if (fest && open === 0) return fest.note;
-  if (overdue > 0)
-    return `${overdue} task${overdue === 1 ? '' : 's'} past due — clear ${overdue === 1 ? 'it' : 'the backlog'} and move forward.`;
-  if (dueToday > 0) return `${dueToday} landing today. Let's make it count.`;
-  if (open === 0) return 'All clear — nothing open. Take a breath. ✦';
-  const day = now.getDay();
-  if (day === 1) return `${open} open. What matters most this week?`;
-  if (day === 5) return `${open} open heading into the weekend. Finish strong.`;
-  if (day === 0 || day === 6) return `${open} on the board. You've got this.`;
-  return `${open} in flight.`;
+// The morning rule, borrowed whole from Jensen Huang: do your highest-priority
+// work first, every morning, exactly the same way — so the "Start here" card
+// names itself after the ritual while the morning lasts.
+function focusCardLabel(now = new Date()): string {
+  const h = now.getHours();
+  if (h >= 5 && h < 12) return 'Your morning priority';
+  return 'Start here';
 }
 
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
@@ -421,8 +405,11 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                   <Sparkles size={16} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-300">
-                    Start here
+                  <div
+                    className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-300"
+                    suppressHydrationWarning
+                  >
+                    {focusCardLabel()}
                   </div>
                   <div className="text-[15px] font-bold text-slate-900 dark:text-white leading-snug truncate mt-0.5">
                     {focusTask.title}
@@ -554,6 +541,10 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                 suppressHeaderDesktop
               />
               <MyTasksPanel tasks={visibleTasks} myId={myId} />
+              {/* Top 5 Things — everyone writes theirs, everyone reads the
+                  team's. Signals travel with no layer in between, and leads
+                  scan the feed for the weak signal before it gets loud. */}
+              <TopFivePanel myUserId={myId} />
               {/* Leads see workload across their ICs. */}
               {isLead && <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />}
             </div>

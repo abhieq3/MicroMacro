@@ -42,6 +42,16 @@ These are seeded demo accounts on a public demo workspace — don't put anything
 | **Admin** | Full workspace control, user management, operations + audit log. |
 | **Master Admin** (dormant) | Cross-tenant provisioning, when multi-tenant runtime is enabled. |
 
+## Operating principles
+
+The product's working rhythm is borrowed from how Jensen Huang actually runs NVIDIA — not as branding, but as defaults baked into the surfaces:
+
+- **Highest-priority work first, every morning.** The dashboard opens on *your morning priority* — the single highest-leverage task on your plate, with the reasons shown. The optional morning brief email exists to serve the same ritual: one email, the main thing on top.
+- **Think at a whiteboard, not in a deck.** `/whiteboard` is first-class nav for every role. Sketch the problem, defend the idea, wipe it clean when it's solved.
+- **Flat information, weak signals.** Top 5 Things: everyone's five lines, open to the whole team, no layers between a contributor's observation and whoever needs to hear it. Feedback happens in the open — why should only one person get to learn?
+- **The mission is the boss.** Everyone sees the whole board (bird's-eye view for every role); status flows from the work, not from status meetings.
+- **Evenings belong to your people.** After hours, My Day stops cheering you toward the backlog and starts pointing you home. The work will keep; dinner won't.
+
 ## Engineering at a glance
 
 Solo-built, in production, not a tutorial clone. The numbers below come straight from the repo — `npm test`, `find`, `git log` — not from a pitch deck. If you can't measure it, it's just an opinion.
@@ -84,13 +94,14 @@ Reads go straight from server components to Mongoose data builders; mutations fl
 - **Owner-gated deletions** — tasks and phases can only be deleted by the **project owner** (and workspace admins). Leads manage work; only the owner can destroy it. Deleting a phase never deletes its tasks — they move to *Unphased*, and the action lands in the audit trail.
 - **Lifecycle templates** — a library of structured workflows (engineering change, incident management, audits, validation, sprints, training programs, vendor qualification, …) plus Personal templates for ICs — or define your own.
 - **Append-only audit trail** — every record change carries who, what, when, and why; there's no update/delete route for an audit row by application design. Personal projects never enter the cross-user log. Editing a project's reference number writes a before/after record.
-- **Whiteboard & Notes** — a full-screen sketch surface and a full-screen note list, both reachable from a FAB on My Day, both owner-private (off by default for a focused launch; re-enable with `NEXT_PUBLIC_SCRATCHPAD_ENABLED=1`).
+- **Whiteboard, first-class** — a full-page drawing surface at `/whiteboard`, in the main nav for every role. The operating rule is NVIDIA's: no slides, no deck — sketch the problem at a board and defend the idea in real time; when it's solved, wipe it clean. Pen, highlighter, shapes, text, undo/redo, PNG export, autosave. Owner-private, which is exactly what makes people willing to think honestly on it. (Sticky Notes remain behind `NEXT_PUBLIC_SCRATCHPAD_ENABLED=1`.)
+- **Top 5 Things (T5T)** — the NVIDIA practice, adopted whole: everyone — newest contributor to admin — writes the five things on their mind each week. Not status; *signals*: what you're seeing, what feels early, what feels wrong. The feed is open to the whole team with no layer in between, and leads read it the way Jensen Huang reads his hundred T5T emails — hunting the weak signal before it becomes a loud one. One document per person per ISO week, editable all week, deliberately un-audited (thoughts stop being honest the moment they become compliance artifacts).
 - **Public profiles** — a within-workspace profile at `/<username>` with a contribution heatmap, an optional GitHub link, and Follow / Unfollow for colleagues.
 - **Sidebar calendar** — a compact month grid pinned above My Day, dotted with what's due (mine / team / overdue) and a hover card listing the day's work.
 - **Dashboard "Up Next"** — colour-coded urgency pills (overdue / today / ≤2d / future) on every due-row, with filter chips (week / next week / month / until-date).
 - **Activity graph** — GitHub-style contribution heatmap with role-based achievements (Milestone Achiever, On-Time Streak, Project Finisher, Mentor, Load Balancer, …).
 - **Reports** — Excel (interactive), PDF, CSV, HTML exports for both projects and teams. Print preview before save.
-- **Productivity touches** — resizable sidebar, global keyboard shortcuts (`⌘K` for the command palette, `G D/P/T/M` to navigate, `?` for the shortcut sheet), custom team avatars, and per-page loading skeletons that mirror each real layout.
+- **Productivity touches** — resizable sidebar, global keyboard shortcuts (`⌘K` for the command palette, `G D/P/T/M/W` to navigate, `?` for the shortcut sheet), custom team avatars, and per-page loading skeletons that mirror each real layout.
 - **A login screen that earns its pixels** — a rotating library of unattributed lines on doing the work, drawn from Jensen Huang's keynotes, interviews, and commencement addresses, themed to mission, resilience, urgency, ownership, and first principles. Never repeats on a device until the whole library has cycled; no name is ever shown, only the line. The library ships with the binary — no CMS, no feed, no env var.
 - **AI, deep but minimal** — the rule-based engine decides everything (an architectural invariant); Gemini may only *rephrase* the already-decided Morning Brief headline (one cached call per user per day, instant fallback without a key). Plus the conversational Copilot.
 - **Daily rundown, four channels, free forever** — every user gets a role-aware **Morning Brief** (contributors: what's on my plate; leads: team pulse; admins: workspace rundown) rendered on the dashboard, as an optional **Web Push** notification (VAPID — no vendor, no cost), as a personal **calendar feed** (subscribe once in Outlook/Google/Apple), and as an opt-in **08:30 IST email** capped to the provider's free tier. Mail is provider-agnostic (`MAIL_PROVIDER=brevo|resend|webhook`) so an org can bring its own relay. See [Daily email digest](#daily-email-digest) and [`docs/SCALING.md`](./docs/SCALING.md).
@@ -196,7 +207,8 @@ src/
 │   │   ├── projects/         # list · new · [id] detail
 │   │   ├── teams/             # list · [id] detail
 │   │   ├── people/           # admin-only user directory
-│   │   ├── my-day/           # personal tasks + notes (whiteboard behind a flag)
+│   │   ├── my-day/           # personal tasks + notes
+│   │   ├── whiteboard/       # full-page thinking canvas (every role)
 │   │   ├── settings/         # profile, security, preferences
 │   │   ├── audit/            # immutable operations log
 │   │   └── [username]/       # public-within-workspace profile
