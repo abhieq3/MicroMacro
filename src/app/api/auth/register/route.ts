@@ -42,8 +42,17 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     if (process.env.ALLOW_PUBLIC_REGISTRATION !== 'true') {
+      // On an empty database this is the founder mid-setup, not an intruder —
+      // tell them the one switch they're missing instead of "ask your admin"
+      // (they ARE the admin). The latch itself stays: registration never opens
+      // just because the user collection is empty.
+      const empty = (await User.countDocuments()) === 0;
       return NextResponse.json(
-        { error: 'Self-registration is disabled. Ask your administrator for an invite.' },
+        {
+          error: empty
+            ? 'One switch left: set ALLOW_PUBLIC_REGISTRATION=true in your hosting environment (Vercel → Settings → Environment Variables), redeploy, then create this account. Remove the variable afterward.'
+            : 'Self-registration is disabled. Ask your administrator for an invite.',
+        },
         { status: 403 },
       );
     }

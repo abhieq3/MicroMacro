@@ -18,12 +18,13 @@ egress IPs vary), and copy the connection string.
 
 **2. Deploy — Vercel free tier.**
 Click the **Deploy** button in the README (or fork the repo and import it at
-[vercel.com/new](https://vercel.com/new)). Set two environment variables:
+[vercel.com/new](https://vercel.com/new)). Set three environment variables:
 
 | Variable | Value |
 | --- | --- |
 | `MONGODB_URI` | your Atlas connection string |
 | `JWT_SECRET` | a long random secret — `openssl rand -base64 48` |
+| `ALLOW_PUBLIC_REGISTRATION` | `true` — **only while you create the first account** (step 3), then delete it and redeploy |
 
 Deploy. That's the whole required configuration.
 
@@ -31,6 +32,12 @@ Deploy. That's the whole required configuration.
 Open your deployment. On an empty database the login page drops straight into
 **Set up workspace** — create the first account (it becomes a lead). No shell,
 no seed script, no config file.
+
+Then go back to Vercel and **delete `ALLOW_PUBLIC_REGISTRATION`** (and
+redeploy). It's a deliberate safety latch: without it, registration stays
+closed even if the database is ever emptied — an empty user collection must
+never mean "anyone can sign up as the owner." Every account after the first
+comes from an invite inside the app, so you won't need the flag again.
 
 You now have a private Pragati: dashboard, projects, teams, My Day,
 whiteboard, bird's-eye view, Top 5 Things, the morning-priority spotlight —
