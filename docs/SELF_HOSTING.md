@@ -67,17 +67,12 @@ system — here's the two-minute setup for a fixed-date exam:
 
 1. **New project → toggle "Personal project"** (personal projects are private
    to you — even admins on a shared instance can never see them).
-2. Pick the **Exam Countdown** template. It scaffolds the whole campaign,
-   worked backwards from the date:
-   - *Baseline* — book the exam, take an honest baseline mock, set the target
-     score, plan backwards from exam day
-   - *Drills* — weakest section first, daily habit, timed practice at exam pace
-   - *Mocks & review* — full mocks under strict conditions; review every miss
-     (misses teach more than scores)
-   - *Final week* — light review only, logistics, full night's sleep
-   - *Exam day* — sit it; you did the work
+2. Pick the **Study Plan** template for a ready-made spine (Setup → Learn →
+   Apply → Assess), or start **Blank** and add your own phases — a mock every
+   Saturday, a daily drill, a final-week taper.
 3. Set the **project due date to 25 July** and give each task its own date —
-   e.g. mocks on the Saturdays before, final-week tasks in the last five days.
+   e.g. mocks on the Saturdays before, review tasks after each, light-only
+   review in the last five days. Work backwards from the exam.
 
 Then the system runs the ritual for you:
 

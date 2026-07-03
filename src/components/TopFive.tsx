@@ -5,17 +5,20 @@ import { api } from '@/lib/client/api';
 import { Avatar } from '@/components/ui';
 
 /**
- * Top 5 Things (T5T) — the NVIDIA practice as a dashboard panel.
+ * Top 5 Things (T5T) — the NVIDIA practice, kept to its actual shape.
  *
- * Everyone writes the top five things on their mind each week — what they're
- * working on, what they're noticing, what feels early or wrong. Not status;
- * *signals*. The feed is open to the whole team: no layers, no filtering, and
- * everyone gets to learn from everyone. Leads read it the way Jensen reads
- * his hundred T5T emails — hunting the weak signal before it becomes a loud
- * one.
+ * At NVIDIA a T5T is a short note — five bullets — of the things most on your
+ * mind: what you're **working on**, what you're **watching / thinking about**,
+ * and what's **troubling** you. Not a status report; the raw front-line signal.
+ * Each line tends to open with an action word ("Shipping…", "Watching…",
+ * "Blocked on…") so it reads as movement, not a noun-list. Jensen reads ~100 a
+ * day to catch the weak signal before it becomes a loud one.
  *
- * Composition and feed live in one panel so writing yours and reading the
- * team's feel like the same habit, not a form and a report.
+ * So the five slots here are shaped to that canonical spread — two "working on",
+ * one "watching", one "troubled by", one "thinking about" — with verb-first
+ * prompts. The feed is open to the whole team (no layers, everyone learns), and
+ * composition + feed share one panel so writing yours and reading the team's
+ * feel like the same weekly habit.
  */
 
 interface FeedEntry {
@@ -46,12 +49,14 @@ function timeAgo(iso: string): string {
   return `${Math.round(h / 24)}d ago`;
 }
 
+// Verb-first prompts across the canonical T5T spread — working on (×2),
+// watching, troubled by, thinking about.
 const PROMPTS = [
-  'What are you working on?',
-  'What are you noticing?',
-  'What feels early or wrong?',
-  'What would you fix first?',
-  'What should the team know?',
+  'Working on… (start with a verb)',
+  'Also working on…',
+  'Watching… (a trend, a number, a customer)',
+  'Troubled by… (a blocker, a risk, a smell)',
+  'Thinking about… (an idea, a bet, a question)',
 ];
 
 export function TopFivePanel({ myUserId }: { myUserId: string }) {
@@ -169,11 +174,12 @@ export function TopFivePanel({ myUserId }: { myUserId: string }) {
           }`}
         >
           <div className="text-[12.5px] font-bold text-slate-700 dark:text-white/80">
-            What are the five things on your mind this week?
+            Write your Top 5 Things
           </div>
           <div className="text-[11px] text-slate-400 dark:text-white/30 mt-0.5 leading-snug">
-            Not a status report — signals. What you’re seeing, what feels early, what feels wrong. The whole
-            team reads these; that’s the point.
+            The five most on your mind this week — what you’re working on, watching, or troubled by. One line
+            each, start with a verb. Not a status report; the raw signal. The whole team reads it — that’s the
+            point.
           </div>
         </button>
       )}

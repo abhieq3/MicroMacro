@@ -262,10 +262,14 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
       >
         <CalendarDays size={12} />
         <span>Calendar</span>
-        <span className={`ml-auto font-semibold ${dark ? 'text-white/30' : 'text-slate-300'}`}>
-          {monthName}
-        </span>
-        <ChevronDown size={12} className={`transition-transform ${openCal ? 'rotate-180' : ''}`} />
+        {/* Month shown only while collapsed — when open the grid header already
+            names it, so repeating it here is just noise. */}
+        {!openCal && (
+          <span className={`ml-auto font-semibold ${dark ? 'text-white/30' : 'text-slate-300'}`}>
+            {monthName}
+          </span>
+        )}
+        <ChevronDown size={12} className={`${openCal ? 'ml-auto rotate-180' : ''} transition-transform`} />
       </button>
 
       {openCal && (

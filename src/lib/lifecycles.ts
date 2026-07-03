@@ -19,7 +19,6 @@ export type LifecycleKey =
   // a regulatory framework attached.
   | 'personal_goal'
   | 'personal_study'
-  | 'personal_exam'
   | 'personal_habit'
   | 'personal_side_project'
   | 'personal_event'
@@ -736,55 +735,6 @@ export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
           { title: 'Mock test / quiz', type: 'test' },
           { title: 'Final exam or certification', type: 'approval' },
         ],
-      },
-    ],
-  },
-
-  personal_exam: {
-    label: 'Exam Countdown',
-    description:
-      'A fixed exam date, worked backwards — honest baseline, targeted drills, full mocks, taper, exam day.',
-    regulatoryRefs: '',
-    group: 'Personal',
-    phases: [
-      {
-        name: 'Baseline',
-        tasks: [
-          { title: 'Book the exam & confirm the date', type: 'task' },
-          { title: 'Full baseline mock — know your honest starting score', type: 'test' },
-          { title: 'Set the target score and name the gap to close', type: 'task' },
-          { title: 'Build the weekly plan backwards from exam day', type: 'task' },
-        ],
-      },
-      {
-        name: 'Drills',
-        tasks: [
-          { title: 'Weakest section — drill it first, hardest', type: 'task' },
-          { title: 'Second-weakest section — drill block', type: 'task' },
-          { title: 'Daily habit — vocabulary / formulas / flashcards', type: 'task' },
-          { title: 'Timed practice — train at exam pace, not study pace', type: 'task' },
-        ],
-      },
-      {
-        name: 'Mocks & review',
-        tasks: [
-          { title: 'Full mock 1 — strict exam conditions', type: 'test' },
-          { title: 'Review every miss from mock 1 — misses teach more than scores', type: 'review' },
-          { title: 'Full mock 2 — strict exam conditions', type: 'test' },
-          { title: 'Review every miss from mock 2', type: 'review' },
-        ],
-      },
-      {
-        name: 'Final week',
-        tasks: [
-          { title: 'Light review only — no new material now', type: 'task' },
-          { title: 'Logistics — ID, venue, timings, what to carry', type: 'task' },
-          { title: 'Full night’s sleep before the exam (non-negotiable)', type: 'task' },
-        ],
-      },
-      {
-        name: 'Exam day',
-        tasks: [{ title: 'Sit the exam — you did the work', type: 'approval' }],
       },
     ],
   },

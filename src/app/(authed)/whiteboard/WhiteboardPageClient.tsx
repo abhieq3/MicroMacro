@@ -25,22 +25,21 @@ function boardLine() {
 
 export default function WhiteboardPageClient() {
   return (
-    <div className="flex flex-col h-[calc(100vh-96px)] min-h-[520px] max-w-[1440px]">
-      <div className="mb-4 shrink-0">
-        <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400 dark:text-white/30">
-            Whiteboard
-          </span>
-        </div>
-        <h1 className="text-[1.7rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
-          <span suppressHydrationWarning>Think here first.</span>
-        </h1>
-        <div className="flex items-center gap-1.5 mt-1.5">
-          <PenLine size={11} className="text-slate-400 dark:text-white/25 shrink-0" />
-          <span className="text-[12px] text-slate-500 dark:text-white/40 font-medium" suppressHydrationWarning>
-            {boardLine()}
-          </span>
-        </div>
+    <div className="flex flex-col h-[calc(100vh-72px)] min-h-[540px] max-w-[1440px]">
+      {/* Minimal header — one slim line, so the board gets the room. The daily
+          philosophy line sits inline and quiet; the point is the canvas. */}
+      <div className="mb-2.5 shrink-0 flex items-center gap-2 min-w-0">
+        <PenLine size={13} className="text-slate-400 dark:text-white/30 shrink-0" />
+        <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/40 shrink-0">
+          Whiteboard
+        </span>
+        <span className="text-slate-300 dark:text-white/15 shrink-0">·</span>
+        <span
+          className="text-[12px] text-slate-400 dark:text-white/35 font-medium truncate min-w-0"
+          suppressHydrationWarning
+        >
+          {boardLine()}
+        </span>
       </div>
       <div className="flex-1 min-h-0">
         <Whiteboard />

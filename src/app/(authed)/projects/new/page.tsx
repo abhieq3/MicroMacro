@@ -116,7 +116,6 @@ const LIFECYCLE_GROUPS = [
       { value: 'personal_career', label: 'Career Growth', hint: 'Grow in your role, step up' },
       { value: 'personal_job_search', label: 'Job Search', hint: 'Target → apply → interview → offer' },
       { value: 'personal_study', label: 'Study Plan', hint: 'Course / certification roadmap' },
-      { value: 'personal_exam', label: 'Exam Countdown', hint: 'IELTS, GRE, boards — work back from the date' },
       { value: 'personal_reading', label: 'Reading Challenge', hint: 'Curate → read → reflect' },
       { value: 'personal_habit', label: 'Habit Tracker', hint: '30-day habit build' },
       { value: 'personal_fitness', label: 'Fitness Plan', hint: 'Baseline → build → sustain' },

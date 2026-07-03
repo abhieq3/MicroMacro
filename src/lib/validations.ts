@@ -36,7 +36,6 @@ export const ProjectLifecycleEnum = z.enum([
   // project". Keep these synced with src/lib/lifecycles.ts.
   'personal_goal',
   'personal_study',
-  'personal_exam',
   'personal_habit',
   'personal_side_project',
   'personal_event',
