@@ -7,6 +7,12 @@
 [![Audit trail](https://img.shields.io/badge/audit%20trail-append--only-9333EA.svg)](./docs/ARCHITECTURE.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b.svg)](./LICENSE)
 
+**Run your own in ~10 minutes** — free tiers end to end, two env vars, first account created in the browser:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fabhipatelz%2FPragati&env=MONGODB_URI,JWT_SECRET&envDescription=MONGODB_URI%3A%20free%20MongoDB%20Atlas%20connection%20string%20%C2%B7%20JWT_SECRET%3A%20a%20long%20random%20secret&envLink=https%3A%2F%2Fgithub.com%2Fabhipatelz%2FPragati%2Fblob%2Fmain%2Fdocs%2FSELF_HOSTING.md&project-name=pragati)
+
+Full path (including using it **solo** — e.g. tracking an exam with a hard date): [`docs/SELF_HOSTING.md`](./docs/SELF_HOSTING.md).
+
 **[Live app](https://pragatialm.vercel.app)** — sign in with a read-only demo account, no setup required:
 
 | Email | Password | Role |
@@ -119,17 +125,22 @@ Reads go straight from server components to Mongoose data builders; mutations fl
 
 ## Run locally
 
+Zero-setup — embedded in-memory MongoDB, nothing to configure:
+
 ```bash
-cp .env.example .env.local        # set MONGODB_URI, JWT_SECRET, APP_URL
+npm install
+USE_IN_MEMORY_MONGO=true npm run dev    # http://localhost:3000
+```
+
+With a real database (Atlas free tier, or `docker compose up -d` for local Mongo):
+
+```bash
+cp .env.example .env.local        # set MONGODB_URI, JWT_SECRET
 npm install
 npm run dev                       # http://localhost:3000
 ```
 
-For an isolated dev DB without Atlas:
-
-```bash
-USE_IN_MEMORY_MONGO=true npm run dev
-```
+On an empty database the login page drops straight into **Set up workspace** — the first account is created in the browser, no seed script needed. Self-hosting for real (Vercel + Atlas free tiers, optional email/push, solo usage): [`docs/SELF_HOSTING.md`](./docs/SELF_HOSTING.md).
 
 > The in-memory mode downloads a Mongo binary on first start. If MongoDB's archive 403s a particular version, override with `MONGOMS_VERSION=7.0.7` (or any [available release](https://www.mongodb.com/download-center/community/releases/archive)).
 
