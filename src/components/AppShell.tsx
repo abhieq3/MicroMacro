@@ -372,12 +372,12 @@ export default function AppShell({
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
   // user management (create/reset/unlock/delete/promote accounts) is an
   // admin-only surface, appended via adminExtra below.
-  // My Day is NOT in the main nav list — it renders pinned just above the user
-  // footer so it's always reachable without scrolling.
-  // Whiteboard is first-class for every role — the app's thinking surface
-  // (the NVIDIA meeting rule: no slides, stand at a board and reason in the
-  // open). It sits right after the three record surfaces because thinking
-  // precedes tracking.
+  // My Day and Whiteboard are NOT in the main nav list — they render pinned
+  // just above the user footer as the viewer's *personal* surfaces, kept
+  // together and always reachable without scrolling. Whiteboard sits beside
+  // My Day because they're the same kind of space: yours alone, for thinking
+  // and capturing before work becomes tracked records. (The three record
+  // surfaces — Dashboard/Projects/Teams — are the shared org view above.)
   const whiteboardItem: NavItem = {
     href: '/whiteboard',
     label: 'Whiteboard',
@@ -389,7 +389,6 @@ export default function AppShell({
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
-    whiteboardItem,
   ];
   const adminExtra: NavItem[] = [
     {
@@ -437,7 +436,6 @@ export default function AppShell({
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
-    whiteboardItem,
   ];
 
   const myDayItem: NavItem = {
@@ -704,25 +702,27 @@ export default function AppShell({
         </div>
 
         {/* Sidebar calendar — compact month view with due-date dots. Hidden on
-            the collapsed icon rail; sits just above "My Day" so My Day stays
-            pinned closest to the footer. */}
+            the collapsed icon rail; sits just above the personal surfaces so
+            those stay pinned closest to the footer. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* My Day — pinned just above the footer so it's always reachable */}
+        {/* Personal surfaces — My Day + Whiteboard, pinned together just above
+            the footer. Both are "yours alone": capture and thinking, kept apart
+            from the shared org nav above and always reachable without scroll. */}
         <div
-          className="mt-2 pt-2 border-t"
+          className="mt-2 pt-2 border-t space-y-0.5"
           style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}
         >
-          {(() => {
-            const n = myDayItem;
+          {[myDayItem, whiteboardItem].map((n) => {
             const Icon = n.icon;
             const active = isActive(n.href);
             return (
               <Link
+                key={n.href}
                 href={n.href}
                 prefetch
                 title={showCollapsed ? n.label : undefined}
-                data-tour="nav-my-day"
+                data-tour={`nav-${n.label.toLowerCase().replace(/\s+/g, '-')}`}
                 className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
                   active
                     ? 'text-brand-700 dark:text-[#faf9f5]'
@@ -762,7 +762,7 @@ export default function AppShell({
                 {!showCollapsed && <span className="flex-1 truncate">{n.label}</span>}
               </Link>
             );
-          })()}
+          })}
         </div>
       </nav>
 
