@@ -423,11 +423,14 @@ function PhaseRow({
   const [newTask, setNewTask] = useState('');
   const taskRef = useRef<HTMLInputElement>(null);
 
-  function addTask() {
+  // `refocus` only on explicit adds (Enter / Add button) for rapid entry —
+  // the blur-commit path must NOT steal focus back from wherever the user
+  // just clicked.
+  function addTask(refocus: boolean) {
     if (!newTask.trim()) return;
     onChange({ ...phase, tasks: [...phase.tasks, { id: uid(), title: newTask.trim() }] });
     setNewTask('');
-    taskRef.current?.focus();
+    if (refocus) taskRef.current?.focus();
   }
 
   return (
@@ -502,17 +505,17 @@ function PhaseRow({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  addTask();
+                  addTask(true);
                 }
               }}
               // Typed-but-not-entered text must survive: without this, typing a
               // task and clicking straight to "Create project" silently drops it.
-              onBlur={addTask}
+              onBlur={() => addTask(false)}
               placeholder="Add task… (press Enter)"
               className="flex-1 text-xs text-slate-600 bg-transparent outline-none border-b border-transparent focus:border-blue-300 transition-colors placeholder:text-slate-300"
             />
             {newTask.trim() && (
-              <button onClick={addTask} className="text-xs text-blue-600 font-semibold hover:underline">
+              <button onClick={() => addTask(true)} className="text-xs text-blue-600 font-semibold hover:underline">
                 Add
               </button>
             )}
