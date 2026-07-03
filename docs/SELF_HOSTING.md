@@ -60,6 +60,31 @@ For a persistent local DB, `docker compose up -d` starts MongoDB 7 on
 `localhost:27017`; put `MONGODB_URI=mongodb://localhost:27017/pragati` and a
 `JWT_SECRET` in `.env.local` and run `npm run dev`.
 
+## On your own domain (e.g. beside a personal site)
+
+If you already own a domain (say your blog lives at `example.com`), the natural
+home for a private instance is a subdomain — `pragati.example.com` — so your
+workspace lives under a name you own, reachable from anywhere, with your blog
+untouched:
+
+1. Deploy your instance (button above, or import your fork at
+   [vercel.com/new](https://vercel.com/new) into **your personal** Vercel
+   account — separate account = separate billing, logs, and access from any
+   org you belong to).
+2. Vercel → your Pragati project → **Settings → Domains** → add
+   `pragati.example.com`. Vercel shows the DNS record to create — one CNAME
+   (`pragati` → `cname.vercel-dns.com`) at your DNS provider.
+3. Set `APP_URL=https://pragati.example.com` in the project's env vars and
+   redeploy, so email links and the calendar feed use your domain.
+4. Optional nicety: add a redirect on your main site (e.g.
+   `example.com/pragati` → `https://pragati.example.com`) so you only ever
+   have to remember one domain.
+
+**Privacy model:** the instance is private because *you hold the only
+account*. There is no public registration — nobody can sign up, and nothing is
+readable without signing in. The URL being guessable doesn't matter; the auth
+is what protects it (plus your own database, which no one else can reach).
+
 ## Using it solo — e.g. "track my IELTS exam on 25 July"
 
 Pragati's team machinery is optional. A single person gets the full operating
