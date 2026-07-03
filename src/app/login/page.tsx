@@ -186,6 +186,11 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false);
   const [notice, setNotice] = useState('');
   const [showForgot, setShowForgot] = useState(false);
+  // Database unreachable — surfaced as a quiet banner instead of failing
+  // silently. This is the #1 fresh-self-host stumble (Atlas network access /
+  // a bad MONGODB_URI): without it, an empty-but-unreachable workspace shows
+  // a normal Sign in that can never succeed, and no clue why.
+  const [dbDown, setDbDown] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -223,12 +228,15 @@ export default function LoginPage() {
   useEffect(() => {
     // On a brand-new (empty) workspace, drop straight into setup so the first
     // lead account can be created — no banner needed. A failed status call
-    // throws and is swallowed below, so a DB hiccup never flips us into setup.
+    // never flips us into setup (an org's login must not degrade into
+    // "create account" during a DB blip) — instead it raises the db-down
+    // banner so a fresh self-hoster knows exactly what to fix.
     api<{ initialized: boolean }>('/system/status')
       .then((d) => {
+        setDbDown(false);
         if (!d.initialized) setMode('setup');
       })
-      .catch(() => {});
+      .catch(() => setDbDown(true));
     // Auto-switch to PIN pad for trusted devices — no opt-in button needed.
     api<{
       trusted: boolean;
@@ -594,6 +602,23 @@ export default function LoginPage() {
                 <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 fade-in-soft">
                   <span className="text-red-500 font-bold shrink-0 mt-0.5 text-sm">!</span>
                   <div className="text-sm text-red-800 leading-snug">{notice}</div>
+                </div>
+              )}
+
+              {/* Database unreachable — sign-in cannot succeed until it's back.
+                  For a fresh self-hosted deploy this is almost always Atlas
+                  Network Access or a mistyped MONGODB_URI. */}
+              {dbDown && (
+                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 fade-in-soft">
+                  <div className="text-sm text-amber-800 leading-snug">
+                    <strong>Can’t reach the database.</strong> Sign-in won’t work until it’s back.
+                  </div>
+                  <div className="text-[12px] text-amber-700/90 leading-snug mt-1.5">
+                    Fresh deployment? Check <code className="font-mono">MONGODB_URI</code> and your Atlas{' '}
+                    <em>Network Access</em> (allow <code className="font-mono">0.0.0.0/0</code>), then
+                    redeploy. <code className="font-mono">/api/health</code> flips to{' '}
+                    <code className="font-mono">ok</code> when it's fixed.
+                  </div>
                 </div>
               )}
 
