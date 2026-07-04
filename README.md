@@ -3,15 +3,17 @@
 If everyone could see the whole board, most status meetings wouldn't need to
 exist. So here, everyone sees the whole board.
 
-[![CI](https://github.com/abhipatelz/Pragati/actions/workflows/ci.yml/badge.svg)](https://github.com/abhipatelz/Pragati/actions/workflows/ci.yml)
+[![CI](https://github.com/abhieq31/Pragati/actions/workflows/ci.yml/badge.svg)](https://github.com/abhieq31/Pragati/actions/workflows/ci.yml)
 [![Stack](https://img.shields.io/badge/stack-Next.js%2014%20·%20MongoDB%20·%20TypeScript-1565C0.svg)](#stack)
 [![Audit trail](https://img.shields.io/badge/audit%20trail-append--only-9333EA.svg)](./docs/ARCHITECTURE.md)
 [![License](https://img.shields.io/badge/license-MIT-64748b.svg)](./LICENSE)
 
+> **For reviewers:** Solo-built work-management platform in production at Alembic Pharmaceuticals (5 teams, ~40 users). ~62k lines TypeScript, 294 unit tests, 5 E2E specs. Key decisions: no AI on scoring paths, hand-rolled auth, append-only audit trail, single permissions table for UI + API.
+
 **Run your own in ~10 minutes** — free tiers end to end, first account created
 in the browser:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fabhipatelz%2FPragati&env=MONGODB_URI,JWT_SECRET&envDescription=MONGODB_URI%3A%20free%20MongoDB%20Atlas%20connection%20string%20%C2%B7%20JWT_SECRET%3A%20a%20long%20random%20secret&envLink=https%3A%2F%2Fgithub.com%2Fabhipatelz%2FPragati%2Fblob%2Fmain%2Fdocs%2FSELF_HOSTING.md&project-name=pragati)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fabhieq31%2FPragati&env=MONGODB_URI,JWT_SECRET&envDescription=MONGODB_URI%3A%20free%20MongoDB%20Atlas%20connection%20string%20%C2%B7%20JWT_SECRET%3A%20a%20long%20random%20secret&envLink=https%3A%2F%2Fgithub.com%2Fabhieq31%2FPragati%2Fblob%2Fmain%2Fdocs%2FSELF_HOSTING.md&project-name=pragati)
 
 The full path — including using it **solo**, e.g. tracking an exam with a hard
 date: [`docs/SELF_HOSTING.md`](./docs/SELF_HOSTING.md).
