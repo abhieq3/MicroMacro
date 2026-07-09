@@ -345,6 +345,24 @@ export async function isDeactivatedFromCookie(): Promise<boolean> {
   }
 }
 
+/**
+ * Paths a mustChangePassword user may still hit. Everything else is blocked
+ * server-side so the force-password modal is not the only gate (a client
+ * could otherwise call any API with the temp-password session cookie).
+ */
+const MUST_CHANGE_PASSWORD_ALLOWLIST = [
+  '/api/auth/first-password',
+  '/api/auth/logout',
+  '/api/auth/me',
+  '/api/auth/password',
+];
+
+function isAllowedDuringForcedPasswordChange(pathname: string): boolean {
+  return MUST_CHANGE_PASSWORD_ALLOWLIST.some(
+    (p) => pathname === p || pathname.startsWith(p + '/'),
+  );
+}
+
 export async function requireUser(req: NextRequest) {
   const { user, deactivated } = await getCurrentUserFromRequest(req);
   if (!user) {
@@ -360,6 +378,22 @@ export async function requireUser(req: NextRequest) {
       ),
       user: null as unknown as JwtPayload,
     };
+  }
+  // Server-side forced password change — UI modal is convenience; this is law.
+  if (user.mustChangePassword) {
+    const path = req.nextUrl.pathname;
+    if (!isAllowedDuringForcedPasswordChange(path)) {
+      return {
+        error: NextResponse.json(
+          {
+            error: 'You must set a new password before continuing.',
+            code: 'MUST_CHANGE_PASSWORD',
+          },
+          { status: 403 },
+        ),
+        user: null as unknown as JwtPayload,
+      };
+    }
   }
   return { error: null, user };
 }

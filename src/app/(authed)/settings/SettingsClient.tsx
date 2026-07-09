@@ -44,8 +44,13 @@ import {
 import { MonogramEditor } from '@/components/MonogramEditor';
 import { linkMeta, type LinkBrand } from '@/lib/links';
 import { ProfileHero } from '@/components/ProfileHero';
-import { DeliveryForesight } from '@/components/DeliveryForesight';
 import { SelfImpactTiles } from '@/components/ProfileStatTiles';
+
+// Foresight panel is below the fold — keep it out of the settings first paint.
+const DeliveryForesight = dynamic(
+  () => import('@/components/DeliveryForesight').then((m) => m.DeliveryForesight),
+  { ssr: false, loading: () => <div className="h-28 rounded-xl bg-slate-50 animate-pulse" /> },
+);
 
 /* ── Profile avatar wrapper ───────────────────────────────────────────────
    Renders the user's monogram avatar with a hover-overlay "edit" hint.

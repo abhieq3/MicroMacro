@@ -45,15 +45,19 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // Allow-list of authed routes only. Mirrors the folders under src/app/(authed).
+  // Keep in sync when adding a new top-level authed segment — missing entries
+  // still get Node-side auth via the layout, but they lose the free edge bounce.
   matcher: [
     '/', // dashboard
     '/admin/:path*',
     '/audit/:path*',
+    '/csv-activity/:path*',
     '/my-day/:path*',
     '/people/:path*',
     '/projects/:path*',
     '/settings/:path*',
     '/tasks/:path*',
     '/teams/:path*',
+    '/whiteboard/:path*',
   ],
 };

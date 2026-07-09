@@ -6,7 +6,7 @@ import { User } from '@/models/User';
 import { requireRole } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { UsernameSchema } from '@/lib/validations';
-import { defaultPassword } from '@/lib/defaultPassword';
+import { issueInitialPassword } from '@/lib/defaultPassword';
 
 export const runtime = 'nodejs';
 // Each row costs one bcrypt hash (~80 ms). Capping at 100 keeps the request
@@ -65,7 +65,12 @@ export async function POST(req: NextRequest) {
       if ((e as any).username) taken.add((e as any).username);
     }
 
-    const created: Array<{ username: string; name: string }> = [];
+    const created: Array<{
+      username: string;
+      name: string;
+      tempPassword: string;
+      isDefault: boolean;
+    }> = [];
     const skipped: Array<{ username: string; reason: string }> = [];
     const seenInBatch = new Set<string>();
 
@@ -84,13 +89,14 @@ export async function POST(req: NextRequest) {
       const name = r.name?.trim() || deriveName(r.username);
       const employeeId = r.employeeId.trim();
       try {
+        const issued = issueInitialPassword(name, employeeId);
         await User.create({
           email: `${r.username}@pragati.local`,
           username: r.username,
           employeeId,
           name,
           notifyEmail: r.notifyEmail || '',
-          passwordHash: bcrypt.hashSync(defaultPassword(name, employeeId), 10),
+          passwordHash: bcrypt.hashSync(issued.password, 10),
           role: 'contributor',
           mustChangePassword: true,
           // Bulk-imported accounts must also get the guided tour on first
@@ -98,7 +104,13 @@ export async function POST(req: NextRequest) {
           // the single-create, register, and bootstrap paths.
           hasSeenTour: false,
         });
-        created.push({ username: r.username, name });
+        // One-time secrets for admin handoff — never logged server-side.
+        created.push({
+          username: r.username,
+          name,
+          tempPassword: issued.password,
+          isDefault: issued.isDefault,
+        });
       } catch {
         // Unique-index race or unexpected validation failure on this row.
         skipped.push({ username: r.username, reason: 'could not create' });

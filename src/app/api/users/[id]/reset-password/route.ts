@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
@@ -8,7 +7,7 @@ import { requireRole } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { rateLimit } from '@/lib/rateLimit';
 import { logOperation } from '@/lib/audit';
-import { defaultPassword, canUseDefaultPassword } from '@/lib/defaultPassword';
+import { issueInitialPassword } from '@/lib/defaultPassword';
 
 export const runtime = 'nodejs';
 
@@ -16,24 +15,15 @@ export const runtime = 'nodejs';
 // password and gets back the password to share verbally / over chat. No SMTP
 // round-trip.
 //
-// The reset restores the same standard default used when the account was
-// created — `FirstName@employeeId` — so there's one predictable credential an
-// admin can hand out, rather than a fresh random string each time. Accounts
-// without an employee ID fall back to a random temporary password. Either way
-// the target is forced to set their own password on next login.
+// Default: a random temporary password (shown once). Forced password change
+// on next login. The legacy FirstName@employeeId scheme is opt-in only via
+// PRAGATI_PREDICTABLE_DEFAULT_PASSWORD=1 — see lib/defaultPassword.ts.
 //
 // Flow:
 //   1. Admin opens /people, clicks "Reset password" on a row.
 //   2. UI calls POST /api/users/[id]/reset-password.
 //   3. Endpoint returns { tempPassword, isDefault } and flips the target's
 //      mustChangePassword flag.
-function generateTempPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const rand = crypto.randomBytes(8);
-  let s = '';
-  for (let i = 0; i < 8; i++) s += chars[rand[i] % chars.length];
-  return `Pragati-${s}`;
-}
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -53,12 +43,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const target = await User.findById(params.id);
     if (!target) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
-    // Restore the standard default (FirstName@employeeId) when we can; fall
-    // back to a random temp password for accounts with no employee ID.
-    const isDefault = canUseDefaultPassword(target.employeeId);
-    const tempPassword = isDefault
-      ? defaultPassword(target.name, target.employeeId)
-      : generateTempPassword();
+    const issued = issueInitialPassword(target.name, target.employeeId);
+    const tempPassword = issued.password;
+    const isDefault = issued.isDefault;
     target.passwordHash = bcrypt.hashSync(tempPassword, 10);
     target.mustChangePassword = true;
     // Resetting the password implicitly lifts any brute-force lock —

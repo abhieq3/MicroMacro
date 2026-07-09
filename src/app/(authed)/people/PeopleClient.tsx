@@ -105,12 +105,14 @@ function CredentialsModal({
   email,
   tempPassword,
   isDefault = false,
+  title = 'Temporary password',
   onClose,
 }: {
   name: string;
   email: string;
   tempPassword: string;
   isDefault?: boolean;
+  title?: string;
   onClose: () => void;
 }) {
   return (
@@ -125,8 +127,8 @@ function CredentialsModal({
         >
           <div className="flex items-start justify-between mb-5">
             <div>
-              <div className="text-base font-bold text-slate-900">Password reset</div>
-              <div className="text-sm text-slate-400 mt-0.5">Share the new password with {name}.</div>
+              <div className="text-base font-bold text-slate-900">{title}</div>
+              <div className="text-sm text-slate-400 mt-0.5">Share this once with {name}.</div>
             </div>
             <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
               <X size={18} />
@@ -187,11 +189,21 @@ function deriveName(username: string): string {
     .join(' ');
 }
 
-function AddMemberModal({ onClose, onCreated }: { onClose: () => void; onCreated: (name: string) => void }) {
+function AddMemberModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (payload: {
+    name: string;
+    username: string;
+    tempPassword: string;
+    isDefault: boolean;
+  }) => void;
+}) {
   // Corporate username, employee ID, and a real work email (used for the daily
   // task-due digest). The display name auto-derives from the username (editable
-  // if it looks wrong). No password is collected or shown — contributors sign
-  // in with the standard convention the admin communicates out-of-band.
+  // if it looks wrong). Server returns a one-time temp password to share once.
   const [username, setUsername] = useState('');
   const [employeeId, setEmployeeId] = useState('');
   const [email, setEmail] = useState('');
@@ -211,11 +223,20 @@ function AddMemberModal({ onClose, onCreated }: { onClose: () => void; onCreated
     setErr('');
     setSaving(true);
     try {
-      const res = await api<{ user: any }>('/users', {
+      const res = await api<{
+        user: any;
+        tempPassword: string;
+        isDefault: boolean;
+      }>('/users', {
         method: 'POST',
         body: { name: name.trim() || deriveName(username), username, employeeId, notifyEmail: email.trim() },
       });
-      onCreated(res.user.name);
+      onCreated({
+        name: res.user.name,
+        username: res.user.username || username,
+        tempPassword: res.tempPassword,
+        isDefault: !!res.isDefault,
+      });
     } catch (e: any) {
       setErr(e.message || 'Failed to add member.');
     } finally {
@@ -237,8 +258,8 @@ function AddMemberModal({ onClose, onCreated }: { onClose: () => void; onCreated
             <div>
               <div className="text-base font-bold text-slate-900">Add team member</div>
               <div className="text-sm text-slate-400 mt-0.5">
-                Enter their company username and employee ID. They'll appear in your assignee lists and team
-                board straight away.
+                Enter their company username and employee ID. You&apos;ll get a one-time temporary password to
+                share — they must set their own on first sign-in.
               </div>
             </div>
             <button onClick={onClose} className="text-slate-300 hover:text-slate-500 ml-4 mt-0.5">
@@ -380,11 +401,18 @@ function ImportMembersModal({ onClose, onDone }: { onClose: () => void; onDone: 
     createdCount: number;
     skippedCount: number;
     skipped: Array<{ username: string; reason: string }>;
+    created: Array<{ username: string; name: string; tempPassword: string; isDefault: boolean }>;
   } | null>(null);
 
   const rows = parseRoster(text);
   const validRows = rows.filter((r) => !r.bad);
   const badRows = rows.filter((r) => r.bad);
+
+  function copyAllCredentials() {
+    if (!result?.created?.length) return;
+    const lines = result.created.map((c) => `${c.username}\t${c.tempPassword}`);
+    void navigator.clipboard.writeText(lines.join('\n'));
+  }
 
   async function submit() {
     if (validRows.length === 0) {
@@ -394,7 +422,12 @@ function ImportMembersModal({ onClose, onDone }: { onClose: () => void; onDone: 
     setErr('');
     setSaving(true);
     try {
-      const res = await api<{ createdCount: number; skippedCount: number; skipped: any[] }>('/users/bulk', {
+      const res = await api<{
+        createdCount: number;
+        skippedCount: number;
+        skipped: any[];
+        created: Array<{ username: string; name: string; tempPassword: string; isDefault: boolean }>;
+      }>('/users/bulk', {
         method: 'POST',
         body: {
           rows: validRows.map((r) => ({
@@ -444,6 +477,33 @@ function ImportMembersModal({ onClose, onDone }: { onClose: () => void; onDone: 
                 added.
                 {result.skippedCount > 0 && <> {result.skippedCount} skipped.</>}
               </div>
+              {result.created?.length > 0 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold text-slate-600">
+                      One-time passwords (shown once — share securely)
+                    </div>
+                    <button
+                      type="button"
+                      onClick={copyAllCredentials}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-800"
+                    >
+                      Copy all
+                    </button>
+                  </div>
+                  <div className="text-xs max-h-48 overflow-auto border border-blue-100 bg-blue-50/50 rounded-lg p-3 space-y-1.5">
+                    {result.created.map((c) => (
+                      <div key={c.username} className="flex gap-3 font-mono">
+                        <span className="text-slate-600 shrink-0">@{c.username}</span>
+                        <span className="text-blue-800 font-semibold">{c.tempPassword}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                    Each person must set their own password on first sign-in. Do not reuse these temps.
+                  </p>
+                </div>
+              )}
               {result.skipped.length > 0 && (
                 <div className="text-xs text-slate-500 max-h-40 overflow-auto border border-slate-100 rounded-lg p-3">
                   {result.skipped.map((s) => (
@@ -503,7 +563,7 @@ function ImportMembersModal({ onClose, onDone }: { onClose: () => void; onDone: 
                   : `Import ${validRows.length || ''} contributor${validRows.length === 1 ? '' : 's'}`}
               </button>
               <p className="text-[11px] text-slate-400 text-center">
-                Each gets the standard default password (first name @ employee ID). Nothing is emailed.
+                Each gets a one-time temporary password (shown after import). Nothing is emailed.
               </p>
             </div>
           )}
@@ -1289,13 +1349,13 @@ export default function PeopleClient({
     }
   }
 
-  // Admin-driven password reset. Avoids the SMTP round-trip entirely: the
-  // server restores the standard default (FirstName@employeeId), or a random
-  // temp password for accounts with no employee ID, and we surface it.
+  // Admin-driven password reset. Avoids the SMTP round-trip: server issues a
+  // random temporary password (or legacy predictable if env-latched) and we
+  // surface it once.
   async function resetPassword(user: any) {
     if (
       !confirm(
-        `Reset ${user.name}'s password to the default (first name + “@” + employee ID)?\nThey'll be forced to change it on next sign-in.`,
+        `Reset ${user.name}'s password?\nA one-time temporary password will be shown once. They'll be forced to set their own on next sign-in.`,
       )
     )
       return;
@@ -1368,11 +1428,22 @@ export default function PeopleClient({
     }
   }
 
-  function handleCreated(name: string) {
+  function handleCreated(payload: {
+    name: string;
+    username: string;
+    tempPassword: string;
+    isDefault: boolean;
+  }) {
     setShowAdd(false);
-    setJustAdded(name);
+    setJustAdded(payload.name);
+    setCreds({
+      name: payload.name,
+      email: payload.username,
+      tempPassword: payload.tempPassword,
+      isDefault: payload.isDefault,
+    });
     load();
-    // auto-dismiss the confirmation after a few seconds
+    // auto-dismiss the banner after a few seconds (creds modal stays until closed)
     setTimeout(() => setJustAdded(null), 4000);
   }
 
@@ -1707,7 +1778,7 @@ export default function PeopleClient({
                     className="text-xs text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors border border-transparent hover:border-blue-200"
                     onClick={() => resetPassword(u)}
                     disabled={saving === u.id}
-                    title="Reset this lead's password to the default"
+                    title="Issue a one-time temporary password"
                   >
                     Reset password
                   </button>
