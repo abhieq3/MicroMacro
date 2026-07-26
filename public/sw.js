@@ -4,6 +4,9 @@
  * Intentionally does NOT cache app shells or API responses — Pragati is a
  * live database view (GxP-adjacent work), and a stale cache would show
  * stale status. Always go to the network for page data.
+ *
+ * BUILD_ID: 2026-07-26-ink-text — bump this comment on UX deploys so
+ * clients that re-fetch sw.js always get a new byte stream.
  */
 
 self.addEventListener('install', (event) => {

@@ -10,9 +10,15 @@ import { useEffect } from 'react';
 export function ServiceWorkerRegister() {
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      /* never block the shell */
-    });
+    navigator.serviceWorker
+      .register('/sw.js', { updateViaCache: 'none' })
+      .then((reg) => {
+        // Pull a fresh SW on each load so deploys aren't stuck behind a tab.
+        void reg.update();
+      })
+      .catch(() => {
+        /* never block the shell */
+      });
   }, []);
   return null;
 }

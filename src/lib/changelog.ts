@@ -31,11 +31,11 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
-    title: 'Whiteboard: write on the board, not in a text box',
+    title: 'Whiteboard text is canvas ink — no DOM text box',
     tags: ['improvement'],
     highlight: true,
     body: [
-      'Text is ink: click (or double-click) and type right on the surface. No floating card, no Done/Cancel. Click away to place; Esc to cancel. Existing labels open in place. S/M/L sizes and tool shortcuts still apply.',
+      'Typing draws characters on the canvas with a blinking caret. Keyboard is captured by an invisible sink so mobile still works — there is no white card, border, Done, or Cancel. Click the board to write; click away to place.',
     ],
   },
   {
