@@ -1206,6 +1206,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [project, setProject] = useState<any>(initialProject);
   const [me, setMe] = useState<any>(initialMe);
   const [view, setView] = useState<'phases' | 'board'>('phases');
+  // Finished phases start collapsed so open work leads the page.
+  const [collapsedPhases, setCollapsedPhases] = useState<Record<string, boolean>>({});
+  const collapsedSeededFor = useRef<string | null>(null);
   // The owner of a personal project may fully manage it even as an IC — that
   // is the whole point of a private workspace. Everywhere we'd gate on isLead
   // for task management, we gate on canManage instead.
@@ -1286,6 +1289,22 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Seed collapsed state once per project: complete phases start closed.
+  useEffect(() => {
+    if (!project?.id) return;
+    if (collapsedSeededFor.current === project.id) return;
+    collapsedSeededFor.current = project.id;
+    const phasesList = project.phases || [];
+    const taskList = project.tasks || [];
+    const next: Record<string, boolean> = {};
+    for (const ph of phasesList) {
+      const pid = ph.id || String(ph._id);
+      const ts = taskList.filter((t: any) => (t.phaseId || null) === pid);
+      if (ts.length > 0 && ts.every((t: any) => t.status === 'done')) next[pid] = true;
+    }
+    setCollapsedPhases(next);
+  }, [project?.id, project?.phases, project?.tasks]);
 
   if (loadErr) {
     return (
@@ -1670,8 +1689,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
 
   // Horowitz's wartime test: a project in trouble must LOOK like it, or the
   // tool is lying by omission. "War footing" = a meaningful share of the open
-  // work has already slipped (and there's enough of it to matter). One honest
-  // banner, nothing else changes — peacetime projects never see it.
+  // work has already slipped (and there's enough of it to matter).
   const warFooting =
     !project.isPersonal &&
     project.status !== 'completed' &&
@@ -1679,8 +1697,36 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     openTaskCount >= 3 &&
     overdue / openTaskCount >= 0.34;
 
+  // Jensen: exceptions first. Overdue open tasks, sorted by how late they are.
+  const overdueTasks = (() => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return tasks
+      .filter((t: any) => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < start)
+      .slice()
+      .sort(
+        (a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
+      );
+  })();
+
+  // Open work before done within a phase; among open, overdue first.
+  function sortTasksForPhase(ts: any[]) {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const late = (t: any) =>
+      t.status !== 'done' && t.dueDate && new Date(t.dueDate) < start ? 0 : 1;
+    const done = (t: any) => (t.status === 'done' ? 1 : 0);
+    return ts
+      .slice()
+      .sort((a, b) => {
+        if (done(a) !== done(b)) return done(a) - done(b);
+        if (late(a) !== late(b)) return late(a) - late(b);
+        return (a.position ?? 0) - (b.position ?? 0);
+      });
+  }
+
   return (
-    <div className="space-y-5 page-enter">
+    <div className="space-y-4 page-enter">
       {ToastEl}
       {warFooting && (
         <div
@@ -1688,14 +1734,22 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           role="alert"
         >
           <AlertTriangle size={18} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-[13px] font-bold text-red-800 dark:text-red-300">
-              This project is behind — {overdue} of {openTaskCount} open tasks are overdue.
+              {overdue} of {openTaskCount} open tasks are overdue
             </div>
             <div className="text-[12px] text-red-700/80 dark:text-red-300/70 mt-0.5">
-              Not a normal day. Clear the overdue first; everything else waits.
+              Clear the overdue first. Everything else waits.
             </div>
           </div>
+          {overdueTasks.length > 0 && (
+            <a
+              href="#project-overdue"
+              className="shrink-0 text-[11px] font-bold text-red-700 dark:text-red-300 underline underline-offset-2 hover:text-red-900"
+            >
+              Jump to list
+            </a>
+          )}
         </div>
       )}
       {celebration && (
@@ -1920,7 +1974,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             >
               {project.description ? (
                 <div className="flex items-start gap-1.5">
-                  <p className="text-sm text-slate-600 max-w-3xl">{project.description}</p>
+                  <p className="text-sm text-slate-600 max-w-3xl line-clamp-2">{project.description}</p>
                   {isOwner && (
                     <Pencil
                       size={12}
@@ -2083,50 +2137,135 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         </div>
       </div>
 
-      {/* Stat cards — 2-up on mobile, 4-up on md+. The previous `md:grid-cols-5`
-          left an awkward fifth column unused after the QA sign-off card was
-          removed; matched the 4-card content count. */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          {
-            label: 'Progress',
-            value: `${pct}%`,
-            sub: `${tasks.filter((t: any) => t.status === 'done').length}/${tasks.length} tasks`,
-            bar: pct,
-          },
-          { label: 'Phases', value: phases.length, sub: 'lifecycle stages' },
-          {
-            label: 'Waiting on',
-            value: waitingCount,
-            sub: waitingCount > 0 ? 'pending on someone' : 'nothing stuck',
-            warn: waitingCount > 0,
-          },
-          {
-            label: 'Overdue',
-            value: overdue,
-            sub: overdue > 0 ? 'past deadline' : 'none — on track',
-            danger: overdue > 0,
-          },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-1"
-            style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-          >
-            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{stat.label}</div>
+      {/* Stat cards — only numbers that matter (hide empty zeros). */}
+      <div
+        className={`grid gap-3 ${
+          [true, phases.length > 0, waitingCount > 0, true].filter(Boolean).length >= 4
+            ? 'grid-cols-2 md:grid-cols-4'
+            : 'grid-cols-2 md:grid-cols-3'
+        }`}
+      >
+        {(
+          [
+            {
+              label: 'Progress',
+              value: `${pct}%`,
+              sub: `${tasks.filter((t: any) => t.status === 'done').length}/${tasks.length} tasks`,
+              danger: false,
+              warn: false,
+            },
+            phases.length > 0
+              ? {
+                  label: 'Phases',
+                  value: phases.length,
+                  sub: 'lifecycle stages',
+                  danger: false,
+                  warn: false,
+                }
+              : null,
+            waitingCount > 0
+              ? {
+                  label: 'Waiting on',
+                  value: waitingCount,
+                  sub: 'pending on someone',
+                  danger: false,
+                  warn: true,
+                }
+              : null,
+            {
+              label: 'Overdue',
+              value: overdue,
+              sub: overdue > 0 ? 'past deadline' : 'on track',
+              danger: overdue > 0,
+              warn: false,
+            },
+          ] as const
+        )
+          .filter(Boolean)
+          .map((stat: any) => (
             <div
-              className={`text-2xl font-black ${stat.danger ? 'text-red-600' : stat.warn ? 'text-amber-600' : 'text-slate-800'}`}
+              key={stat.label}
+              className={`bg-white dark:bg-[#262624] rounded-2xl border p-4 space-y-1 ${
+                stat.danger
+                  ? 'border-red-200 dark:border-red-500/30'
+                  : 'border-slate-200/80 dark:border-white/[0.08]'
+              }`}
+              style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
             >
-              {stat.value}
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                {stat.label}
+              </div>
+              <div
+                className={`text-2xl font-black ${
+                  stat.danger
+                    ? 'text-red-600'
+                    : stat.warn
+                      ? 'text-amber-600'
+                      : 'text-slate-800 dark:text-white/90'
+                }`}
+              >
+                {stat.value}
+              </div>
+              <div className="text-xs text-slate-400">{stat.sub}</div>
             </div>
-            <div className="text-xs text-slate-400">{stat.sub}</div>
-          </div>
-        ))}
+          ))}
       </div>
+
+      {/* Clear-first strip — exceptions before the full tree. */}
+      {overdueTasks.length > 0 && (
+        <section
+          id="project-overdue"
+          className="scroll-mt-4 rounded-2xl border border-red-200 dark:border-red-500/25 bg-white dark:bg-[#262624] overflow-hidden"
+          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+        >
+          <div className="px-4 py-2.5 border-b border-red-100 dark:border-red-500/15 flex items-center justify-between bg-red-50/60 dark:bg-red-500/[0.06]">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={14} className="text-red-600 dark:text-red-400" />
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-red-800 dark:text-red-300">
+                Clear first
+              </h3>
+              <span className="text-[11px] font-bold text-red-600/80 dark:text-red-400/80">
+                {overdueTasks.length} overdue
+              </span>
+            </div>
+          </div>
+          <ul className="divide-y divide-red-50 dark:divide-red-500/10">
+            {overdueTasks.map((t: any) => {
+              const dueIn = Math.floor(
+                (Date.now() - new Date(t.dueDate).getTime()) / 86_400_000,
+              );
+              return (
+                <li key={t.id}>
+                  <Link
+                    href={`/tasks/${t.id}`}
+                    prefetch
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-red-50/50 dark:hover:bg-red-500/[0.05] transition-colors group fluid-press"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[13px] font-semibold text-slate-800 dark:text-white/85 truncate group-hover:text-red-700 dark:group-hover:text-red-300">
+                        {t.title}
+                      </div>
+                      <div className="text-[11px] text-slate-400 dark:text-white/30 truncate mt-0.5">
+                        {t.assigneeName || 'Unassigned'}
+                        {t.phaseId &&
+                          phases.find((p: any) => p.id === t.phaseId)?.name &&
+                          ` · ${phases.find((p: any) => p.id === t.phaseId)?.name}`}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300">
+                      {dueIn}d late
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* View toggle */}
       <div
-        className="flex items-center gap-1 bg-white border border-slate-200/80 rounded-xl p-1 w-fit"
+        className="flex items-center gap-1 bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/[0.08] rounded-xl p-1 w-fit"
         style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
       >
         {[
@@ -2139,7 +2278,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               view === k
                 ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
             }`}
           >
             {l}
@@ -2149,47 +2288,79 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
 
       {/* Phases view */}
       {view === 'phases' && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {phases.length === 0 && (
             <Card>
               <p className="text-slate-500 text-sm">No phases yet.</p>
             </Card>
           )}
           {phases.map((ph: any, i: number) => {
-            const ts = tasks.filter((t: any) => t.phaseId === ph.id);
+            const tsRaw = tasks.filter((t: any) => t.phaseId === ph.id);
+            const ts = sortTasksForPhase(tsRaw);
             const done = ts.filter((t: any) => t.status === 'done').length;
             const pctP = weightedProgress(ts);
+            const allDone = ts.length > 0 && done === ts.length;
+            const collapsed = !!collapsedPhases[ph.id];
             return (
               <Card key={ph.id}>
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold text-slate-800">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCollapsedPhases((c) => ({ ...c, [ph.id]: !c[ph.id] }))
+                  }
+                  className="w-full flex items-center justify-between mb-1 text-left gap-2"
+                >
+                  <h3
+                    className={`font-semibold ${allDone ? 'text-slate-400' : 'text-slate-800 dark:text-white/85'}`}
+                  >
                     <span className="text-slate-400 font-mono mr-2 text-sm">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     {ph.name}
+                    {allDone && (
+                      <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
+                        Complete
+                      </span>
+                    )}
                   </h3>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className="text-xs text-slate-400">
                       {done}/{ts.length}
                     </span>
                     <span
-                      className={`text-xs font-bold px-1.5 py-0.5 rounded ${pctP === 100 ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'}`}
+                      className={`text-xs font-bold px-1.5 py-0.5 rounded ${pctP === 100 ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-white/50'}`}
                     >
                       {pctP}%
                     </span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}
+                    />
                     {canDelete && (
-                      <button
-                        onClick={() => deletePhase(ph.id, ph.name)}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePhase(ph.id, ph.name);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.stopPropagation();
+                            deletePhase(ph.id, ph.name);
+                          }
+                        }}
                         aria-label={`Delete phase ${ph.name}`}
                         title="Delete this phase (owner only) — its tasks move to Unphased"
                         className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all"
                       >
                         <Trash2 size={13} />
-                      </button>
+                      </span>
                     )}
                   </div>
-                </div>
-                <div className="divide-y divide-slate-100">
+                </button>
+                {!collapsed && (
+                <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
                   {ts.map((t: any, ti: number) => {
                     const canEdit = canManage || (me && t.assigneeId === me.id);
                     return (
@@ -2276,7 +2447,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                     );
                   })}
                 </div>
-                {canManage && (
+                )}
+                {!collapsed && canManage && (
                   <QuickAddTask
                     projectId={project.id}
                     phaseId={ph.id}
@@ -2290,10 +2462,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
 
           {/* Unphased tasks */}
           <Card title="Unphased tasks">
-            <div className="divide-y divide-slate-100">
-              {tasks
-                .filter((t: any) => !t.phaseId)
-                .map((t: any) => {
+            <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
+              {sortTasksForPhase(tasks.filter((t: any) => !t.phaseId)).map((t: any) => {
                   const canEdit = canManage || (me && t.assigneeId === me.id);
                   return (
                     <div
