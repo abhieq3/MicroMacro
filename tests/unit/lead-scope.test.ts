@@ -3,19 +3,26 @@
  * decides which projects a viewer's queries can ever return.
  *
  * `projectsVisibleFilter` is pure (it only assembles a Mongo filter object),
- * so the two invariants that matter most can be pinned without a database:
+ * so the invariants that matter most can be pinned without a database:
  *
  *  1. An unrestricted (admin) scope must still NEVER expose someone else's
  *     personal project — privacy survives workspace.view_all.
  *  2. A restricted (lead/contributor) scope must stay fenced to the viewer's
  *     own teams and ownership.
+ *  3. System projects (recurring holders) never appear in project lists.
  */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import mongoose from 'mongoose';
 
-import { getLeadScope, projectsVisibleFilter, NOT_PERSONAL, type LeadScope } from '../../src/lib/leadScope';
+import {
+  getLeadScope,
+  projectsVisibleFilter,
+  NOT_PERSONAL,
+  NOT_SYSTEM,
+  type LeadScope,
+} from '../../src/lib/leadScope';
 
 const oid = () => new mongoose.Types.ObjectId();
 
@@ -25,32 +32,39 @@ function makeScope(unrestricted: boolean): LeadScope {
 }
 
 describe('projectsVisibleFilter', () => {
-  it('unrestricted scope sees all shared projects, but personal stays owner-only', () => {
+  it('unrestricted scope sees shared projects, personal stays owner-only, system excluded', () => {
     const scope = makeScope(true);
     const filter = projectsVisibleFilter(scope) as any;
 
-    // Shape: { $or: [ { ownerId: me }, NOT_PERSONAL ] } — no team fence,
-    // but anything personal must match ownerId to be visible.
-    assert.ok(filter.$or, 'unrestricted filter must be a plain $or');
-    assert.equal(filter.$and, undefined, 'unrestricted filter must NOT fence by team');
-    assert.deepEqual(filter.$or[0], { ownerId: scope.userOid });
-    assert.deepEqual(filter.$or[1], NOT_PERSONAL);
+    // Shape: { $and: [ { $or: [owner, NOT_PERSONAL] }, NOT_SYSTEM ] }
+    assert.ok(filter.$and, 'unrestricted filter must AND privacy with not-system');
+    assert.equal(filter.$and.length, 2);
+    const personalRule = filter.$and[0];
+    assert.deepEqual(personalRule.$or[0], { ownerId: scope.userOid });
+    assert.deepEqual(personalRule.$or[1], NOT_PERSONAL);
+    assert.deepEqual(filter.$and[1], NOT_SYSTEM);
   });
 
-  it('restricted scope is fenced to own teams + own projects', () => {
+  it('restricted scope is fenced to own teams + own projects, system excluded', () => {
     const scope = makeScope(false);
     const filter = projectsVisibleFilter(scope) as any;
 
-    assert.ok(filter.$and, 'restricted filter must AND the personal rule with the team fence');
-    const [personalRule, teamFence] = filter.$and;
+    assert.ok(filter.$and, 'restricted filter must AND personal, system, and team fence');
+    assert.equal(filter.$and.length, 3);
+    const [personalRule, notSystem, teamFence] = filter.$and;
     assert.deepEqual(personalRule.$or[0], { ownerId: scope.userOid });
     assert.deepEqual(personalRule.$or[1], NOT_PERSONAL);
+    assert.deepEqual(notSystem, NOT_SYSTEM);
     assert.deepEqual(teamFence.$or, [{ ownerId: scope.userOid }, { teamId: { $in: scope.teamOids } }]);
   });
 
   it('NOT_PERSONAL excludes both the flag and legacy PRSN- codes', () => {
     assert.deepEqual(NOT_PERSONAL.isPersonal, { $ne: true });
     assert.ok(String(NOT_PERSONAL.code.$not).includes('PRSN-'));
+  });
+
+  it('NOT_SYSTEM excludes isSystem holders', () => {
+    assert.deepEqual(NOT_SYSTEM, { isSystem: { $ne: true } });
   });
 });
 
