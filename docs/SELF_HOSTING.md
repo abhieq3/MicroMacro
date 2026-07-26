@@ -108,14 +108,13 @@ system — here's the two-minute setup for a fixed-date exam:
 
 Then the system runs the ritual for you:
 
-- Each morning, the **spotlight spawns** with the one pressing task — an
-  IELTS mock due this week outranks everything else on your plate that day.
-  Nothing spawns on a calm day; it never cries wolf.
-- The **sidebar calendar** dots every practice date; **Up Next** shows the
-  week; the **forecast chip** on the project tells you the likely finish —
-  and the *speed-of-light* date it could be if nothing queued.
+- **Up Next** and **My Tasks** surface overdue and due-soon work first — no
+  separate spotlight banner; the board is the priority list.
+- The **sidebar calendar** dots every practice date; the **forecast chip** on
+  the project tells you the likely finish — and the *speed-of-light* date it
+  could be if nothing queued.
 - Turn on the **morning brief** and the day's study task is in your inbox at
-  08:30 with "Your morning priority" on top.
+  08:30 — one task to start, no fluff.
 - Sketch essay outlines or speaking-part-2 maps on the **Whiteboard** (`G→W`)
   — wipe it clean when a problem is solved.
 - Evenings, My Day stops pushing and points you home. Sleep is part of the

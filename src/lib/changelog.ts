@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Delete the morning-priority banner',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Removed the dashboard “Your morning priority” strip and the auto-opening focus modal. Priority is already clear from Overdue chips, Up Next, and My Tasks — a second surface was ceremony, not leverage.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Quiet install; lead brief without fluff',
     tags: ['improvement', 'feature'],
     highlight: true,
