@@ -24,21 +24,28 @@ describe('composeHeadline — contributor', () => {
     );
   });
 
-  it('singular/plural agreement on overdue-only', () => {
+  it('singular/plural agreement on overdue-only — no pep', () => {
     assert.equal(
       composeHeadline({ role: 'contributor', overdue: 1, today: 0, soon: 0 }),
-      "1 overdue task — today's the day to close it out.",
+      '1 overdue task — clear it first.',
     );
     assert.equal(
       composeHeadline({ role: 'contributor', overdue: 3, today: 0, soon: 0 }),
-      "3 overdue tasks — today's the day to close them out.",
+      '3 overdue tasks — clear them first.',
+    );
+  });
+
+  it('weekend overdue is fact-only', () => {
+    assert.equal(
+      composeHeadline({ role: 'contributor', overdue: 1, today: 0, soon: 0, weekend: true }),
+      '1 overdue task.',
     );
   });
 
   it('mentions the look-ahead only alongside due-today', () => {
     assert.equal(
       composeHeadline({ role: 'contributor', overdue: 0, today: 1, soon: 2 }),
-      "1 task due today, 2 more coming up — you've got this.",
+      '1 task due today, 2 more coming up.',
     );
     assert.equal(
       composeHeadline({ role: 'contributor', overdue: 0, today: 0, soon: 2 }),
@@ -55,16 +62,47 @@ describe('composeHeadline — lead', () => {
     );
   });
 
-  it('falls back to the personal lens when the team is clean', () => {
+  it('team overdue outranks personal overdue', () => {
     assert.equal(
-      composeHeadline({ role: 'lead', overdue: 0, today: 2, soon: 0, blocked: 0, signoffs: 0 }),
-      "2 tasks due today — you've got this.",
+      composeHeadline({
+        role: 'lead',
+        overdue: 1,
+        today: 0,
+        soon: 0,
+        blocked: 0,
+        teamOverdue: 3,
+        teamOverduePeople: 3,
+      }),
+      '3 team overdue — 3 people carrying load.',
     );
   });
 
-  it('surfaces pending sign-offs when there is nothing else', () => {
+  it('falls back to the personal lens when the team is clean', () => {
     assert.equal(
-      composeHeadline({ role: 'lead', overdue: 0, today: 0, soon: 0, blocked: 0, signoffs: 3 }),
+      composeHeadline({
+        role: 'lead',
+        overdue: 0,
+        today: 2,
+        soon: 0,
+        blocked: 0,
+        signoffs: 0,
+        teamOverdue: 0,
+      }),
+      '2 tasks due today.',
+    );
+  });
+
+  it('surfaces pending sign-offs when the team has no overdue/blocked', () => {
+    assert.equal(
+      composeHeadline({
+        role: 'lead',
+        overdue: 0,
+        today: 0,
+        soon: 0,
+        blocked: 0,
+        signoffs: 3,
+        teamOverdue: 0,
+      }),
       '3 QA sign-offs pending on your team.',
     );
   });

@@ -3,14 +3,13 @@
 /**
  * PWA bootstrap for Pragati.
  *
- * - Registers the service worker (required for installability + Web Push).
- * - Captures `beforeinstallprompt` so we can offer a first-class Install
- *   control instead of relying on the browser's obscure omnibox icon.
- * - Detects standalone / installed mode so the UI can hide the prompt.
+ * - Registers are handled by <ServiceWorkerRegister /> in the root layout.
+ * - Captures `beforeinstallprompt` for a quiet, deferred install path.
+ * - Install UI is gated: never a big banner; account-menu hint only after the
+ *   user has actually used the app for ~2 weeks (see ELIGIBILITY below).
+ * - Settings always exposes full install instructions (no gate).
  *
- * Design constraint: the SW does not offline-cache GxP data. Install = home
- * screen icon + standalone window + push. Live data still comes from the
- * network every time.
+ * Design constraint: the SW does not offline-cache GxP data.
  */
 
 import {
@@ -30,28 +29,36 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 type PwaContextValue = {
-  /** Browser has deferred an install prompt we can trigger. */
   canInstall: boolean;
-  /** Running as an installed app (standalone / iOS home-screen). */
   isInstalled: boolean;
-  /** iOS Safari: no beforeinstallprompt — show manual Share → Add to Home Screen. */
   isIos: boolean;
-  /** Trigger the native install dialog. Returns true if the user accepted. */
   install: () => Promise<boolean>;
-  /** Dismiss the soft install banner for this browser (persisted). */
-  dismissBanner: () => void;
-  /** Soft banner is currently allowed to show. */
+  /** Permanently hide the quiet account-menu install hint on this browser. */
+  dismissHint: () => void;
+  /**
+   * Quiet account-menu install affordance is allowed.
+   * Always false for a big banner (we don't ship one).
+   */
+  showInstallHint: boolean;
+  /** @deprecated always false — big banners were removed. */
   showBanner: boolean;
+  dismissBanner: () => void;
 };
 
 const PwaContext = createContext<PwaContextValue | null>(null);
 
 const DISMISS_KEY = 'pragati_pwa_install_dismissed';
+const FIRST_SEEN_KEY = 'pragati_pwa_first_seen';
+const ACTIVE_DAYS_KEY = 'pragati_pwa_active_days';
+
+/** Don't offer install until the user has lived with the product. */
+const MIN_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+/** And opened the authed shell on at least this many distinct local days. */
+const MIN_ACTIVE_DAYS = 5;
 
 function detectStandalone(): boolean {
   if (typeof window === 'undefined') return false;
   const mq = window.matchMedia?.('(display-mode: standalone)').matches;
-  // iOS Safari legacy signal
   const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone === true;
   return !!(mq || iosStandalone);
 }
@@ -59,29 +66,65 @@ function detectStandalone(): boolean {
 function detectIos(): boolean {
   if (typeof window === 'undefined') return false;
   const ua = navigator.userAgent || '';
-  // iPadOS 13+ reports as Mac; detect via touch points.
   const iPadOs = navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1;
   return /iPad|iPhone|iPod/.test(ua) || iPadOs;
+}
+
+function localDayKey(d = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Record first-seen + today's active day. Pure localStorage; no server. */
+function touchUsage(): { eligibleByAge: boolean; activeDays: number; dismissed: boolean } {
+  let dismissed = false;
+  let firstSeen = Date.now();
+  let days: string[] = [];
+  try {
+    dismissed = localStorage.getItem(DISMISS_KEY) === '1';
+    const rawFirst = localStorage.getItem(FIRST_SEEN_KEY);
+    if (rawFirst && Number.isFinite(Number(rawFirst))) {
+      firstSeen = Number(rawFirst);
+    } else {
+      localStorage.setItem(FIRST_SEEN_KEY, String(firstSeen));
+    }
+    try {
+      days = JSON.parse(localStorage.getItem(ACTIVE_DAYS_KEY) || '[]');
+      if (!Array.isArray(days)) days = [];
+    } catch {
+      days = [];
+    }
+    const today = localDayKey();
+    if (!days.includes(today)) {
+      days = [...days, today].slice(-90);
+      localStorage.setItem(ACTIVE_DAYS_KEY, JSON.stringify(days));
+    }
+  } catch {
+    /* private mode — never push install UI */
+    return { eligibleByAge: false, activeDays: 0, dismissed: true };
+  }
+  return {
+    eligibleByAge: Date.now() - firstSeen >= MIN_AGE_MS,
+    activeDays: days.length,
+    dismissed,
+  };
 }
 
 export function PwaProvider({ children }: { children: ReactNode }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIos, setIsIos] = useState(false);
-  const [dismissed, setDismissed] = useState(true); // true until we read localStorage
+  const [dismissed, setDismissed] = useState(true);
+  const [eligible, setEligible] = useState(false);
 
   useEffect(() => {
     setIsInstalled(detectStandalone());
     setIsIos(detectIos());
-    try {
-      setDismissed(localStorage.getItem(DISMISS_KEY) === '1');
-    } catch {
-      setDismissed(false);
-    }
-
-    // SW registration also runs from <ServiceWorkerRegister /> in the root
-    // layout (covers login). A second register() here is idempotent and keeps
-    // installability solid if the user lands only on authed routes.
+    const usage = touchUsage();
+    setDismissed(usage.dismissed);
+    setEligible(usage.eligibleByAge && usage.activeDays >= MIN_ACTIVE_DAYS && !usage.dismissed);
 
     const onBip = (e: Event) => {
       e.preventDefault();
@@ -95,7 +138,6 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     window.addEventListener('beforeinstallprompt', onBip);
     window.addEventListener('appinstalled', onInstalled);
 
-    // Track display-mode changes (user installs mid-session).
     const mq = window.matchMedia?.('(display-mode: standalone)');
     const onMq = () => setIsInstalled(detectStandalone());
     mq?.addEventListener?.('change', onMq);
@@ -123,8 +165,9 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     }
   }, [deferred]);
 
-  const dismissBanner = useCallback(() => {
+  const dismissHint = useCallback(() => {
     setDismissed(true);
+    setEligible(false);
     try {
       localStorage.setItem(DISMISS_KEY, '1');
     } catch {
@@ -132,17 +175,23 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const canInstall = !!deferred && !isInstalled;
+  // Quiet hint only: used the product for ~2 weeks, not dismissed, not installed.
+  const showInstallHint =
+    eligible && !isInstalled && !dismissed && (canInstall || isIos);
+
   const value = useMemo<PwaContextValue>(
     () => ({
-      canInstall: !!deferred && !isInstalled,
+      canInstall,
       isInstalled,
       isIos,
       install,
-      dismissBanner,
-      // Banner for Chromium (canInstall) or iOS Safari not yet installed.
-      showBanner: !isInstalled && !dismissed && (!!deferred || isIos),
+      dismissHint,
+      showInstallHint,
+      showBanner: false,
+      dismissBanner: dismissHint,
     }),
-    [deferred, isInstalled, isIos, install, dismissBanner, dismissed],
+    [canInstall, isInstalled, isIos, install, dismissHint, showInstallHint],
   );
 
   return <PwaContext.Provider value={value}>{children}</PwaContext.Provider>;
@@ -151,14 +200,15 @@ export function PwaProvider({ children }: { children: ReactNode }) {
 export function usePwa(): PwaContextValue {
   const ctx = useContext(PwaContext);
   if (!ctx) {
-    // Safe no-op outside provider (e.g. login page before shell mounts).
     return {
       canInstall: false,
       isInstalled: false,
       isIos: false,
       install: async () => false,
-      dismissBanner: () => {},
+      dismissHint: () => {},
+      showInstallHint: false,
       showBanner: false,
+      dismissBanner: () => {},
     };
   }
   return ctx;

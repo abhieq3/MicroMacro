@@ -446,10 +446,9 @@ export function renderWelcomeEmail(input: {
 
 /** Render the personal digest to { subject, html, text }. Pure.
  *
- *  Design intent: an executive brief, not a chore list. It opens with ONE
- *  thing to start on (leverage), acknowledges yesterday's output (momentum),
- *  compresses the rest into scannable rows, and closes with a single line of
- *  judgment. Value first, inventory second. */
+ *  Design intent (Jensen): exceptions first, one personal move, no fluff.
+ *  Lead: team pulse before personal priority. No motivational quotes.
+ *  Foresight only when there is real pressure. Value first, inventory second. */
 export function renderDigestEmail(input: RenderInput): { subject: string; html: string; text: string } {
   const {
     name,
@@ -461,30 +460,49 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     dateLabel,
     winsYesterday = 0,
     role,
-    insight,
     leadershipBrief,
     foresightLine,
   } = input;
-  // Task rows show the project *reference* (ccNo||code) to match the app, but
-  // fall back to the project name when no reference resolves (a caller that
-  // predates the resolver, or a project with neither ccNo nor code).
+  // insight intentionally unused — motivational cards were cut.
+  void input.insight;
+  void winsYesterday;
+
   const projLabel = (pid: string | null) => (projectRef ? projectRef(pid) : null) || projectName(pid);
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   const weekday = dateLabel.split(/[ ,]/)[0] || 'daily';
+  const isLead = role === 'lead' || role === 'pm';
+  const isAdmin = role === 'admin' || role === 'master_admin';
 
   const focus = pickFocus(sections);
 
-  const counts: string[] = [];
-  if (sections.today.length) counts.push(`${sections.today.length} due today`);
-  if (sections.overdue.length) counts.push(`${sections.overdue.length} overdue`);
-  if (sections.soon.length) counts.push(`${sections.soon.length} due soon`);
-  // Always the short counts form — the team/workspace headline used to take
-  // over the subject for leads/admins, but it's a full sentence and got
-  // brutally truncated in an inbox list. The headline still leads the
-  // leadership card in the body, where there's room for it.
-  const subject = `${test ? '[Test] ' : ''}Your ${weekday} brief — ${counts.join(' · ') || 'all clear'}`;
+  const personalBits: string[] = [];
+  if (sections.overdue.length) personalBits.push(`${sections.overdue.length} overdue`);
+  if (sections.today.length) personalBits.push(`${sections.today.length} due today`);
+  if (sections.soon.length && !sections.overdue.length && !sections.today.length) {
+    personalBits.push(`${sections.soon.length} due soon`);
+  }
 
-  // The focus item leads alone; don't list it twice.
+  // Subject: short counts. Leads/admins get team/workspace first so the inbox
+  // list answers "is anything on fire?" before personal chores.
+  let subjectCore = personalBits.join(' · ') || 'all clear';
+  if (leadershipBrief?.team) {
+    const teamOverdue = leadershipBrief.team.overdueByMember.reduce((s, m) => s + m.count, 0);
+    const teamBits: string[] = [];
+    if (leadershipBrief.team.blocked.length) {
+      teamBits.push(`${leadershipBrief.team.blocked.length} blocked`);
+    }
+    if (teamOverdue) teamBits.push(`${teamOverdue} team overdue`);
+    if (leadershipBrief.team.signoffsPending) {
+      teamBits.push(`${leadershipBrief.team.signoffsPending} sign-offs`);
+    }
+    const you = personalBits.length ? ` · You: ${personalBits.join(', ')}` : '';
+    subjectCore = teamBits.length ? `Team: ${teamBits.join(' · ')}${you}` : `You: ${subjectCore}`;
+  } else if (leadershipBrief?.workspace) {
+    const w = leadershipBrief.workspace;
+    subjectCore = `Workspace: ${w.overdueTotal} overdue · ${w.doneYesterday} closed`;
+  }
+  const subject = `${test ? '[Test] ' : ''}Your ${weekday} brief — ${subjectCore}`;
+
   const rest = {
     overdue: sections.overdue.filter((t) => t !== focus),
     today: sections.today.filter((t) => t !== focus),
@@ -514,60 +532,75 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       : '',
   ].join('');
 
-  const leadershipHtml = leadershipBrief?.team
-    ? `<div style="margin:0 0 22px;padding:16px;border:1px solid #dbeafe;border-radius:14px;background:#f8fbff;">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:5px;">Team pulse</div>
-        <div style="font-size:15px;font-weight:750;color:#0f172a;line-height:1.45;margin-bottom:12px;">${escapeHtml(leadershipBrief.headline)}</div>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#dc2626;">${leadershipBrief.team.blocked.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Blocked</div></td>
-          <td width="8"></td>
-          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#7c3aed;">${leadershipBrief.team.signoffsPending}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Sign-offs</div></td>
-          <td width="8"></td>
-          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#ea580c;">${leadershipBrief.team.overdueByMember.reduce((sum, member) => sum + member.count, 0)}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Team overdue</div></td>
-        </tr></table>
+  // Compact metric chips — only non-zero (zeros burn attention).
+  const metricChip = (n: number, label: string, color: string) =>
+    n > 0
+      ? `<td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:${color};">${n}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">${label}</div></td>`
+      : '';
+  const metricGap = `<td width="8"></td>`;
+
+  let leadershipHtml = '';
+  if (leadershipBrief?.team) {
+    const t = leadershipBrief.team;
+    const teamOverdue = t.overdueByMember.reduce((sum, m) => sum + m.count, 0);
+    const chips = [
+      metricChip(t.blocked.length, 'Blocked', '#dc2626'),
+      metricChip(t.signoffsPending, 'Sign-offs', '#7c3aed'),
+      metricChip(teamOverdue, 'Team overdue', '#ea580c'),
+    ].filter(Boolean);
+    const chipsRow = chips.length
+      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:4px;"><tr>${chips.join(metricGap)}</tr></table>`
+      : `<div style="font-size:13px;color:#64748b;margin-top:4px;">No team exceptions.</div>`;
+    leadershipHtml = `<div style="margin:0 0 20px;padding:14px 16px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:6px;">Team</div>
+        <div style="font-size:14px;font-weight:700;color:#0f172a;line-height:1.4;margin-bottom:10px;">${escapeHtml(leadershipBrief.headline)}</div>
+        ${chipsRow}
         ${
-          leadershipBrief.team.blocked.length
-            ? `<div style="margin-top:12px;font-size:12px;color:#475569;"><strong>Needs intervention:</strong> ${leadershipBrief.team.blocked
+          t.blocked.length
+            ? `<div style="margin-top:10px;font-size:12px;color:#475569;"><strong>Blocked:</strong> ${t.blocked
                 .map(
                   (item) =>
                     `${escapeHtml(item.title)}${item.projectName ? ` · ${escapeHtml(item.projectName)}` : ''}`,
                 )
-                .join(' &nbsp;•&nbsp; ')}</div>`
+                .join(' · ')}</div>`
             : ''
         }
         ${
-          leadershipBrief.team.overdueByMember.length
-            ? `<div style="margin-top:7px;font-size:12px;color:#475569;"><strong>Overdue load:</strong> ${leadershipBrief.team.overdueByMember
-                .map((member) => `${escapeHtml(member.name)} ${member.count}`)
-                .join(' &nbsp;•&nbsp; ')}</div>`
+          t.overdueByMember.length
+            ? `<div style="margin-top:6px;font-size:12px;color:#475569;"><strong>Overdue load:</strong> ${t.overdueByMember
+                .map((m) => `${escapeHtml(m.name)} ${m.count}`)
+                .join(' · ')}</div>`
             : ''
         }
-      </div>`
-    : leadershipBrief?.workspace
-      ? `<div style="margin:0 0 22px;padding:16px;border:1px solid #dbeafe;border-radius:14px;background:#f8fbff;">
-          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:5px;">Workspace pulse</div>
-          <div style="font-size:15px;font-weight:750;color:#0f172a;line-height:1.45;margin-bottom:12px;">${escapeHtml(leadershipBrief.headline)}</div>
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#16a34a;">${leadershipBrief.workspace.doneYesterday}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Closed yesterday</div></td>
-            <td width="8"></td>
-            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#dc2626;">${leadershipBrief.workspace.overdueTotal}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Overdue</div></td>
-            <td width="8"></td>
-            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#2563eb;">${leadershipBrief.workspace.activeProjects}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Active projects</div></td>
-          </tr></table>
+      </div>`;
+  } else if (leadershipBrief?.workspace) {
+    const w = leadershipBrief.workspace;
+    const chips = [
+      metricChip(w.overdueTotal, 'Overdue', '#dc2626'),
+      metricChip(w.doneYesterday, 'Closed yesterday', '#16a34a'),
+      metricChip(w.activeProjects, 'Active projects', '#2563eb'),
+    ].filter(Boolean);
+    leadershipHtml = `<div style="margin:0 0 20px;padding:14px 16px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:6px;">Workspace</div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a;line-height:1.4;margin-bottom:10px;">${escapeHtml(leadershipBrief.headline)}</div>
           ${
-            leadershipBrief.workspace.risky.length
-              ? `<div style="margin-top:12px;font-size:12px;color:#475569;"><strong>Projects to watch:</strong> ${leadershipBrief.workspace.risky
-                  .map((project) => `${escapeHtml(project.name)} (${project.overdue} overdue)`)
-                  .join(' &nbsp;•&nbsp; ')}</div>`
+            chips.length
+              ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${chips.join(metricGap)}</tr></table>`
               : ''
           }
-        </div>`
-      : '';
+          ${
+            w.risky.length
+              ? `<div style="margin-top:10px;font-size:12px;color:#475569;"><strong>Watch:</strong> ${w.risky
+                  .map((p) => `${escapeHtml(p.name)} (${p.overdue} overdue)`)
+                  .join(' · ')}</div>`
+              : ''
+          }
+        </div>`;
+  }
 
-  // ── The one thing ─────────────────────────────────────────────────────
   const focusHtml = focus
-    ? `<div style="margin:0 0 22px;border:1px solid ${focus.bucket === 'overdue' ? '#fecaca' : '#bfdbfe'};border-left:4px solid ${focus.bucket === 'overdue' ? '#dc2626' : '#1565C0'};border-radius:12px;padding:14px 16px;background:${focus.bucket === 'overdue' ? '#fff7f7' : '#f8fbff'};">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">Your morning priority</div>
+    ? `<div style="margin:0 0 20px;border:1px solid ${focus.bucket === 'overdue' ? '#fecaca' : '#bfdbfe'};border-left:4px solid ${focus.bucket === 'overdue' ? '#dc2626' : '#1565C0'};border-radius:12px;padding:14px 16px;background:${focus.bucket === 'overdue' ? '#fff7f7' : '#f8fbff'};">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">You — do this first</div>
         <div style="font-size:16px;font-weight:700;color:#0f172a;line-height:1.35;">${
           appUrl
             ? `<a href="${appUrl}/tasks/${focus.id}" style="color:#0f172a;text-decoration:none;">${escapeHtml(focus.title)}</a>`
@@ -579,106 +612,94 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       </div>`
     : '';
 
-  const openBtn = appUrl
-    ? `<a href="${appUrl}/my-day" style="display:inline-block;background:#1565C0;color:#fff;font-weight:700;font-size:14px;text-decoration:none;padding:10px 18px;border-radius:10px;">Open My Day</a>`
-    : '';
+  // CTAs: lead/admin get board first; everyone gets My Day.
+  let openBtn = '';
+  if (appUrl) {
+    const primary =
+      isLead || isAdmin
+        ? `<a href="${appUrl}/" style="display:inline-block;background:#1565C0;color:#fff;font-weight:700;font-size:13px;text-decoration:none;padding:10px 16px;border-radius:10px;margin-right:8px;">Open board</a>`
+        : '';
+    const secondary = `<a href="${appUrl}/my-day" style="display:inline-block;background:${isLead || isAdmin ? '#fff' : '#1565C0'};color:${isLead || isAdmin ? '#1565C0' : '#fff'};font-weight:700;font-size:13px;text-decoration:none;padding:10px 16px;border-radius:10px;border:1px solid #1565C0;">Open My Day</a>`;
+    openBtn = `${primary}${secondary}`;
+  }
 
   const manage = appUrl
-    ? `<a href="${appUrl}/settings#daily-email" style="color:#64748b;text-decoration:underline;">your daily-email settings</a>`
-    : 'your daily-email settings';
+    ? `<a href="${appUrl}/settings#daily-email" style="color:#64748b;text-decoration:underline;">daily-email settings</a>`
+    : 'daily-email settings';
 
-  // ── Opening line — ONE plain sentence under the greeting, not a stack of
-  // boxes saying overlapping things. Folds in the role framing, the day's
-  // shape, a directive, and yesterday's momentum. The "all clear" phrasing
-  // is load-bearing for the empty-state test below — keep the literal words.
-  // Minimal opening: the day's shape stated as fact, plus a one-word directive
-  // pointing at where to start. No momentum recap, no pep — the work is the
-  // message. (winsYesterday is intentionally unused in the body now.)
-  const dayShape = counts.join(' · ');
-  const directive = sections.overdue.length
-    ? 'Overdue first.'
-    : sections.today.length
-      ? 'Start at the top.'
-      : sections.soon.length
-        ? 'Nothing due today. Get ahead.'
-        : 'All clear.';
-  const openingHtml = `<p style="margin:0 0 20px;font-size:13.5px;color:#475569;line-height:1.65;">${
-    dayShape
-      ? `<strong style="color:#0f172a;">${escapeHtml(dayShape.charAt(0).toUpperCase() + dayShape.slice(1))}.</strong> ${escapeHtml(directive)}`
-      : escapeHtml(directive)
-  }</p>`;
-  void winsYesterday;
-
-  // ── Foresight ─────────────────────────────────────────────────────────
-  // The forward-looking counterpart to the task list: a single quiet line
-  // (not a competing card) computed from the recipient's own delivery
-  // history (lib/ai/deliveryForesight). The "Foresight:" prefix is stripped
-  // since the label already provides it.
-  const foresightHtml = foresightLine
-    ? `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.55;"><strong style="color:#6d28d9;">Foresight —</strong> ${escapeHtml(foresightLine.replace(/^Foresight:\s*/i, ''))}</p>`
+  // Empty-state must keep "all clear" for unit tests / empty-skip contracts.
+  const isEmpty = !digestHasContent(sections) && !leadershipBrief?.team && !leadershipBrief?.workspace;
+  const openingHtml = isEmpty
+    ? `<p style="margin:0 0 16px;font-size:13.5px;color:#475569;line-height:1.55;">All clear.</p>`
     : '';
+
+  // Foresight only when there is real pressure (personal overdue or team exceptions).
+  const teamOverdueCount = leadershipBrief?.team
+    ? leadershipBrief.team.overdueByMember.reduce((s, m) => s + m.count, 0)
+    : 0;
+  const hasPressure =
+    sections.overdue.length > 0 ||
+    (leadershipBrief?.team &&
+      (leadershipBrief.team.blocked.length > 0 ||
+        teamOverdueCount > 0 ||
+        leadershipBrief.team.signoffsPending > 0)) ||
+    (leadershipBrief?.workspace && leadershipBrief.workspace.overdueTotal > 0);
+  const foresightHtml =
+    foresightLine && hasPressure
+      ? `<p style="margin:0 0 16px;font-size:12.5px;color:#64748b;line-height:1.5;"><strong style="color:#475569;">Pace —</strong> ${escapeHtml(foresightLine.replace(/^Foresight:\s*/i, ''))}</p>`
+      : '';
+
+  // Lead/admin: team first, then YOU. IC: YOU first (no leadership block).
+  const bodyCore =
+    isLead || isAdmin
+      ? `${leadershipHtml}${focusHtml}${foresightHtml}${sectionsHtml}`
+      : `${focusHtml}${foresightHtml}${sectionsHtml}${leadershipHtml}`;
 
   const html = `<!doctype html><html><body style="margin:0;background:#f1f5f9;padding:24px 12px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
     <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
-      <tr><td style="padding:22px 26px;background:#0f172a;">
-        <div style="color:#fff;font-size:18px;font-weight:800;letter-spacing:.02em;">Pragati</div>
+      <tr><td style="padding:18px 24px;background:#0f172a;">
+        <div style="color:#fff;font-size:17px;font-weight:800;letter-spacing:.02em;">Pragati</div>
         <div style="color:#94a3b8;font-size:12px;margin-top:2px;">${escapeHtml(dateLabel)}${test ? ' · test message' : ''}</div>
       </td></tr>
-      <tr><td style="padding:26px;">
-        <div style="font-size:16px;color:#0f172a;font-weight:700;margin:0 0 14px;">Good morning, ${escapeHtml(first)}</div>
+      <tr><td style="padding:22px 24px;">
+        <div style="font-size:15px;color:#0f172a;font-weight:700;margin:0 0 14px;">${escapeHtml(first)}</div>
         ${openingHtml}
-        ${focusHtml}
-        ${foresightHtml}
-        ${sectionsHtml}
-        ${leadershipHtml}
-        ${openBtn ? `<div style="margin-top:4px;">${openBtn}</div>` : ''}
-        ${
-          insight
-            ? `<div style="margin-top:22px;padding-top:14px;border-top:1px solid #f1f5f9;font-size:12.5px;color:#64748b;line-height:1.55;"><strong style="color:#1565C0;">${escapeHtml(
-                insight.tag,
-              )} —</strong> <strong style="color:#0f172a;">${escapeHtml(insight.title)}.</strong> ${escapeHtml(insight.body)}</div>`
-            : ''
-        }
+        ${bodyCore}
+        ${openBtn ? `<div style="margin-top:8px;">${openBtn}</div>` : ''}
       </td></tr>
-      <tr><td style="padding:16px 26px;background:#f8fafc;border-top:1px solid #e2e8f0;">
-        <div style="font-size:12px;color:#94a3b8;line-height:1.5;">
-          You're receiving this because the daily task email is on for your account.
-          Change the time, or unsubscribe, in ${manage}.
+      <tr><td style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+        <div style="font-size:11px;color:#94a3b8;line-height:1.5;">
+          Daily brief is on. Change or unsubscribe in ${manage}.
         </div>
       </td></tr>
     </table>
   </td></tr></table>
 </body></html>`;
 
-  // Plain-text fallback.
-  const lines: string[] = [
-    `Pragati — ${dateLabel}${test ? ' (test)' : ''}`,
-    '',
-    `Good morning, ${first}.`,
-    '',
-  ];
+  const lines: string[] = [`Pragati — ${dateLabel}${test ? ' (test)' : ''}`, '', `${first}`, ''];
   if (leadershipBrief?.team) {
+    const teamOverdue = leadershipBrief.team.overdueByMember.reduce((sum, m) => sum + m.count, 0);
     lines.push(
-      'TEAM PULSE',
+      'TEAM',
       leadershipBrief.headline,
-      `Blocked: ${leadershipBrief.team.blocked.length} · Sign-offs: ${leadershipBrief.team.signoffsPending} · Team overdue: ${leadershipBrief.team.overdueByMember.reduce((sum, member) => sum + member.count, 0)}`,
+      `Blocked: ${leadershipBrief.team.blocked.length} · Sign-offs: ${leadershipBrief.team.signoffsPending} · Team overdue: ${teamOverdue}`,
       '',
     );
   } else if (leadershipBrief?.workspace) {
     lines.push(
-      'WORKSPACE PULSE',
+      'WORKSPACE',
       leadershipBrief.headline,
-      `Closed yesterday: ${leadershipBrief.workspace.doneYesterday} · Overdue: ${leadershipBrief.workspace.overdueTotal} · Active projects: ${leadershipBrief.workspace.activeProjects}`,
+      `Closed yesterday: ${leadershipBrief.workspace.doneYesterday} · Overdue: ${leadershipBrief.workspace.overdueTotal} · Active: ${leadershipBrief.workspace.activeProjects}`,
       '',
     );
   }
   if (focus) {
     const pn = projLabel(focus.projectId);
-    lines.push('YOUR MORNING PRIORITY', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
+    lines.push('YOU — DO THIS FIRST', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
   }
-  if (foresightLine) {
-    lines.push('FORESIGHT', `  ${foresightLine.replace(/^Foresight:\s*/i, '')}`, '');
+  if (foresightLine && hasPressure) {
+    lines.push('PACE', `  ${foresightLine.replace(/^Foresight:\s*/i, '')}`, '');
   }
   const textSection = (heading: string, items: DigestTask[]) => {
     if (!items.length) return;
@@ -697,8 +718,11 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     for (const p of sections.projectUpdates) lines.push(`  • ${p.name} — ${p.count} done`);
     lines.push('');
   }
-  if (!digestHasContent(sections)) lines.push('All clear — nothing due today.');
-  if (appUrl) lines.push('', `Open My Day: ${appUrl}/my-day`);
+  if (!digestHasContent(sections) && !leadershipBrief) lines.push('All clear — nothing due today.');
+  if (appUrl) {
+    if (isLead || isAdmin) lines.push('', `Open board: ${appUrl}/`);
+    lines.push(`Open My Day: ${appUrl}/my-day`);
+  }
 
   return { subject, html, text: lines.join('\n') };
 }

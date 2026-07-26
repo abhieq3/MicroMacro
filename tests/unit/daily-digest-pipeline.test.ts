@@ -277,7 +277,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     assert.equal(mail.apiKey, 'test-api-key', 'API key travels in the api-key header');
     assert.equal(mail.to, 'asha@example.com', 'notifyEmail wins over the placeholder login');
     assert.equal(mail.toName, 'Asha Tester');
-    assert.match(mail.subject, /^Your \w+ brief — 2 due today · 1 overdue$/);
+    assert.match(mail.subject, /^Your \w+ brief — 1 overdue · 2 due today$/);
 
     // Included tasks…
     assert.match(mail.html, /Approve URS revision/);
@@ -298,7 +298,8 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     const summary = await digest.buildAndSendDailyDigests({ now });
 
     assert.equal(summary.sent, 1);
-    assert.match(inbox[0].subject, /2 due today · 1 overdue · 1 due soon$/);
+    // Due-soon is omitted from the subject when overdue/today already fill it.
+    assert.match(inbox[0].subject, /1 overdue · 2 due today$/);
     assert.match(inbox[0].html, /QA sign-off rehearsal/);
   });
 

@@ -87,8 +87,14 @@ export interface HeadlineCounts {
   soon: number;
   blocked?: number;
   signoffs?: number;
+  /** Sum of open overdue tasks across the lead's teams (shared work). */
+  teamOverdue?: number;
+  /** Distinct assignees carrying that team overdue load. */
+  teamOverduePeople?: number;
   doneYesterday?: number;
   overdueTotal?: number;
+  /** Weekend: prefer fact over "today's the day" pep. */
+  weekend?: boolean;
 }
 
 /** One deterministic sentence that tells the reader where to start. */
@@ -104,10 +110,19 @@ export function composeHeadline(c: HeadlineCounts): string {
     return `Workspace: ${done} task${s(done)} closed yesterday, ${over} overdue across shared projects.`;
   }
 
+  // Lead: team exceptions first — never bury them under a personal "close it out".
   if (c.role === 'lead' && (c.blocked ?? 0) > 0) {
     return `${c.blocked} task${s(c.blocked!)} blocked on your team — unblock ${c.blocked === 1 ? 'it' : 'them'} before they slip.`;
   }
-  if (c.role === 'lead' && (c.signoffs ?? 0) > 0 && c.today === 0 && c.overdue === 0) {
+  if (c.role === 'lead' && (c.teamOverdue ?? 0) > 0) {
+    const n = c.teamOverdue!;
+    const people = c.teamOverduePeople ?? 0;
+    if (people > 0) {
+      return `${n} team overdue — ${people} ${people === 1 ? 'person' : 'people'} carrying load.`;
+    }
+    return `${n} team overdue.`;
+  }
+  if (c.role === 'lead' && (c.signoffs ?? 0) > 0) {
     return `${c.signoffs} QA sign-off${s(c.signoffs!)} pending on your team.`;
   }
 
@@ -115,10 +130,13 @@ export function composeHeadline(c: HeadlineCounts): string {
     return `${c.today} due today and ${c.overdue} overdue — clear the overdue first.`;
   }
   if (c.overdue > 0) {
-    return `${c.overdue} overdue task${s(c.overdue)} — today's the day to close ${c.overdue === 1 ? 'it' : 'them'} out.`;
+    if (c.weekend) {
+      return `${c.overdue} overdue task${s(c.overdue)}.`;
+    }
+    return `${c.overdue} overdue task${s(c.overdue)} — clear ${c.overdue === 1 ? 'it' : 'them'} first.`;
   }
   if (c.today > 0) {
-    return `${c.today} task${s(c.today)} due today${c.soon > 0 ? `, ${c.soon} more coming up` : ''} — you've got this.`;
+    return `${c.today} task${s(c.today)} due today${c.soon > 0 ? `, ${c.soon} more coming up` : ''}.`;
   }
   if (c.soon > 0) {
     return `Nothing due today — ${c.soon} coming up in the next ${SOON_DAYS} days.`;
@@ -338,6 +356,15 @@ export async function buildDailyBrief(
     }));
   }
 
+  const teamOverdue = brief.team
+    ? brief.team.overdueByMember.reduce((sum, m) => sum + m.count, 0)
+    : 0;
+  const weekdayShort = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    weekday: 'short',
+  }).format(now);
+  const isWeekend = weekdayShort === 'Sat' || weekdayShort === 'Sun';
+
   brief.headline = composeHeadline({
     role,
     overdue: buckets.overdue.length,
@@ -345,8 +372,11 @@ export async function buildDailyBrief(
     soon: buckets.soon.length,
     blocked: brief.team?.blocked.length,
     signoffs: brief.team?.signoffsPending,
+    teamOverdue,
+    teamOverduePeople: brief.team?.overdueByMember.length ?? 0,
     doneYesterday: brief.workspace?.doneYesterday,
     overdueTotal: brief.workspace?.overdueTotal,
+    weekend: isWeekend,
   });
 
   brief.hasContent =
