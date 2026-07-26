@@ -1435,9 +1435,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       await api(`/projects/${id}`, { method: 'PATCH', body: { status: newStatus } });
       if (newStatus === 'completed') {
         setCelebration({
-          title: 'Project complete! 🎉',
-          subtitle: `${project.name} is closed out and in control.`,
-          emoji: '🏆',
+          title: 'Project complete',
+          subtitle: `${project.name} — all work closed.`,
         });
       } else {
         showToast('Project status updated');
@@ -1460,9 +1459,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     setPendingStatus(null);
     if (becameComplete) {
       setCelebration({
-        title: 'Project complete! 🎉',
-        subtitle: `${project.name} is closed out and in control.`,
-        emoji: '🏆',
+        title: 'Project complete',
+        subtitle: `${project.name} — all work closed.`,
       });
     } else {
       showToast('Project status updated');
@@ -1558,9 +1556,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     const done = (t: any) => t.status === 'done';
     if (projected.length > 0 && projected.every(done)) {
       setCelebration({
-        title: 'Project complete!',
-        subtitle: `Every task in ${project?.name || 'this project'} is closed and in control. Beautifully done.`,
-        emoji: '🏆',
+        title: 'Project complete',
+        subtitle: `${project?.name || 'Project'} — every task closed.`,
       });
       return true;
     }
@@ -1571,11 +1568,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     if (phaseTasks.length > 0 && phaseTasks.every(done)) {
       const phaseName = phases.find((p: any) => p.id === pid)?.name;
       setCelebration({
-        title: 'Phase complete!',
-        subtitle: phaseName
-          ? `“${phaseName}” is fully closed out — a real milestone. Onwards.`
-          : 'A phase milestone reached — onwards to the next.',
-        emoji: '✅',
+        title: 'Phase complete',
+        subtitle: phaseName ? `“${phaseName}” closed.` : 'Phase closed.',
       });
       return true;
     }
@@ -1779,12 +1773,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             <p className="text-[11.5px] text-violet-500/90 dark:text-violet-300/70 mt-0.5">
               <Lock size={10} className="inline -mt-0.5 mr-1" />
               {pct === 0
-                ? 'Only you can see this. Every big thing starts at 0% — pick one small task.'
-                : pct < 50
-                  ? `Only you can see this. ${pct}% in — momentum loves consistency.`
-                  : pct < 100
-                    ? `Only you can see this. ${pct}% done — the finish line is in sight.`
-                    : 'Complete. Take a moment — you did this for you.'}
+                ? 'Private to you. Pick one small task.'
+                : pct < 100
+                  ? `Private to you. ${pct}% done.`
+                  : 'Private to you. Complete.'}
             </p>
           )}
           {/* Reference number — a single identity line. The system assigns one

@@ -351,7 +351,7 @@ function AdminErrorMonitor() {
             <div className="text-xs text-slate-400 py-4 text-center">Loading…</div>
           ) : errors.length === 0 ? (
             <div className="rounded-lg bg-slate-50 border border-slate-100 px-3 py-6 text-center text-xs text-slate-400">
-              No errors recorded. 🎉
+              No errors recorded.
             </div>
           ) : (
             <ul className="space-y-2">

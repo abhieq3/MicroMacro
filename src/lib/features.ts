@@ -1,24 +1,16 @@
 /**
- * Launch / focus feature flags.
+ * Feature flags — judgment over surface area (see docs/PRODUCT_PRINCIPLES.md).
  *
- * First principle: the product mission is the morning decision — open Pragati
- * and act on the highest-leverage work. Secondary workbench tools are real and
- * valuable, but they dilute first paint and first impression when everything is
- * on by default.
- *
- * Flags are NEXT_PUBLIC_ so client components (nav, panels) and server code
- * share the same answer. Defaults preserve today's behaviour unless FOCUS MODE
- * is turned on.
+ * Mission: open Pragati and act on the highest-leverage work. Secondary
+ * workbench tools are real, but they dilute attention when everything is on.
  *
  *   NEXT_PUBLIC_FOCUS_MODE=1
- *     Hides secondary personal/workbench surfaces so the mission loop stays
- *     sharp: Dashboard · Projects · Teams · My Day · (admin) People/Audit.
+ *     Strip secondary surfaces: Dashboard · Projects · Teams · My Day · admin.
  *
- * Per-surface overrides (only consulted when focus mode is off, except
- * scratchpad which stays opt-in):
- *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0     hide whiteboard
- *   NEXT_PUBLIC_WORKBENCH_MODULES=0      hide tickets / CSV-QMS entry points
- *   NEXT_PUBLIC_SCRATCHPAD_ENABLED=1     enable scratchpad (off by default)
+ * Per-surface (when focus mode is off; scratchpad stays opt-in):
+ *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0
+ *   NEXT_PUBLIC_WORKBENCH_MODULES=0
+ *   NEXT_PUBLIC_SCRATCHPAD_ENABLED=1
  */
 
 function envOn(name: string): boolean {

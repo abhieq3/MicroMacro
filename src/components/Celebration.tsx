@@ -2,51 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { playFanfare } from '@/lib/sound';
+import { Check } from 'lucide-react';
+import { hapticSuccess } from '@/lib/haptics';
 
 /**
- * Full-screen milestone celebration — confetti rain + a kudos card — for the
- * moments that deserve a flourish: a phase finished, a project closed out. Fires
- * a fanfare + haptic on show and auto-dismisses. Purely presentational; the
- * caller decides what counts as a milestone.
+ * Quiet milestone acknowledgement.
+ *
+ * Naval: status is a zero-sum game; wealth/output is positive-sum. Confetti and
+ * fanfare train people for status hits. A short, dismissible notice is enough —
+ * the work is the reward.
  */
-
-const CONFETTI_COLORS = ['#1769C8', '#2B8C47', '#fbbf24', '#f472b6', '#38bdf8', '#a78bfa'];
-
-function ConfettiPiece({ i }: { i: number }) {
-  // Deterministic-ish spread so pieces fan across the width with varied timing.
-  const left = (i * 53) % 100;
-  const delay = (i % 10) * 0.12;
-  const dur = 2.4 + ((i * 7) % 12) / 10;
-  const size = 7 + (i % 4) * 2;
-  const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
-  const round = i % 3 === 0;
-  return (
-    <span
-      aria-hidden
-      style={{
-        position: 'absolute',
-        top: '-5vh',
-        left: `${left}%`,
-        width: size,
-        height: round ? size : size * 0.5,
-        background: color,
-        borderRadius: round ? '50%' : 2,
-        animation: `confetti-fall ${dur}s cubic-bezier(0.3,0.2,0.4,1) ${delay}s forwards`,
-      }}
-    />
-  );
-}
 
 export function Celebration({
   title,
   subtitle,
-  emoji = '🎉',
   onDone,
-  duration = 3200,
+  duration = 2400,
 }: {
   title: string;
   subtitle?: string;
+  /** @deprecated ignored — no emoji theater */
   emoji?: string;
   onDone?: () => void;
   duration?: number;
@@ -55,7 +30,7 @@ export function Celebration({
 
   useEffect(() => {
     setMounted(true);
-    playFanfare();
+    hapticSuccess();
     const t = setTimeout(() => onDone?.(), duration);
     return () => clearTimeout(t);
   }, [onDone, duration]);
@@ -64,29 +39,24 @@ export function Celebration({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[9997] flex items-center justify-center p-4 pointer-events-auto"
+      className="fixed bottom-6 right-6 z-[9997] max-w-sm pointer-events-auto"
       onClick={() => onDone?.()}
       role="status"
       aria-live="polite"
     >
-      {/* Confetti layer */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 70 }).map((_, i) => (
-          <ConfettiPiece key={i} i={i} />
-        ))}
-      </div>
-
-      {/* Kudos card */}
       <div
-        className="relative bg-white rounded-3xl shadow-2xl border border-slate-100 px-8 py-7 text-center max-w-sm w-full"
-        style={{ animation: 'celebration-pop 0.5s cubic-bezier(0.22,1,0.36,1) both' }}
+        className="flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#262624] px-4 py-3 shadow-lg cursor-pointer"
+        style={{ animation: 'fade-in-soft-2 0.2s ease-out both' }}
       >
-        <div className="text-5xl mb-2 leading-none">{emoji}</div>
-        <h2 className="text-xl font-black tracking-tight text-slate-900">{title}</h2>
-        {subtitle && <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">{subtitle}</p>}
-        <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-300">
-          Tap to dismiss
-        </p>
+        <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shrink-0">
+          <Check size={15} strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[13px] font-bold text-slate-800 dark:text-white/90 leading-snug">{title}</div>
+          {subtitle && (
+            <div className="text-[12px] text-slate-500 dark:text-white/45 mt-0.5 leading-snug">{subtitle}</div>
+          )}
+        </div>
       </div>
     </div>,
     document.body,
