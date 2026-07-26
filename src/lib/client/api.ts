@@ -41,9 +41,8 @@ const MAX_RETRIES = 2;
 const NETWORK_ERROR = 'Network error — check your connection and try again.';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-// 0 → 300ms, 1 → 800ms. Short enough to stay snappy, long enough to ride out a
-// blip (a dropped Wi-Fi packet, a cold serverless function).
-const backoff = (attempt: number) => 300 + attempt * 500;
+// 0 → 180ms, 1 → 480ms. Aggressive: ride out a blip without feeling stuck.
+const backoff = (attempt: number) => 180 + attempt * 300;
 
 /**
  * fetch() with a small retry budget for *idempotent* requests only. A GET that

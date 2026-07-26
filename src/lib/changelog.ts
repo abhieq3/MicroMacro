@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Speed-of-light navigation on every page',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Instant progress bar on the first pointer-down of any in-app link, aggressive hover/touch prefetch of every route, primary surfaces pre-warmed on load, loading shells for every remaining page, near-instant page settle, and longer cache for static assets. Navigation should feel pre-fetched before you finish the click.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Whole app: faster, fluid, less noise',
     tags: ['improvement'],
     highlight: true,
