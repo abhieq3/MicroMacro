@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Whiteboard text that doesn’t fight you',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Typing on the board is straightforward: double-click anywhere to add a note, click existing text to edit, Enter for a new line, ⌘/Ctrl+Enter or Done to place. Readable S/M/L sizes; tool shortcuts (T/V/E/H). No more tiny dashed boxes that steal Enter.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Whiteboard that people will actually use; Jensen-only login quotes',
     tags: ['feature', 'improvement'],
     highlight: true,

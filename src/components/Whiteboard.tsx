@@ -20,19 +20,21 @@ import {
   Circle,
   ArrowRight as ArrowIcon,
   Download,
+  Check,
+  X,
 } from 'lucide-react';
 import { api } from '@/lib/client/api';
 import { BOARD_TEMPLATES, templateById, type BoardTemplateId } from '@/lib/whiteboardTemplates';
 
 /**
- * Whiteboard — personal thinking surface (Jensen-style).
+ * Whiteboard — personal thinking surface.
  *
- * Real whiteboards win because they force structure: name the problem, strip
- * to truths, decide. A blank canvas alone freezes people — so we ship light
- * *thinking scaffolds* (templates) the user can wipe anytime. Marker on board,
- * nothing precious. Owner-private; not an audit record.
- *
- * Implementation: one canvas, polylines, autosave. Templates are just strokes.
+ * Text is intentionally easy (Jensen would not fight a UI to write on a board):
+ *   • Double-click anywhere → type a note
+ *   • Text tool + click → type
+ *   • Click existing text → edit it
+ *   • Enter = new line; ⌘/Ctrl+Enter or Done = place; Esc = cancel
+ * Font sizes are real marker sizes (S/M/L), not pen-width * magic.
  */
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'rect' | 'ellipse' | 'arrow';
@@ -41,11 +43,31 @@ interface Stroke {
   color: string;
   size: number;
   points: { x: number; y: number }[];
-  // For text strokes only — the canvas owns rendering; we store the typed
-  // label and one anchor point.
   text?: string;
 }
 type Doc = { strokes: Stroke[] };
+
+/** Discrete text sizes — what users pick in the toolbar. */
+const TEXT_SIZES: { id: 's' | 'm' | 'l'; label: string; size: number; px: number }[] = [
+  { id: 's', label: 'S', size: 2.0, px: 16 },
+  { id: 'm', label: 'M', size: 2.8, px: 22 },
+  { id: 'l', label: 'L', size: 4.2, px: 30 },
+];
+
+/** Map stored stroke.size → on-screen font px (handles old templates too). */
+function textFontPx(size: number): number {
+  if (size <= 1.9) return 15;
+  if (size <= 2.3) return 17;
+  if (size <= 2.6) return 20;
+  if (size <= 3.2) return 22;
+  if (size <= 4) return 26;
+  if (size <= 5) return 30;
+  return 36;
+}
+
+function textLineHeight(size: number): number {
+  return Math.round(textFontPx(size) * 1.35);
+}
 
 const COLORS: { value: string; label: string }[] = [
   { value: '#0f172a', label: 'Ink' },
@@ -58,36 +80,44 @@ const COLORS: { value: string; label: string }[] = [
 
 const PEN_SIZES = [1.5, 2.5, 4, 6];
 
+interface TextEdit {
+  x: number;
+  y: number;
+  value: string;
+  color: string;
+  size: number;
+  /** Visible-list index when editing an existing stroke. */
+  replaceIndex?: number;
+}
+
 export function Whiteboard() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
   const [size, setSize] = useState({ w: 800, h: 480 });
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
   const [penSize, setPenSize] = useState(2.5);
+  const [textSize, setTextSize] = useState<(typeof TEXT_SIZES)[number]>(TEXT_SIZES[1]);
   const [doc, setDoc] = useState<Doc>({ strokes: [] });
-  // Undo/redo by pointer rather than rebuilding the whole history on every
-  // commit — cheap and intuitive for a single-user scratch pad.
   const [pointer, setPointer] = useState(0);
   const drawing = useRef(false);
   const activePointerId = useRef<number | null>(null);
   const currentStroke = useRef<Stroke | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [busy, setBusy] = useState(false);
-  const [editingText, setEditingText] = useState<{ x: number; y: number; value: string } | null>(null);
+  const [editingText, setEditingText] = useState<TextEdit | null>(null);
   const [prompt, setPrompt] = useState('');
   const [loaded, setLoaded] = useState(false);
   const dirty = useRef(false);
-  // Ref so commitText always reads the latest typed value even when called
-  // from onBlur (which fires before the React re-render that would update state).
   const pendingTextValue = useRef('');
   const promptRef = useRef(prompt);
   promptRef.current = prompt;
+  // Avoid blur-commit when Done/Cancel mousedown steals focus.
+  const skipBlurCommit = useRef(false);
 
-  /** Visible (un-redone) prefix of the stroke list. */
   const visibleStrokes = doc.strokes.slice(0, pointer);
 
-  // Track container size — canvas grows with the column.
   useLayoutEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver((entries) => {
@@ -98,7 +128,6 @@ export function Whiteboard() {
     return () => ro.disconnect();
   }, []);
 
-  // Initial load from the server.
   useEffect(() => {
     api<{ strokes: Stroke[]; prompt?: string; updatedAt?: string }>('/scratch/whiteboard')
       .then((d) => {
@@ -108,13 +137,10 @@ export function Whiteboard() {
         setPrompt(typeof d?.prompt === 'string' ? d.prompt : '');
         if (d?.updatedAt) setSavedAt(new Date(d.updatedAt));
       })
-      .catch(() => {
-        /* empty board */
-      })
+      .catch(() => {})
       .finally(() => setLoaded(true));
   }, []);
 
-  // Debounced autosave — fires 1.5s after the last change.
   useEffect(() => {
     if (!dirty.current) return;
     const t = setTimeout(() => {
@@ -122,6 +148,14 @@ export function Whiteboard() {
     }, 1500);
     return () => clearTimeout(t);
   }, [doc, pointer, prompt]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (editingText && textAreaRef.current) {
+      textAreaRef.current.focus();
+      const len = textAreaRef.current.value.length;
+      textAreaRef.current.setSelectionRange(len, len);
+    }
+  }, [editingText?.x, editingText?.y, editingText?.replaceIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save() {
     setBusy(true);
@@ -134,7 +168,7 @@ export function Whiteboard() {
       setSavedAt(new Date());
       dirty.current = false;
     } catch {
-      /* keep dirty so the next change retries */
+      /* keep dirty */
     } finally {
       setBusy(false);
     }
@@ -143,23 +177,22 @@ export function Whiteboard() {
   function applyTemplate(id: BoardTemplateId) {
     const tpl = templateById(id);
     if (visibleStrokes.length > 0) {
-      const ok = window.confirm(
-        'Replace the current board with this template? Unsaved strokes on the canvas will be wiped after the next save.',
-      );
-      if (!ok) return;
+      if (
+        !window.confirm(
+          'Replace the current board with this template? Current strokes will be wiped after save.',
+        )
+      ) {
+        return;
+      }
     }
     const strokes = tpl.build() as Stroke[];
     setDoc({ strokes });
     setPointer(strokes.length);
     if (tpl.prompt) setPrompt(tpl.prompt);
+    setEditingText(null);
     dirty.current = true;
   }
 
-  // ── Canvas rendering ─────────────────────────────────────────────────
-  // Repaint from the polyline list whenever stroke state or canvas size
-  // changes. The current in-progress stroke is painted on top of the
-  // committed list during a drag, so we don't push half-finished state
-  // into the React tree.
   useEffect(() => {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -174,11 +207,41 @@ export function Whiteboard() {
     repaint(ctx);
   }, [size, doc, pointer]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const measureTextWidth = useCallback((ctx: CanvasRenderingContext2D, s: Stroke): number => {
+    if (!s.text) return 0;
+    const px = textFontPx(s.size);
+    ctx.font = `600 ${px}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
+    return Math.max(...s.text.split('\n').map((ln) => ctx.measureText(ln || ' ').width), 24);
+  }, []);
+
+  const hitTextIndex = useCallback(
+    (p: { x: number; y: number }, strokes: Stroke[]): number | null => {
+      const cv = canvasRef.current;
+      if (!cv) return null;
+      const ctx = cv.getContext('2d');
+      if (!ctx) return null;
+      for (let i = strokes.length - 1; i >= 0; i--) {
+        const s = strokes[i];
+        if (s.tool !== 'text' || !s.text || !s.points[0]) continue;
+        const ax = s.points[0].x;
+        const ay = s.points[0].y;
+        const lh = textLineHeight(s.size);
+        const lines = s.text.split('\n');
+        const w = measureTextWidth(ctx, s);
+        const h = lines.length * lh;
+        const pad = 10;
+        if (p.x >= ax - pad && p.x <= ax + w + pad && p.y >= ay - pad && p.y <= ay + h + pad) {
+          return i;
+        }
+      }
+      return null;
+    },
+    [measureTextWidth],
+  );
+
   const repaint = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       ctx.clearRect(0, 0, size.w, size.h);
-      // Faint dot grid — gives the surface "whiteboard" texture without
-      // dominating the marks the user makes on it.
       ctx.fillStyle = '#cbd5e1';
       for (let x = 24; x < size.w; x += 24) {
         for (let y = 24; y < size.h; y += 24) {
@@ -192,12 +255,14 @@ export function Whiteboard() {
 
   function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
     if (s.tool === 'text' && s.text) {
+      const px = textFontPx(s.size);
+      const lh = textLineHeight(s.size);
       ctx.fillStyle = s.color;
-      ctx.font = `${Math.round(s.size * 6)}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.font = `600 ${px}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
       ctx.textBaseline = 'top';
       const lines = s.text.split('\n');
       const p = s.points[0];
-      lines.forEach((ln, i) => ctx.fillText(ln, p.x, p.y + i * Math.round(s.size * 7)));
+      lines.forEach((ln, i) => ctx.fillText(ln, p.x, p.y + i * lh));
       return;
     }
     if (s.points.length < 2) return;
@@ -262,29 +327,71 @@ export function Whiteboard() {
     ctx.moveTo(s.points[0].x, s.points[0].y);
     for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
     ctx.stroke();
-    // Reset state — eraser sets composite, highlighter sets alpha.
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  function pointFromPointer(e: ReactPointerEvent<HTMLCanvasElement>) {
+  function pointFromEvent(e: { clientX: number; clientY: number }) {
     const cv = canvasRef.current;
     if (!cv) return null;
     const r = cv.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
+  function openTextEditor(at: {
+    x: number;
+    y: number;
+    value?: string;
+    replaceIndex?: number;
+    color?: string;
+    size?: number;
+  }) {
+    const edit: TextEdit = {
+      x: Math.max(8, Math.min(at.x, size.w - 200)),
+      y: Math.max(8, Math.min(at.y, size.h - 80)),
+      value: at.value ?? '',
+      color: at.color ?? color,
+      size: at.size ?? textSize.size,
+      replaceIndex: at.replaceIndex,
+    };
+    pendingTextValue.current = edit.value;
+    setEditingText(edit);
+    setTool('text');
+  }
+
   const SHAPE_TOOLS: Tool[] = ['rect', 'ellipse', 'arrow'];
 
   function startStroke(e: ReactPointerEvent<HTMLCanvasElement>) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    const p = pointFromPointer(e);
+    // While typing, ignore canvas draws (editor owns focus).
+    if (editingText) return;
+    const p = pointFromEvent(e);
     if (!p) return;
+
+    // Click existing text → edit (any tool except eraser).
+    if (tool !== 'eraser') {
+      const hit = hitTextIndex(p, visibleStrokes);
+      if (hit !== null) {
+        e.preventDefault();
+        const s = visibleStrokes[hit];
+        openTextEditor({
+          x: s.points[0].x,
+          y: s.points[0].y,
+          value: s.text || '',
+          replaceIndex: hit,
+          color: s.color,
+          size: s.size,
+        });
+        return;
+      }
+    }
+
     e.preventDefault();
     if (tool === 'text') {
-      setEditingText({ x: p.x, y: p.y, value: '' });
+      openTextEditor({ x: p.x, y: p.y });
       return;
     }
+
     drawing.current = true;
     activePointerId.current = e.pointerId;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -295,15 +402,12 @@ export function Whiteboard() {
   function continueStroke(e: ReactPointerEvent<HTMLCanvasElement>) {
     if (!drawing.current || !currentStroke.current) return;
     if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return;
-    const p = pointFromPointer(e);
+    const p = pointFromEvent(e);
     if (!p) return;
     e.preventDefault();
     if (SHAPE_TOOLS.includes(currentStroke.current.tool)) {
-      // For shapes keep only start + current end — avoids storing every mousemove
       currentStroke.current.points = [currentStroke.current.points[0], p];
     } else {
-      // Skip points that are basically a duplicate — keeps the stroke list
-      // light and the canvas crisp on touch devices.
       const last = currentStroke.current.points[currentStroke.current.points.length - 1];
       if (Math.hypot(p.x - last.x, p.y - last.y) < 1.2) return;
       currentStroke.current.points.push(p);
@@ -319,15 +423,33 @@ export function Whiteboard() {
     activePointerId.current = null;
     const s = currentStroke.current;
     currentStroke.current = null;
-    if (s.points.length < 2 && s.tool !== 'text') return; // ignore stray taps
-    // Truncate any "redo" tail (we're starting a new branch).
+    if (s.points.length < 2 && s.tool !== 'text') return;
     setDoc((d) => ({ strokes: [...d.strokes.slice(0, pointer), s] }));
     setPointer((n) => n + 1);
     dirty.current = true;
   }
 
-  /** Paint the current in-progress stroke over the committed strokes
-   *  without touching React state. */
+  function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    if (editingText) return;
+    const p = pointFromEvent(e);
+    if (!p) return;
+    e.preventDefault();
+    const hit = hitTextIndex(p, visibleStrokes);
+    if (hit !== null) {
+      const s = visibleStrokes[hit];
+      openTextEditor({
+        x: s.points[0].x,
+        y: s.points[0].y,
+        value: s.text || '',
+        replaceIndex: hit,
+        color: s.color,
+        size: s.size,
+      });
+      return;
+    }
+    openTextEditor({ x: p.x, y: p.y });
+  }
+
   function paintLive() {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -341,23 +463,37 @@ export function Whiteboard() {
 
   function commitText() {
     if (!editingText) return;
-    const value = (pendingTextValue.current || editingText.value).trim();
+    const value = (pendingTextValue.current || editingText.value).replace(/\s+$/, '');
     pendingTextValue.current = '';
-    if (!value) {
+    if (!value.trim()) {
       setEditingText(null);
       return;
     }
     const s: Stroke = {
       tool: 'text',
-      color,
-      size: penSize,
+      color: editingText.color,
+      size: editingText.size,
       points: [{ x: editingText.x, y: editingText.y }],
       text: value,
     };
-    setDoc((d) => ({ strokes: [...d.strokes.slice(0, pointer), s] }));
-    setPointer((n) => n + 1);
+
+    if (typeof editingText.replaceIndex === 'number') {
+      // Replace in the visible prefix; drop any redo tail.
+      const base = doc.strokes.slice(0, pointer);
+      const next = base.map((st, i) => (i === editingText.replaceIndex ? s : st));
+      setDoc({ strokes: next });
+      setPointer(next.length);
+    } else {
+      setDoc((d) => ({ strokes: [...d.strokes.slice(0, pointer), s] }));
+      setPointer((n) => n + 1);
+    }
     setEditingText(null);
     dirty.current = true;
+  }
+
+  function cancelText() {
+    pendingTextValue.current = '';
+    setEditingText(null);
   }
 
   function undo() {
@@ -384,34 +520,56 @@ export function Whiteboard() {
   }
 
   function clearAll() {
-    if (!confirm("Wipe the board? Strokes and the problem line clear after the next save.")) return;
+    if (!confirm('Wipe the board? Strokes and the problem line clear after the next save.')) return;
     setDoc({ strokes: [] });
     setPointer(0);
     setPrompt('');
+    setEditingText(null);
     dirty.current = true;
   }
 
-  // Keyboard shortcuts — Cmd/Ctrl+Z to undo, Shift+Cmd/Ctrl+Z to redo.
+  // Shortcuts: tools + undo (skip when typing in the text editor / prompt).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      if (e.key.toLowerCase() === 'z') {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo();
         else undo();
+        return;
       }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 'v' || k === 'p') setTool('pen');
+      else if (k === 'h') setTool('highlighter');
+      else if (k === 'e') setTool('eraser');
+      else if (k === 't') setTool('text');
+      else if (k === 'r') setTool('rect');
+      else if (k === 'o') setTool('ellipse');
+      else if (k === 'a') setTool('arrow');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointer, doc.strokes.length]);
 
+  const editorFontPx = editingText ? textFontPx(editingText.size) : textFontPx(textSize.size);
+
+  // Keep editor on-canvas: clamp position so the box stays usable.
+  const editorStyle = editingText
+    ? {
+        left: Math.min(editingText.x, Math.max(8, size.w - 280)),
+        top: Math.min(editingText.y, Math.max(8, size.h - 120)),
+      }
+    : { left: 0, top: 0 };
+
   return (
     <div
       className="h-full bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden flex flex-col"
       style={{ minHeight: 460 }}
     >
-      {/* Problem line — the board exists to answer this. Autosaved with strokes. */}
       <div className="shrink-0 px-3 pt-2.5 pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
         <label className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30 mb-1">
           Working on
@@ -429,7 +587,6 @@ export function Whiteboard() {
         />
       </div>
 
-      {/* Thinking scaffolds — why people actually open a board. */}
       <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] overflow-x-auto">
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/25 shrink-0 mr-0.5">
           Start from
@@ -456,54 +613,43 @@ export function Whiteboard() {
       </div>
 
       <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] flex-wrap">
-        {/* Tool group */}
         <div className="flex items-center gap-1">
-          <ToolBtn
-            active={tool === 'pen'}
-            label="Pen"
-            icon={<Pen size={14} />}
-            onClick={() => setTool('pen')}
-          />
+          <ToolBtn active={tool === 'pen'} label="Pen (V)" icon={<Pen size={14} />} onClick={() => setTool('pen')} />
           <ToolBtn
             active={tool === 'highlighter'}
-            label="Highlighter"
+            label="Highlighter (H)"
             icon={<Highlighter size={14} />}
             onClick={() => setTool('highlighter')}
           />
           <ToolBtn
             active={tool === 'eraser'}
-            label="Eraser"
+            label="Eraser (E)"
             icon={<Eraser size={14} />}
             onClick={() => setTool('eraser')}
           />
           <ToolBtn
             active={tool === 'text'}
-            label="Text"
+            label="Text (T) — or double-click the board"
             icon={<TypeIcon size={14} />}
             onClick={() => setTool('text')}
+            emphasize
           />
           <span className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-0.5" />
-          <ToolBtn
-            active={tool === 'rect'}
-            label="Rectangle"
-            icon={<Square size={14} />}
-            onClick={() => setTool('rect')}
-          />
+          <ToolBtn active={tool === 'rect'} label="Box (R)" icon={<Square size={14} />} onClick={() => setTool('rect')} />
           <ToolBtn
             active={tool === 'ellipse'}
-            label="Ellipse"
+            label="Circle (O)"
             icon={<Circle size={14} />}
             onClick={() => setTool('ellipse')}
           />
           <ToolBtn
             active={tool === 'arrow'}
-            label="Arrow"
+            label="Arrow (A)"
             icon={<ArrowIcon size={14} />}
             onClick={() => setTool('arrow')}
           />
         </div>
 
-        {/* Colour swatches */}
         {tool !== 'eraser' && (
           <div className="flex items-center gap-1">
             {COLORS.map((c) => (
@@ -511,8 +657,15 @@ export function Whiteboard() {
                 key={c.value}
                 type="button"
                 title={c.label}
-                onClick={() => setColor(c.value)}
-                className={`w-5 h-5 rounded-full transition-transform ${color === c.value ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'hover:scale-110'}`}
+                onClick={() => {
+                  setColor(c.value);
+                  if (editingText) setEditingText({ ...editingText, color: c.value });
+                }}
+                className={`w-5 h-5 rounded-full transition-transform ${
+                  (editingText ? editingText.color : color) === c.value
+                    ? 'ring-2 ring-offset-2 ring-slate-400 scale-110'
+                    : 'hover:scale-110'
+                }`}
                 style={{ background: c.value }}
                 aria-label={`Use ${c.label}`}
               />
@@ -520,26 +673,55 @@ export function Whiteboard() {
           </div>
         )}
 
-        {/* Pen size */}
-        <div className="flex items-center gap-1">
-          {PEN_SIZES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              title={`Size ${s}`}
-              onClick={() => setPenSize(s)}
-              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${penSize === s ? 'bg-slate-100 dark:bg-white/[0.08]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}
-              aria-label={`Pen size ${s}`}
-            >
-              <span
-                className="block rounded-full"
-                style={{ width: s * 2.5, height: s * 2.5, background: tool === 'eraser' ? '#94a3b8' : color }}
-              />
-            </button>
-          ))}
-        </div>
+        {/* Size: pen dots OR text S/M/L */}
+        {tool === 'text' || editingText ? (
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] font-bold text-slate-400 mr-0.5">Aa</span>
+            {TEXT_SIZES.map((ts) => (
+              <button
+                key={ts.id}
+                type="button"
+                title={`Text ${ts.label}`}
+                onClick={() => {
+                  setTextSize(ts);
+                  if (editingText) setEditingText({ ...editingText, size: ts.size });
+                }}
+                className={`min-w-[28px] h-7 px-1.5 rounded-md text-[11px] font-bold transition-colors ${
+                  (editingText ? editingText.size : textSize.size) === ts.size
+                    ? 'bg-blue-600 text-white'
+                    : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+                }`}
+              >
+                {ts.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            {PEN_SIZES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                title={`Size ${s}`}
+                onClick={() => setPenSize(s)}
+                className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                  penSize === s ? 'bg-slate-100 dark:bg-white/[0.08]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'
+                }`}
+                aria-label={`Pen size ${s}`}
+              >
+                <span
+                  className="block rounded-full"
+                  style={{
+                    width: s * 2.5,
+                    height: s * 2.5,
+                    background: tool === 'eraser' ? '#94a3b8' : color,
+                  }}
+                />
+              </button>
+            ))}
+          </div>
+        )}
 
-        {/* Undo / redo / export / save / clear */}
         <div className="flex items-center gap-1">
           {savedAt && (
             <span className="text-[10px] text-slate-400 dark:text-white/30 hidden sm:inline mr-1">
@@ -556,20 +738,22 @@ export function Whiteboard() {
             disabled={pointer >= doc.strokes.length}
           />
           <ToolBtn
-            label="Export as PNG"
+            label="Export PNG"
             icon={<Download size={14} />}
             onClick={exportPng}
             disabled={visibleStrokes.length === 0}
           />
-          <ToolBtn label="Save now" icon={<Save size={14} />} onClick={() => void save()} disabled={busy} />
-          <ToolBtn label="Clear board" icon={<RotateCcw size={14} />} onClick={clearAll} dangerous />
+          <ToolBtn label="Save" icon={<Save size={14} />} onClick={() => void save()} disabled={busy} />
+          <ToolBtn label="Wipe board" icon={<RotateCcw size={14} />} onClick={clearAll} dangerous />
         </div>
       </div>
 
       <div
         ref={containerRef}
-        className="flex-1 relative"
-        style={{ cursor: tool === 'text' ? 'text' : tool === 'eraser' ? 'cell' : 'crosshair' }}
+        className="flex-1 relative min-h-0"
+        style={{
+          cursor: tool === 'text' ? 'text' : tool === 'eraser' ? 'cell' : 'crosshair',
+        }}
       >
         <canvas
           ref={canvasRef}
@@ -577,42 +761,79 @@ export function Whiteboard() {
           onPointerMove={continueStroke}
           onPointerUp={endStroke}
           onPointerCancel={endStroke}
+          onDoubleClick={onDoubleClick}
           style={{ display: 'block', touchAction: 'none' }}
         />
 
-        {/* Inline text editor */}
+        {/* Text editor — big, obvious, multi-line friendly */}
         {editingText && (
-          <textarea
-            autoFocus
-            value={editingText.value}
-            onChange={(e) => {
-              const v = e.target.value;
-              pendingTextValue.current = v;
-              setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
-            }}
-            onBlur={commitText}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                pendingTextValue.current = '';
-                setEditingText(null);
-              }
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                commitText();
-              }
-            }}
-            className="absolute outline-none border-2 border-dashed border-blue-400 bg-white/95 rounded-md p-2 shadow-md"
-            style={{
-              left: editingText.x,
-              top: editingText.y - 2,
-              minWidth: 140,
-              minHeight: 32,
-              color,
-              font: `${Math.round(penSize * 6)}px ui-sans-serif, system-ui, sans-serif`,
-              zIndex: 10,
-            }}
-            placeholder="Type · Enter to place"
-          />
+          <div
+            className="absolute z-20 flex flex-col gap-1.5"
+            style={{ left: editorStyle.left, top: editorStyle.top, width: Math.min(360, size.w - 24) }}
+          >
+            <textarea
+              ref={textAreaRef}
+              value={editingText.value}
+              rows={Math.min(8, Math.max(2, editingText.value.split('\n').length + 1))}
+              onChange={(e) => {
+                const v = e.target.value;
+                pendingTextValue.current = v;
+                setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
+              }}
+              onBlur={() => {
+                if (skipBlurCommit.current) {
+                  skipBlurCommit.current = false;
+                  return;
+                }
+                // Defer so a click on Done still wins.
+                requestAnimationFrame(() => commitText());
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  cancelText();
+                }
+                // ⌘/Ctrl+Enter places. Plain Enter = new line (natural typing).
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  commitText();
+                }
+              }}
+              className="w-full resize-y outline-none rounded-xl border-2 border-blue-500 bg-white dark:bg-[#1c1c1a] shadow-xl px-3 py-2.5 text-slate-900 dark:text-white/90 placeholder:text-slate-400"
+              style={{
+                font: `600 ${editorFontPx}px ui-sans-serif, system-ui, -apple-system, sans-serif`,
+                lineHeight: '1.35',
+                color: editingText.color,
+                minHeight: 56,
+              }}
+              placeholder="Type here…  ⌘↵ to place"
+            />
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onMouseDown={() => {
+                  skipBlurCommit.current = true;
+                }}
+                onClick={commitText}
+                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-2.5 py-1.5 shadow"
+              >
+                <Check size={13} /> Done
+              </button>
+              <button
+                type="button"
+                onMouseDown={() => {
+                  skipBlurCommit.current = true;
+                }}
+                onClick={cancelText}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-white/[0.06] text-[11px] font-semibold text-slate-600 dark:text-white/60 px-2.5 py-1.5"
+              >
+                <X size={13} /> Cancel
+              </button>
+              <span className="text-[10px] text-slate-400 dark:text-white/30 ml-1 hidden sm:inline">
+                Enter = new line · Esc = cancel
+              </span>
+            </div>
+          </div>
         )}
 
         {loaded && visibleStrokes.length === 0 && !editingText && (
@@ -623,8 +844,7 @@ export function Whiteboard() {
                 Think on the board — not in a deck
               </div>
               <p className="text-[12px] text-slate-400 dark:text-white/35 mt-1.5 leading-relaxed max-w-sm mx-auto">
-                Pick a scaffold, name the problem above, then draw. When it&apos;s solved, wipe clean.
-                Private to you — never an audit trail.
+                Pick a scaffold, or double-click anywhere to type. Private — wipe when done.
               </p>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pointer-events-auto">
                 {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
@@ -642,9 +862,18 @@ export function Whiteboard() {
                 ))}
               </div>
               <p className="mt-3 text-[10px] text-slate-300 dark:text-white/20">
-                Pen · highlighter · text · shapes · Cmd/Ctrl+Z undo
+                Double-click to type · T text · V pen · E eraser · ⌘Z undo
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Quiet tip when board has content */}
+        {loaded && visibleStrokes.length > 0 && !editingText && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none">
+            <span className="text-[10px] font-medium text-slate-400/80 dark:text-white/20 bg-white/70 dark:bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
+              Double-click to type · click text to edit
+            </span>
           </div>
         )}
       </div>
@@ -659,6 +888,7 @@ function ToolBtn({
   onClick,
   disabled,
   dangerous,
+  emphasize,
 }: {
   active?: boolean;
   label: string;
@@ -666,6 +896,7 @@ function ToolBtn({
   onClick: () => void;
   disabled?: boolean;
   dangerous?: boolean;
+  emphasize?: boolean;
 }) {
   return (
     <button
@@ -681,7 +912,9 @@ function ToolBtn({
             ? 'bg-blue-600 text-white'
             : dangerous
               ? 'text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10'
-              : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+              : emphasize
+                ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10'
+                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
       }`}
     >
       {icon}
