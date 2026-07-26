@@ -31,11 +31,11 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
-    title: 'Whiteboard text that doesn’t fight you',
+    title: 'Whiteboard: write on the board, not in a text box',
     tags: ['improvement'],
     highlight: true,
     body: [
-      'Typing on the board is straightforward: double-click anywhere to add a note, click existing text to edit, Enter for a new line, ⌘/Ctrl+Enter or Done to place. Readable S/M/L sizes; tool shortcuts (T/V/E/H). No more tiny dashed boxes that steal Enter.',
+      'Text is ink: click (or double-click) and type right on the surface. No floating card, no Done/Cancel. Click away to place; Esc to cancel. Existing labels open in place. S/M/L sizes and tool shortcuts still apply.',
     ],
   },
   {
