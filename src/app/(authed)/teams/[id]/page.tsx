@@ -16,9 +16,9 @@ import {
   ListTodo,
   AlertTriangle,
 } from 'lucide-react';
-import { TeamForesight } from '@/components/TeamForesight';
 import { TeamDetailSkeleton } from '@/components/SkeletonScreens';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
+import { WORKBENCH_MODULES_ENABLED } from '@/lib/features';
 import dynamic from 'next/dynamic';
 // Heavy interactive SVG canvas — defer it until a viewer opens the modal.
 const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) => m.BirdsEyeView), {
@@ -26,6 +26,11 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
   loading: () => null,
 });
 const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m) => m.ActivityGraph), {
+  ssr: false,
+  loading: () => <div className="h-40 skeleton rounded-xl" />,
+});
+// Predictive engine UI — only mounts when the Foresight tab is open.
+const TeamForesight = dynamic(() => import('@/components/TeamForesight').then((m) => m.TeamForesight), {
   ssr: false,
   loading: () => <div className="h-40 skeleton rounded-xl" />,
 });
@@ -655,9 +660,15 @@ export default function TeamDetailPage() {
               [
                 ['work', isLead ? 'Work' : 'My tasks'],
                 ['projects', 'Projects'],
-                ...(team.modules?.qms?.enabled ? [['qms', 'QMS']] : []),
-                ...(team.modules?.tickets?.enabled ? [['tickets', 'Tickets']] : []),
-                ...(team.modules?.recurring?.enabled ? [['recurring', 'Recurring']] : []),
+                ...(WORKBENCH_MODULES_ENABLED && team.modules?.qms?.enabled
+                  ? [['qms', 'QMS']]
+                  : []),
+                ...(WORKBENCH_MODULES_ENABLED && team.modules?.tickets?.enabled
+                  ? [['tickets', 'Tickets']]
+                  : []),
+                ...(WORKBENCH_MODULES_ENABLED && team.modules?.recurring?.enabled
+                  ? [['recurring', 'Recurring']]
+                  : []),
                 // Foresight is forward-looking — kept last so the team reads
                 // current work first, then the outlook.
                 ...(isLead ? [['foresight', 'Foresight']] : []),
@@ -751,15 +762,17 @@ export default function TeamDetailPage() {
           {view === 'foresight' && isLead && <TeamForesight teamId={id} />}
 
           {/* ── QMS — quality tracking (CSV Activity), opt-in per team ──────── */}
-          {view === 'qms' && team.modules?.qms?.enabled && <QmsPanel teamId={id} isLead={isLead} />}
+          {WORKBENCH_MODULES_ENABLED && view === 'qms' && team.modules?.qms?.enabled && (
+            <QmsPanel teamId={id} isLead={isLead} />
+          )}
 
           {/* ── Tickets — support request queue, opt-in per team ───────────── */}
-          {view === 'tickets' && team.modules?.tickets?.enabled && (
+          {WORKBENCH_MODULES_ENABLED && view === 'tickets' && team.modules?.tickets?.enabled && (
             <TicketsPanel teamId={id} isLead={isLead} members={team.members || []} />
           )}
 
           {/* ── Recurring — scheduled team activities, opt-in per team ──────── */}
-          {view === 'recurring' && team.modules?.recurring?.enabled && (
+          {WORKBENCH_MODULES_ENABLED && view === 'recurring' && team.modules?.recurring?.enabled && (
             <RecurringPanel teamId={id} isLead={isLead} members={team.members || []} />
           )}
 

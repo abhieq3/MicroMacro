@@ -10,12 +10,11 @@ is in order.
 
 ---
 
-## 1. Merge the final hardening PR
+## 1. Deploy the readiness branch
 
-Open https://github.com/abhipatelz/Pragati/pulls and merge the most
-recent PR (titled *"SECURITY: privilege escalation + register loophole + …"*).
-Vercel will redeploy automatically — wait for the green check on the
-deployment dashboard before continuing.
+Open https://github.com/abhieq31/Pragati/pulls and merge the latest
+hardening / readiness PR into `main`. Vercel will redeploy automatically —
+wait for the green check on the deployment dashboard before continuing.
 
 Confirmed: ☐
 
@@ -29,10 +28,13 @@ In **Vercel → Settings → Environment Variables → Production**, confirm:
 |---|---|---|
 | `MONGODB_URI` | Atlas connection string | **YES** |
 | `JWT_SECRET` | Output of `openssl rand -base64 48` (≥16 chars) | **YES — refuses to sign tokens otherwise** |
-| `ADMIN_EMAIL` | `abhipatel33360@gmail.com` | Optional (hardcoded fallback covers it) |
-| `GEMINI_API_KEY` | Your Gemini key | Optional (only enables LLM Copilot) |
+| `ADMIN_EMAIL` | Your admin login email | **YES** — no hardcoded fallback |
+| `GEMINI_API_KEY` | Your Gemini key | Optional (brief polish only; scoring never uses LLM) |
 | `ADMIN_BOOTSTRAP_TOKEN` | **UNSET** | Only set when you specifically need `/bootstrap`; delete + redeploy immediately after. |
 | `ALLOW_PUBLIC_REGISTRATION` | **UNSET** | Never set in production. Public sign-up is permanently off. |
+| `PRAGATI_PREDICTABLE_DEFAULT_PASSWORD` | **UNSET** | Leave unset so create/reset use random one-time temps. |
+| `ERROR_WEBHOOK_URL` | Slack/Discord/custom webhook | Optional — first error signature pings ops. |
+| `NEXT_PUBLIC_FOCUS_MODE` | `1` for mission-only UI | Optional — hides whiteboard + workbench modules. |
 
 Re-deploy once after any change so the new values take effect.
 
@@ -45,7 +47,7 @@ Confirmed: ☐
 From any machine with Node (your laptop is fine), run:
 
 ```bash
-git clone https://github.com/abhipatelz/Pragati && cd Pragati
+git clone https://github.com/abhieq31/Pragati && cd Pragati
 npm install
 npm run smoke-prod https://pragatialm.vercel.app
 ```
@@ -73,7 +75,7 @@ These need a real browser because they touch authenticated paths.
 | # | Action | Expected |
 |---|---|---|
 | 4.1 | Open `https://pragatialm.vercel.app/login` | Pragati gradient mark, no corporate logo |
-| 4.2 | Sign in as `abhipatel33360@gmail.com` | Sidebar footer reads **"Workspace Admin"**, full nav (Dashboard, Projects, Team, People) |
+| 4.2 | Sign in as the account set in `ADMIN_EMAIL` | Sidebar footer reads **"Workspace Admin"**, full nav (Dashboard, Projects, Team, People) |
 | 4.3 | Dashboard | Greeting hero shows shimmering blue→green title, summary chips, project rows |
 | 4.4 | Projects → pick MES project → **Archive project** → confirm | Yellow "Archived" pill appears; project disappears from Dashboard and Projects/Active list |
 | 4.5 | Projects → **Archived** tab → restore | Pill gone, project re-appears in Active |
@@ -141,15 +143,17 @@ verify retention on the cluster's Backup tab.
 
 ## 8. Post-launch (do within 48 hours)
 
-- Add Sentry (or any structured error reporter). Right now errors go to
-  Vercel logs only — fine for ~35 users, not enough for scale.
-- Wire `npm run smoke-prod` into a daily scheduled GitHub Action so any
-  regression in the production-safe state surfaces within 24 hours.
-- Remove the hard-coded admin email from `src/lib/auth.ts` and rely
-  exclusively on `ADMIN_EMAIL` env var. The constant is a safety net for
-  the founder onboarding only.
+- Set `ERROR_WEBHOOK_URL` (Slack/Discord) so first error signatures page
+  someone — errors already persist in Mongo (`ErrorLog`) and the admin
+  console; the webhook is the on-call path.
+- Confirm `npm run smoke-prod` is on a scheduled GitHub Action
+  (`.github/workflows/smoke-prod.yml`) so production-safe state is checked
+  at least daily.
+- Confirm `ADMIN_EMAIL` is set (no personal-email fallback in the repo).
 - Replace `src/lib/rateLimit.ts` (in-memory) with Upstash Redis once you
   scale beyond a single Vercel region.
+- Watch Vercel Speed Insights: target RES ≥ 90, LCP ≤ 2.5s — keep splitting
+  large client components if budgets regress.
 
 ---
 

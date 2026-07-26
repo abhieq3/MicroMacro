@@ -10,7 +10,7 @@ import { handleError, readBody } from '@/lib/http';
 import { UsernameSchema } from '@/lib/validations';
 import { logOperation } from '@/lib/audit';
 import { bustPeopleDirectoryCache } from '@/lib/peopleDirectory';
-import { defaultPassword } from '@/lib/defaultPassword';
+import { issueInitialPassword } from '@/lib/defaultPassword';
 
 export const runtime = 'nodejs';
 
@@ -149,8 +149,8 @@ const CreateBody = z.object({
   name: z.string().min(1).max(120),
   // Corporate login handle (the part before @ in their work email).
   username: UsernameSchema,
-  // Company employee ID. Combined with the first name it forms the
-  // standard default password (FirstName@employeeId).
+  // Company employee ID (identity / roster). Not used for password derivation
+  // unless PRAGATI_PREDICTABLE_DEFAULT_PASSWORD=1 is set.
   employeeId: z.string().trim().min(1).max(40),
   // Real, deliverable work email — REQUIRED at creation. The login identity
   // stays `username@pragati.local` (contributors sign in by username); this
@@ -179,17 +179,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Username already in use' }, { status: 409 });
     }
 
-    const password = defaultPassword(body.name, employeeId);
+    // Random temp by default (shown once). Predictable scheme only with env latch.
+    const issued = issueInitialPassword(body.name, employeeId);
     const user = await User.create({
       email,
       username,
       employeeId,
       name: body.name,
       notifyEmail: body.notifyEmail,
-      passwordHash: bcrypt.hashSync(password, 10),
+      passwordHash: bcrypt.hashSync(issued.password, 10),
       role: 'contributor',
-      // Sign in with the standard default (FirstName@employeeId), then set
-      // your own password on first login.
+      // Always force a personal password on first login (server-enforced).
       mustChangePassword: true,
       // Admin-provisioned accounts must still get the guided tour on first
       // login — the model default is `true` (for migration safety of existing
@@ -208,8 +208,13 @@ export async function POST(req: NextRequest) {
     });
 
     void bustPeopleDirectoryCache();
-    // Deliberately does NOT return the password — the UI never displays it.
-    return NextResponse.json({ user: u(user) });
+    // Return the one-time temp password so the admin can hand it off. Never
+    // stored in plaintext; never logged. Client shows it once then discards.
+    return NextResponse.json({
+      user: u(user),
+      tempPassword: issued.password,
+      isDefault: issued.isDefault,
+    });
   } catch (e) {
     return handleError(e);
   }

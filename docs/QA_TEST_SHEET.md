@@ -170,14 +170,29 @@ Open Bird's-Eye from: **Dashboard (workspace)**, **Team page**, **Project page**
 
 ---
 
-## 10. Build / CI gates (for the dev running the release)
+## 10. Progressive Web App (install)
+
+| # | Test | Expected | P/F |
+|---|---|---|---|
+| 10.1 | Production HTTPS (or localhost): open app in Chrome/Edge. | Manifest loads (`/manifest.webmanifest`); service worker `/sw.js` is active. | |
+| 10.2 | Install banner (when browser fires `beforeinstallprompt`). | Banner appears once; **Install** opens native prompt; **Not now** dismisses and stays dismissed after reload. | |
+| 10.3 | Account menu → **Install app**. | Triggers install when available; hidden when already installed. | |
+| 10.4 | Profile & activity → **Install app** card. | Shows installed state, install button, or iOS Share steps as appropriate. | |
+| 10.5 | After install, open from home screen / dock. | Standalone window (no browser chrome); theme colour / icon correct. | |
+| 10.6 | iOS Safari. | No broken install button; instructions say Share → Add to Home Screen. | |
+| 10.7 | Offline / airplane after install. | App shell may fail network calls (expected) — **must not** show stale task/project data from a cache. | |
+| 10.8 | Dashboard. | **Top 5 Things** panel is gone; Up Next + My tasks still work. | |
+
+---
+
+## 11. Build / CI gates (for the dev running the release)
 
 | # | Command | Expected | P/F |
 |---|---|---|---|
-| 10.1 | `npm run lint` | No new errors (pre-existing warnings only). | |
-| 10.2 | `npm run typecheck` | Passes. | |
-| 10.3 | `npm run test:unit` | All pass. | |
-| 10.4 | `npm run build` | Succeeds. | |
+| 11.1 | `npm run lint` | No new errors (pre-existing warnings only). | |
+| 11.2 | `npm run typecheck` | Passes. | |
+| 11.3 | `npm test` | All pass. | |
+| 11.4 | `npm run build` | Succeeds. | |
 
 ---
 

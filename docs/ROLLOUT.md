@@ -49,30 +49,30 @@ this order; each step takes 30 - 90 seconds.
 | 4 | Open the new project. Use **+ Add task** to seed 5–10 known tasks. Pick assignees from the team-scoped list. | Day-one dashboard isn't empty. |
 | 5 | Back to **Dashboard**. They should see "1 ongoing project · N open tasks · M overdue · K team". This is the view their manager will see. | The dashboard is the promise of the tool; it has to look populated. |
 
-## Contributor sign-in — the convention (keep this off-screen)
+## Contributor sign-in — one-time password handoff
 
-When a lead adds a team member they enter only two things: the person's
-**corporate username** (the part before `@` in their work email) and
-their **employee ID**. The app does NOT show a password anywhere — by
-design. The default password is derived deterministically:
+When an admin adds a team member they enter the person's **corporate
+username** (the part before `@` in their work email), **employee ID**,
+and a real notify email. The server returns a **one-time temporary
+password** (`Pragati-…`) shown once in the UI — copy it and share over
+chat (not email if your policy forbids secrets in mail).
+
+On first sign-in the user **must** set their own password. The force-
+password step is enforced in the UI **and** on every API call except the
+password-change / logout endpoints — a temp session cannot mutate work.
 
 ```
-<first name, lower-case> @ <employee ID>
+Username:  their corporate handle (e.g. priya.sharma)
+Password:  the one-time value from People → Add member (shown once)
 ```
 
-Examples:
-- `Priya Sharma`, employee ID `100245`  → password `priya@100245`
-- `Arjun Mehta`,  employee ID `EMP7781` → password `arjun@EMP7781`
+If an account locks after 5 wrong attempts, unlock it from the People
+page. Prefer **Reset password** when you need a fresh temp — never reuse
+an old secret.
 
-So when a contributor needs to sign in, you tell them verbally:
-*"Username is your company handle (the bit before the @ in your email),
-password is your first name, then @, then your employee ID — all
-lower-case for the name."*
-
-They are never forced to change it; it just works. If an account locks
-after 5 wrong attempts, unlock it from the People page. Nothing about
-contributor login is surfaced in the UI — leads create the member, you
-share the convention with the people who need it.
+> **Legacy verbal convention** (`FirstName@employeeId`) is disabled by
+> default. Only enable with `PRAGATI_PREDICTABLE_DEFAULT_PASSWORD=1` if
+> you truly cannot show a one-time secret at create time.
 
 ## Roles, in one paragraph
 

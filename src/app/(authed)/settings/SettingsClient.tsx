@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/client/api';
 import { Avatar, formatDateTime } from '@/components/ui';
+import { PwaInstallSection } from '@/components/PwaInstall';
 // The contribution heatmap is a sizeable, below-the-fold client component —
 // lazy-load it so it never blocks first paint of the profile page.
 const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m) => m.ActivityGraph), {
@@ -44,8 +45,13 @@ import {
 import { MonogramEditor } from '@/components/MonogramEditor';
 import { linkMeta, type LinkBrand } from '@/lib/links';
 import { ProfileHero } from '@/components/ProfileHero';
-import { DeliveryForesight } from '@/components/DeliveryForesight';
 import { SelfImpactTiles } from '@/components/ProfileStatTiles';
+
+// Foresight panel is below the fold — keep it out of the settings first paint.
+const DeliveryForesight = dynamic(
+  () => import('@/components/DeliveryForesight').then((m) => m.DeliveryForesight),
+  { ssr: false, loading: () => <div className="h-28 rounded-xl bg-slate-50 animate-pulse" /> },
+);
 
 /* ── Profile avatar wrapper ───────────────────────────────────────────────
    Renders the user's monogram avatar with a hover-overlay "edit" hint.
@@ -1580,6 +1586,9 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
           <ActivityGraph />
         </Section>
       </div>
+
+      {/* ── Install as app (PWA) ──────────────────────────────────────────── */}
+      <PwaInstallSection />
 
       {/* ── Daily task email — personal opt-in, then (admin) workspace config ── */}
       <DailyDigestToggle initialUser={initialUser} />

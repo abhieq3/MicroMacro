@@ -14,6 +14,43 @@ export interface CaptureInput {
 }
 
 /**
+ * Optional outbound webhook (Slack, Discord, custom collector, Sentry-style
+ * relay). Set ERROR_WEBHOOK_URL to a POST endpoint that accepts JSON. Never
+ * blocks the request path — fire-and-forget with a hard timeout.
+ */
+async function notifyWebhook(input: CaptureInput & { message: string }): Promise<void> {
+  const url = process.env.ERROR_WEBHOOK_URL?.trim();
+  if (!url) return;
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 1500);
+  try {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: `[Pragati ${input.source || 'server'}] ${input.message}`,
+        source: input.source || 'server',
+        message: input.message,
+        path: input.path || '',
+        method: input.method || '',
+        statusCode: input.statusCode ?? 500,
+        userName: input.userName || '',
+        digest: input.digest || '',
+        // Truncate stack for chat relays; full stack stays in Mongo.
+        stack: (input.stack || '').slice(0, 1500),
+        at: new Date().toISOString(),
+      }),
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+  } catch {
+    // Webhook failure is non-fatal.
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/**
  * Persist a production error for admin monitoring. Best-effort and fully
  * self-contained: it opens its own DB connection and never throws, so a logging
  * failure can never turn into a second error on the request path.
@@ -21,6 +58,9 @@ export interface CaptureInput {
  * Repeated occurrences of the same message are rolled up (count++, lastSeenAt)
  * within a short window rather than flooding the collection, so the admin view
  * shows "this broke 42 times" instead of 42 identical rows.
+ *
+ * When ERROR_WEBHOOK_URL is set, the first occurrence in a rollup window also
+ * pings the webhook so on-call sees it without opening the admin console.
  */
 export async function captureError(input: CaptureInput): Promise<void> {
   try {
@@ -48,6 +88,9 @@ export async function captureError(input: CaptureInput): Promise<void> {
       userName: input.userName || '',
       lastSeenAt: new Date(),
     });
+
+    // Only the first occurrence of a signature notifies — avoids webhook spam.
+    void notifyWebhook({ ...input, message });
   } catch {
     // Swallow — monitoring must never break the request it is monitoring.
   }

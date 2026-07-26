@@ -8,17 +8,29 @@ import { PragatiMark } from './PragatiMark';
 import { CurrentUserProvider } from './CurrentUserContext';
 import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
-import { CommandPalette } from './CommandPalette';
-import { SidebarCalendar, clearSidebarCalendarCache } from './SidebarCalendar';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
+import { WHITEBOARD_ENABLED } from '@/lib/features';
+import { PwaProvider } from './PwaProvider';
+import { PwaInstallBanner, PwaInstallMenuItem } from './PwaInstall';
+
+// Heavy shell chrome — lazy so first paint of every authed page does not pay
+// for command palette search + calendar month math until the shell is idle.
+const CommandPalette = dynamic(() => import('./CommandPalette').then((m) => m.CommandPalette), {
+  ssr: false,
+  loading: () => null,
+});
+const SidebarCalendar = dynamic(() => import('./SidebarCalendar').then((m) => m.SidebarCalendar), {
+  ssr: false,
+  loading: () => null,
+});
 
 // Wipe every module-level, cross-mount client cache that could carry one
 // user's data into the next session sharing this browser tab (e.g. team-leader
 // logs out, admin logs in — without this, the admin would briefly see the
 // team-leader's calendar/activity until their own fetch overwrites it).
 function clearSessionScopedCaches() {
-  clearSidebarCalendarCache();
+  void import('./SidebarCalendar').then((m) => m.clearSidebarCalendarCache());
   clearActivityGraphCache();
 }
 
@@ -342,8 +354,9 @@ export default function AppShell({
           T: '/teams',
           m: '/my-day',
           M: '/my-day',
-          w: '/whiteboard',
-          W: '/whiteboard',
+          ...(WHITEBOARD_ENABLED
+            ? { w: '/whiteboard', W: '/whiteboard' }
+            : {}),
         };
         if (dest[e.key]) {
           e.preventDefault();
@@ -518,6 +531,8 @@ export default function AppShell({
           </Link>
         );
       })}
+
+      <PwaInstallMenuItem dark={dark} onDone={() => setAccountMenuOpen(false)} />
 
       <div className="my-1.5 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }} />
       <button
@@ -706,14 +721,13 @@ export default function AppShell({
             those stay pinned closest to the footer. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* Personal surfaces — My Day + Whiteboard, pinned together just above
-            the footer. Both are "yours alone": capture and thinking, kept apart
-            from the shared org nav above and always reachable without scroll. */}
+        {/* Personal surfaces — My Day (+ Whiteboard when enabled), pinned just
+            above the footer. Both are "yours alone": capture and thinking. */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
           style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}
         >
-          {[myDayItem, whiteboardItem].map((n) => {
+          {[myDayItem, ...(WHITEBOARD_ENABLED ? [whiteboardItem] : [])].map((n) => {
             const Icon = n.icon;
             const active = isActive(n.href);
             return (
@@ -870,6 +884,7 @@ export default function AppShell({
   );
 
   return (
+    <PwaProvider>
     <CurrentUserProvider user={user}>
       <AvatarRegistryProvider
         seed={{
@@ -1039,6 +1054,7 @@ export default function AppShell({
                   }}
                 />
               )}
+              <PwaInstallBanner />
               <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden">
                 {children}
               </div>
@@ -1173,13 +1189,15 @@ export default function AppShell({
                 </Link>
                 {/* Whiteboard doesn't fit the 5-tab bottom bar, so the sheet is
                 its mobile entry point — the canvas itself is touch-native. */}
-                <Link
-                  href="/whiteboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
-                >
-                  <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
-                </Link>
+                {WHITEBOARD_ENABLED && (
+                  <Link
+                    href="/whiteboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
+                  </Link>
+                )}
                 {/* Admin-only links — these never fit in the 4-tab bottom nav, so
                 this is the only mobile entry point for Logs (and Platform for
                 master-admins). */}
@@ -1351,7 +1369,9 @@ export default function AppShell({
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
                     { keys: ['G', 'M'], label: 'My Day' },
-                    { keys: ['G', 'W'], label: 'Whiteboard' },
+                    ...(WHITEBOARD_ENABLED
+                      ? [{ keys: ['G', 'W'], label: 'Whiteboard' }]
+                      : []),
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (
@@ -1455,5 +1475,6 @@ export default function AppShell({
         </div>
       </AvatarRegistryProvider>
     </CurrentUserProvider>
+    </PwaProvider>
   );
 }

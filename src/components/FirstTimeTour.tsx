@@ -62,8 +62,8 @@ function buildSteps(role: string): Step[] {
       mobileTarget: '[data-mobile-tour="nav-dashboard"]',
       title: 'Your Dashboard',
       body: isLead
-        ? "Your whole scope at a glance — project health, who's loaded, what's overdue or about to slip, and the Bird's-eye button for the full tree. Plus Top 5 Things: the team's weekly signals, unfiltered — read them like a radar."
-        : "Your work at a glance — what's due today, what's coming up next, and the projects you're part of. Each week, write your Top 5 Things: five lines on what you're seeing. They go straight to the whole team — no layers in between.",
+        ? "Your whole scope at a glance — project health, who's loaded, what's overdue or about to slip, and the Bird's-eye button for the full tree."
+        : "Your work at a glance — what's due today, what's coming up next, and the projects you're part of.",
       icon: LayoutDashboard,
       iconBg: '#E3F2FD',
       iconColor: '#1565C0',
