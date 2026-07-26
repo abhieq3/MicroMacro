@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Login quotes: Naval Ravikant only',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Login rotates a large Naval-only library (focus, judgment, leverage, shipping, long-term games, saying no). No attribution on screen. Per-device ledger never repeats a line until the full set has been shown. Loading copy calmed — less busyness theater.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Recurring stays as tasks; project detail leads with exceptions',
     tags: ['improvement'],
     highlight: true,
