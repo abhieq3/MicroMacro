@@ -20,8 +20,6 @@ import {
   Circle,
   ArrowRight as ArrowIcon,
   Download,
-  Check,
-  X,
 } from 'lucide-react';
 import { api } from '@/lib/client/api';
 import { BOARD_TEMPLATES, templateById, type BoardTemplateId } from '@/lib/whiteboardTemplates';
@@ -29,12 +27,11 @@ import { BOARD_TEMPLATES, templateById, type BoardTemplateId } from '@/lib/white
 /**
  * Whiteboard — personal thinking surface.
  *
- * Text is intentionally easy (Jensen would not fight a UI to write on a board):
- *   • Double-click anywhere → type a note
- *   • Text tool + click → type
- *   • Click existing text → edit it
- *   • Enter = new line; ⌘/Ctrl+Enter or Done = place; Esc = cancel
- * Font sizes are real marker sizes (S/M/L), not pen-width * magic.
+ * Text is ink on the board — no floating form:
+ *   • Click (text tool) / double-click anywhere → type right there
+ *   • Click existing text → edit in place
+ *   • Click away or blur → placed; Esc → cancel
+ *   • Enter = new line. No Done/Cancel chrome.
  */
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'rect' | 'ellipse' | 'arrow';
@@ -113,10 +110,12 @@ export function Whiteboard() {
   const pendingTextValue = useRef('');
   const promptRef = useRef(prompt);
   promptRef.current = prompt;
-  // Avoid blur-commit when Done/Cancel mousedown steals focus.
-  const skipBlurCommit = useRef(false);
-
   const visibleStrokes = doc.strokes.slice(0, pointer);
+  // While editing, hide the stroke being replaced so it doesn't double under the caret.
+  const paintStrokes =
+    editingText && typeof editingText.replaceIndex === 'number'
+      ? visibleStrokes.filter((_, i) => i !== editingText.replaceIndex)
+      : visibleStrokes;
 
   useLayoutEffect(() => {
     if (!containerRef.current) return;
@@ -205,7 +204,8 @@ export function Whiteboard() {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     repaint(ctx);
-  }, [size, doc, pointer]); // eslint-disable-line react-hooks/exhaustive-deps
+    // editingText: hide stroke under caret while editing
+  }, [size, doc, pointer, editingText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const measureTextWidth = useCallback((ctx: CanvasRenderingContext2D, s: Stroke): number => {
     if (!s.text) return 0;
@@ -248,9 +248,9 @@ export function Whiteboard() {
           ctx.fillRect(x - 0.6, y - 0.6, 1.2, 1.2);
         }
       }
-      for (const s of visibleStrokes) paintStroke(ctx, s);
+      for (const s of paintStrokes) paintStroke(ctx, s);
     },
-    [size.w, size.h, visibleStrokes],
+    [size.w, size.h, paintStrokes],
   );
 
   function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
@@ -346,9 +346,10 @@ export function Whiteboard() {
     color?: string;
     size?: number;
   }) {
+    // Stay on the board — only a few px from edges so caret stays visible.
     const edit: TextEdit = {
-      x: Math.max(8, Math.min(at.x, size.w - 200)),
-      y: Math.max(8, Math.min(at.y, size.h - 80)),
+      x: Math.max(4, Math.min(at.x, size.w - 40)),
+      y: Math.max(4, Math.min(at.y, size.h - 28)),
       value: at.value ?? '',
       color: at.color ?? color,
       size: at.size ?? textSize.size,
@@ -556,14 +557,14 @@ export function Whiteboard() {
   }, [pointer, doc.strokes.length]);
 
   const editorFontPx = editingText ? textFontPx(editingText.size) : textFontPx(textSize.size);
+  const editorLineH = editingText ? textLineHeight(editingText.size) : textLineHeight(textSize.size);
 
-  // Keep editor on-canvas: clamp position so the box stays usable.
-  const editorStyle = editingText
-    ? {
-        left: Math.min(editingText.x, Math.max(8, size.w - 280)),
-        top: Math.min(editingText.y, Math.max(8, size.h - 120)),
-      }
-    : { left: 0, top: 0 };
+  // Grow width with content so it feels like writing, not a fixed box.
+  const editorMinW = 48;
+  const editorMaxW = Math.max(120, size.w - (editingText?.x ?? 0) - 8);
+  const approxCharW = editorFontPx * 0.55;
+  const longestLine = (editingText?.value || ' ').split('\n').reduce((m, ln) => Math.max(m, ln.length), 1);
+  const editorW = Math.min(editorMaxW, Math.max(editorMinW, longestLine * approxCharW + 16));
 
   return (
     <div
@@ -629,7 +630,7 @@ export function Whiteboard() {
           />
           <ToolBtn
             active={tool === 'text'}
-            label="Text (T) — or double-click the board"
+            label="Text (T) — click the board and write"
             icon={<TypeIcon size={14} />}
             onClick={() => setTool('text')}
             emphasize
@@ -765,75 +766,46 @@ export function Whiteboard() {
           style={{ display: 'block', touchAction: 'none' }}
         />
 
-        {/* Text editor — big, obvious, multi-line friendly */}
+        {/* Inline caret on the board — transparent ink, no form chrome */}
         {editingText && (
-          <div
-            className="absolute z-20 flex flex-col gap-1.5"
-            style={{ left: editorStyle.left, top: editorStyle.top, width: Math.min(360, size.w - 24) }}
-          >
-            <textarea
-              ref={textAreaRef}
-              value={editingText.value}
-              rows={Math.min(8, Math.max(2, editingText.value.split('\n').length + 1))}
-              onChange={(e) => {
-                const v = e.target.value;
-                pendingTextValue.current = v;
-                setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
-              }}
-              onBlur={() => {
-                if (skipBlurCommit.current) {
-                  skipBlurCommit.current = false;
-                  return;
-                }
-                // Defer so a click on Done still wins.
-                requestAnimationFrame(() => commitText());
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  cancelText();
-                }
-                // ⌘/Ctrl+Enter places. Plain Enter = new line (natural typing).
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  commitText();
-                }
-              }}
-              className="w-full resize-y outline-none rounded-xl border-2 border-blue-500 bg-white dark:bg-[#1c1c1a] shadow-xl px-3 py-2.5 text-slate-900 dark:text-white/90 placeholder:text-slate-400"
-              style={{
-                font: `600 ${editorFontPx}px ui-sans-serif, system-ui, -apple-system, sans-serif`,
-                lineHeight: '1.35',
-                color: editingText.color,
-                minHeight: 56,
-              }}
-              placeholder="Type here…  ⌘↵ to place"
-            />
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onMouseDown={() => {
-                  skipBlurCommit.current = true;
-                }}
-                onClick={commitText}
-                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-2.5 py-1.5 shadow"
-              >
-                <Check size={13} /> Done
-              </button>
-              <button
-                type="button"
-                onMouseDown={() => {
-                  skipBlurCommit.current = true;
-                }}
-                onClick={cancelText}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-white/[0.06] text-[11px] font-semibold text-slate-600 dark:text-white/60 px-2.5 py-1.5"
-              >
-                <X size={13} /> Cancel
-              </button>
-              <span className="text-[10px] text-slate-400 dark:text-white/30 ml-1 hidden sm:inline">
-                Enter = new line · Esc = cancel
-              </span>
-            </div>
-          </div>
+          <textarea
+            ref={textAreaRef}
+            value={editingText.value}
+            rows={Math.min(12, Math.max(1, editingText.value.split('\n').length))}
+            spellCheck={false}
+            onChange={(e) => {
+              const v = e.target.value;
+              pendingTextValue.current = v;
+              setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
+            }}
+            onBlur={() => {
+              // Next tick so a second click can open another note cleanly.
+              requestAnimationFrame(() => commitText());
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                cancelText();
+              }
+            }}
+            className="absolute z-20 resize-none overflow-hidden p-0 m-0 border-0 outline-none shadow-none ring-0 bg-transparent"
+            style={{
+              left: editingText.x,
+              top: editingText.y,
+              width: editorW,
+              minHeight: editorLineH,
+              font: `600 ${editorFontPx}px ui-sans-serif, system-ui, -apple-system, sans-serif`,
+              lineHeight: `${editorLineH}px`,
+              color: editingText.color,
+              caretColor: editingText.color,
+              // Match canvas textBaseline 'top'
+              padding: 0,
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'break-word',
+            }}
+            aria-label="Write on the board"
+          />
         )}
 
         {loaded && visibleStrokes.length === 0 && !editingText && (
@@ -844,7 +816,7 @@ export function Whiteboard() {
                 Think on the board — not in a deck
               </div>
               <p className="text-[12px] text-slate-400 dark:text-white/35 mt-1.5 leading-relaxed max-w-sm mx-auto">
-                Pick a scaffold, or double-click anywhere to type. Private — wipe when done.
+                Pick a scaffold, or select Text and click where you want to write. Private — wipe when done.
               </p>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pointer-events-auto">
                 {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
@@ -862,18 +834,9 @@ export function Whiteboard() {
                 ))}
               </div>
               <p className="mt-3 text-[10px] text-slate-300 dark:text-white/20">
-                Double-click to type · T text · V pen · E eraser · ⌘Z undo
+                Click to write · T text · V pen · E eraser · ⌘Z undo
               </p>
             </div>
-          </div>
-        )}
-
-        {/* Quiet tip when board has content */}
-        {loaded && visibleStrokes.length > 0 && !editingText && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-none">
-            <span className="text-[10px] font-medium text-slate-400/80 dark:text-white/20 bg-white/70 dark:bg-black/20 px-2 py-0.5 rounded-full backdrop-blur-sm">
-              Double-click to type · click text to edit
-            </span>
           </div>
         )}
       </div>
