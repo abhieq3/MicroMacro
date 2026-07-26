@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Recurring stays as tasks; project detail leads with exceptions',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'System “Recurring Activities” holder projects no longer appear in project lists — occurrences remain normal tasks (calendar, My Day, team Recurring panel). Project detail: Clear first overdue strip, hide zero stats, collapse finished phases, open work sorted above done.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Speed-of-light navigation on every page',
     tags: ['improvement'],
     highlight: true,

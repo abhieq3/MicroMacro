@@ -74,6 +74,7 @@ interface CandidateProject {
   code?: string;
   name?: string;
   isPersonal?: boolean;
+  isSystem?: boolean;
   ownerId?: any;
 }
 
@@ -113,7 +114,7 @@ export function computeFlowStrip(args: ComputeStripArgs): FlowSignalPayload | nu
   // drops private overlays the viewer doesn't own.
   const projectById = new Map<string, CandidateProject>();
   for (const p of projects) {
-    if (p.isPersonal || (p.code && String(p.code).startsWith('PRSN-'))) continue;
+    if (p.isPersonal || p.isSystem || (p.code && String(p.code).startsWith('PRSN-'))) continue;
     projectById.set(String(p._id), p);
   }
 

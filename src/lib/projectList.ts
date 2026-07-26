@@ -85,7 +85,7 @@ export async function listProjectsForUser(
 
   const projects = await Project.find(q)
     .select(
-      'code ccNo refLabel name description lifecycle status priority teamId ownerId startDate dueDate completedAt gxpImpact archived archivedAt archivedBy isPersonal personal createdAt',
+      'code ccNo refLabel name description lifecycle status priority teamId ownerId startDate dueDate completedAt gxpImpact archived archivedAt archivedBy isPersonal personal isSystem createdAt',
     )
     .sort({ createdAt: -1 })
     .limit(200)
