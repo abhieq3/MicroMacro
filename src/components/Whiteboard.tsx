@@ -25,13 +25,15 @@ import { api } from '@/lib/client/api';
 import { BOARD_TEMPLATES, templateById, type BoardTemplateId } from '@/lib/whiteboardTemplates';
 
 /**
- * Whiteboard — personal thinking surface.
+ * Whiteboard — personal thinking surface (marker, not a form).
  *
- * Text is ink on the board — no floating form:
- *   • Click (text tool) / double-click anywhere → type right there
+ * Text is drawn ON the canvas with a blinking caret. A 1×1 off-screen input
+ * only captures the keyboard (mobile soft-keyboard + desktop). There is never
+ * a visible text box, Done button, or placeholder card.
+ *
+ *   • Text tool + click / double-click → type at that point
  *   • Click existing text → edit in place
- *   • Click away or blur → placed; Esc → cancel
- *   • Enter = new line. No Done/Cancel chrome.
+ *   • Click away → ink commits; Esc → cancel
  */
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'rect' | 'ellipse' | 'arrow';
@@ -90,7 +92,8 @@ interface TextEdit {
 export function Whiteboard() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  /** Off-screen keyboard sink — never visible. */
+  const keySinkRef = useRef<HTMLTextAreaElement>(null);
   const [size, setSize] = useState({ w: 800, h: 480 });
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
@@ -104,10 +107,12 @@ export function Whiteboard() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingText, setEditingText] = useState<TextEdit | null>(null);
+  const editingRef = useRef<TextEdit | null>(null);
+  editingRef.current = editingText;
+  const [caretOn, setCaretOn] = useState(true);
   const [prompt, setPrompt] = useState('');
   const [loaded, setLoaded] = useState(false);
   const dirty = useRef(false);
-  const pendingTextValue = useRef('');
   const promptRef = useRef(prompt);
   promptRef.current = prompt;
   const visibleStrokes = doc.strokes.slice(0, pointer);
@@ -148,13 +153,28 @@ export function Whiteboard() {
     return () => clearTimeout(t);
   }, [doc, pointer, prompt]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Focus the off-screen keyboard sink whenever text edit starts / moves.
   useEffect(() => {
-    if (editingText && textAreaRef.current) {
-      textAreaRef.current.focus();
-      const len = textAreaRef.current.value.length;
-      textAreaRef.current.setSelectionRange(len, len);
+    if (!editingText) return;
+    const el = keySinkRef.current;
+    if (!el) return;
+    el.value = editingText.value;
+    el.focus({ preventScroll: true });
+    const len = el.value.length;
+    try {
+      el.setSelectionRange(len, len);
+    } catch {
+      /* some mobile browsers */
     }
   }, [editingText?.x, editingText?.y, editingText?.replaceIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Blinking caret while typing on the canvas.
+  useEffect(() => {
+    if (!editingText) return;
+    setCaretOn(true);
+    const id = window.setInterval(() => setCaretOn((v) => !v), 530);
+    return () => window.clearInterval(id);
+  }, [editingText?.x, editingText?.y, editingText?.value]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save() {
     setBusy(true);
@@ -239,6 +259,35 @@ export function Whiteboard() {
     [measureTextWidth],
   );
 
+  function paintTextRun(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    strokeSize: number,
+    strokeColor: string,
+    withCaret: boolean,
+  ) {
+    const px = textFontPx(strokeSize);
+    const lh = textLineHeight(strokeSize);
+    ctx.fillStyle = strokeColor;
+    ctx.font = `600 ${px}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
+    ctx.textBaseline = 'top';
+    const lines = (text || '').split('\n');
+    const drawLines = lines.length ? lines : [''];
+    drawLines.forEach((ln, i) => {
+      if (ln) ctx.fillText(ln, x, y + i * lh);
+    });
+    if (withCaret && caretOn) {
+      const last = drawLines[drawLines.length - 1] || '';
+      const tw = ctx.measureText(last).width;
+      const cx = x + tw + 1;
+      const cy = y + (drawLines.length - 1) * lh;
+      ctx.fillStyle = strokeColor;
+      ctx.fillRect(cx, cy, 2, px);
+    }
+  }
+
   const repaint = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       ctx.clearRect(0, 0, size.w, size.h);
@@ -249,20 +298,26 @@ export function Whiteboard() {
         }
       }
       for (const s of paintStrokes) paintStroke(ctx, s);
+      // Live typing — ink + caret on the canvas (no DOM box).
+      if (editingText) {
+        paintTextRun(
+          ctx,
+          editingText.value,
+          editingText.x,
+          editingText.y,
+          editingText.size,
+          editingText.color,
+          true,
+        );
+      }
     },
-    [size.w, size.h, paintStrokes],
+    // caretOn must repaint the blink
+    [size.w, size.h, paintStrokes, editingText, caretOn], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
     if (s.tool === 'text' && s.text) {
-      const px = textFontPx(s.size);
-      const lh = textLineHeight(s.size);
-      ctx.fillStyle = s.color;
-      ctx.font = `600 ${px}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-      ctx.textBaseline = 'top';
-      const lines = s.text.split('\n');
-      const p = s.points[0];
-      lines.forEach((ln, i) => ctx.fillText(ln, p.x, p.y + i * lh));
+      paintTextRun(ctx, s.text, s.points[0].x, s.points[0].y, s.size, s.color, false);
       return;
     }
     if (s.points.length < 2) return;
@@ -346,7 +401,6 @@ export function Whiteboard() {
     color?: string;
     size?: number;
   }) {
-    // Stay on the board — only a few px from edges so caret stays visible.
     const edit: TextEdit = {
       x: Math.max(4, Math.min(at.x, size.w - 40)),
       y: Math.max(4, Math.min(at.y, size.h - 28)),
@@ -355,19 +409,42 @@ export function Whiteboard() {
       size: at.size ?? textSize.size,
       replaceIndex: at.replaceIndex,
     };
-    pendingTextValue.current = edit.value;
     setEditingText(edit);
     setTool('text');
+    setCaretOn(true);
   }
 
   const SHAPE_TOOLS: Tool[] = ['rect', 'ellipse', 'arrow'];
 
   function startStroke(e: ReactPointerEvent<HTMLCanvasElement>) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    // While typing, ignore canvas draws (editor owns focus).
-    if (editingText) return;
     const p = pointFromEvent(e);
     if (!p) return;
+
+    // Click while typing → place current ink first.
+    if (editingRef.current) {
+      e.preventDefault();
+      commitText();
+      if (tool === 'text') {
+        // Place next note at this click (after React applies the commit).
+        const hit = hitTextIndex(p, visibleStrokes);
+        const next =
+          hit !== null
+            ? {
+                x: visibleStrokes[hit].points[0].x,
+                y: visibleStrokes[hit].points[0].y,
+                value: visibleStrokes[hit].text || '',
+                replaceIndex: hit,
+                color: visibleStrokes[hit].color,
+                size: visibleStrokes[hit].size,
+              }
+            : { x: p.x, y: p.y };
+        window.setTimeout(() => openTextEditor(next), 0);
+        return;
+      }
+      // Pen / shapes: end typing only; user draws on the next stroke.
+      return;
+    }
 
     // Click existing text → edit (any tool except eraser).
     if (tool !== 'eraser') {
@@ -463,25 +540,25 @@ export function Whiteboard() {
   }
 
   function commitText() {
-    if (!editingText) return;
-    const value = (pendingTextValue.current || editingText.value).replace(/\s+$/, '');
-    pendingTextValue.current = '';
+    const cur = editingRef.current;
+    if (!cur) return;
+    const value = cur.value.replace(/\s+$/, '');
     if (!value.trim()) {
       setEditingText(null);
+      if (keySinkRef.current) keySinkRef.current.value = '';
       return;
     }
     const s: Stroke = {
       tool: 'text',
-      color: editingText.color,
-      size: editingText.size,
-      points: [{ x: editingText.x, y: editingText.y }],
+      color: cur.color,
+      size: cur.size,
+      points: [{ x: cur.x, y: cur.y }],
       text: value,
     };
 
-    if (typeof editingText.replaceIndex === 'number') {
-      // Replace in the visible prefix; drop any redo tail.
+    if (typeof cur.replaceIndex === 'number') {
       const base = doc.strokes.slice(0, pointer);
-      const next = base.map((st, i) => (i === editingText.replaceIndex ? s : st));
+      const next = base.map((st, i) => (i === cur.replaceIndex ? s : st));
       setDoc({ strokes: next });
       setPointer(next.length);
     } else {
@@ -489,12 +566,26 @@ export function Whiteboard() {
       setPointer((n) => n + 1);
     }
     setEditingText(null);
+    if (keySinkRef.current) keySinkRef.current.value = '';
     dirty.current = true;
   }
 
   function cancelText() {
-    pendingTextValue.current = '';
     setEditingText(null);
+    if (keySinkRef.current) keySinkRef.current.value = '';
+  }
+
+  function onKeySinkChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const v = e.target.value;
+    setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
+    setCaretOn(true);
+  }
+
+  function onKeySinkKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelText();
+    }
   }
 
   function undo() {
@@ -555,16 +646,6 @@ export function Whiteboard() {
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointer, doc.strokes.length]);
-
-  const editorFontPx = editingText ? textFontPx(editingText.size) : textFontPx(textSize.size);
-  const editorLineH = editingText ? textLineHeight(editingText.size) : textLineHeight(textSize.size);
-
-  // Grow width with content so it feels like writing, not a fixed box.
-  const editorMinW = 48;
-  const editorMaxW = Math.max(120, size.w - (editingText?.x ?? 0) - 8);
-  const approxCharW = editorFontPx * 0.55;
-  const longestLine = (editingText?.value || ' ').split('\n').reduce((m, ln) => Math.max(m, ln.length), 1);
-  const editorW = Math.min(editorMaxW, Math.max(editorMinW, longestLine * approxCharW + 16));
 
   return (
     <div
@@ -766,47 +847,40 @@ export function Whiteboard() {
           style={{ display: 'block', touchAction: 'none' }}
         />
 
-        {/* Inline caret on the board — transparent ink, no form chrome */}
-        {editingText && (
-          <textarea
-            ref={textAreaRef}
-            value={editingText.value}
-            rows={Math.min(12, Math.max(1, editingText.value.split('\n').length))}
-            spellCheck={false}
-            onChange={(e) => {
-              const v = e.target.value;
-              pendingTextValue.current = v;
-              setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
-            }}
-            onBlur={() => {
-              // Next tick so a second click can open another note cleanly.
-              requestAnimationFrame(() => commitText());
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                cancelText();
-              }
-            }}
-            className="absolute z-20 resize-none overflow-hidden p-0 m-0 border-0 outline-none shadow-none ring-0 bg-transparent"
-            style={{
-              left: editingText.x,
-              top: editingText.y,
-              width: editorW,
-              minHeight: editorLineH,
-              font: `600 ${editorFontPx}px ui-sans-serif, system-ui, -apple-system, sans-serif`,
-              lineHeight: `${editorLineH}px`,
-              color: editingText.color,
-              caretColor: editingText.color,
-              // Match canvas textBaseline 'top'
-              padding: 0,
-              whiteSpace: 'pre-wrap',
-              overflowWrap: 'break-word',
-            }}
-            aria-label="Write on the board"
-          />
-        )}
+        {/* Keyboard sink only — never painted. Text is drawn on the canvas. */}
+        <textarea
+          ref={keySinkRef}
+          aria-label="Type on the whiteboard"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          tabIndex={editingText ? 0 : -1}
+          value={editingText?.value ?? ''}
+          onChange={onKeySinkChange}
+          onKeyDown={onKeySinkKeyDown}
+          onBlur={() => {
+            if (!editingRef.current) return;
+            // Delay so a canvas click can commit + open a new note without racing.
+            window.setTimeout(() => {
+              if (editingRef.current) commitText();
+            }, 0);
+          }}
+          style={{
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            width: 1,
+            height: 1,
+            opacity: 0,
+            pointerEvents: 'none',
+            border: 0,
+            padding: 0,
+            margin: 0,
+            overflow: 'hidden',
+            zIndex: -1,
+          }}
+        />
 
         {loaded && visibleStrokes.length === 0 && !editingText && (
           <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -816,7 +890,7 @@ export function Whiteboard() {
                 Think on the board — not in a deck
               </div>
               <p className="text-[12px] text-slate-400 dark:text-white/35 mt-1.5 leading-relaxed max-w-sm mx-auto">
-                Pick a scaffold, or select Text and click where you want to write. Private — wipe when done.
+                Pick a scaffold, or press T and click the board — type with the marker. Private — wipe when done.
               </p>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pointer-events-auto">
                 {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
