@@ -49,10 +49,10 @@ function buildSteps(role: string): Step[] {
 
   const steps: Step[] = [
     {
-      title: 'Welcome to Pragati!',
-      body: `A 40-second walk through where things live — tuned to what you can do as ${
-        isAdmin ? 'the workspace admin' : isLead ? 'a team lead' : 'a contributor'
-      }. Skip whenever you like.`,
+      title: 'Pragati',
+      body: `Judgment over busywork. A short map of where things live as ${
+        isAdmin ? 'admin' : isLead ? 'lead' : 'contributor'
+      }. Skip anytime.`,
       icon: Sparkles,
       iconBg: '#DBEAFE',
       iconColor: '#1565C0',
@@ -60,10 +60,10 @@ function buildSteps(role: string): Step[] {
     {
       target: '[data-tour="nav-dashboard"]',
       mobileTarget: '[data-mobile-tour="nav-dashboard"]',
-      title: 'Your Dashboard',
+      title: 'Dashboard',
       body: isLead
-        ? "Your whole scope at a glance — project health, who's loaded, what's overdue or about to slip, and the Bird's-eye button for the full tree."
-        : "Your work at a glance — what's due today, what's coming up next, and the projects you're part of.",
+        ? 'Exceptions first: overdue, load, slip risk. Bird’s-eye when you need the whole tree.'
+        : 'What is due, what is late, which projects you are on. Signal, not noise.',
       icon: LayoutDashboard,
       iconBg: '#E3F2FD',
       iconColor: '#1565C0',
@@ -72,10 +72,10 @@ function buildSteps(role: string): Step[] {
     {
       target: '[data-tour="nav-projects"]',
       mobileTarget: '[data-mobile-tour="nav-projects"]',
-      title: isLead ? 'Run projects' : 'Your projects',
+      title: 'Projects',
       body: isLead
-        ? 'Create shared projects from ready-made lifecycle templates or your own, run the Kanban board, and assign work. Drag a card to change status — it saves instantly.'
-        : 'Tasks assigned to you live here, on Kanban boards. You also get private personal projects — a space only you can see, ever.',
+        ? 'Lifecycle projects, boards, ownership. Status changes that matter are signed. Drag to update.'
+        : 'Your assigned work on boards. Personal projects stay private to you.',
       icon: Kanban,
       iconBg: '#F3E5F5',
       iconColor: '#7B1FA2',
@@ -84,10 +84,10 @@ function buildSteps(role: string): Step[] {
     {
       target: '[data-tour="nav-teams"]',
       mobileTarget: '[data-mobile-tour="nav-teams"]',
-      title: isLead ? 'Lead your teams' : 'Your teams',
+      title: 'Teams',
       body: isLead
-        ? "Create teams, pick members, and steer delivery. Each team can switch on extra modules — Quality (QMS) tracking and a Support-ticket queue — right from its settings. Every team page also opens its own bird's-eye view and exports reports."
-        : 'See the teams you belong to and the colleagues you deliver with. If your team has Quality (QMS) tracking or a ticket queue switched on, you’ll find them as tabs on the team page.',
+        ? 'Long-term people, delivery scope. Optional QMS / tickets / recurring — off until you turn them on.'
+        : 'Your teams and the people you ship with. Extra modules appear only if the team enabled them.',
       icon: Users,
       iconBg: '#E8F5E9',
       iconColor: '#2E7D32',
@@ -95,8 +95,8 @@ function buildSteps(role: string): Step[] {
     },
     {
       target: '[data-tour="nav-whiteboard"]',
-      title: 'Think here first',
-      body: 'Your private whiteboard — start from First principles, Unblock, Decide, or Delivery path. Name the problem, draw the path, wipe when done. No slides. No audit trail.',
+      title: 'Whiteboard',
+      body: 'Clear thinking before status. Private. Templates for first principles, unblock, decide, delivery. Wipe when solved.',
       icon: Presentation,
       iconBg: '#E0F7FA',
       iconColor: '#0E7490',
@@ -104,24 +104,11 @@ function buildSteps(role: string): Step[] {
     },
   ];
 
-  if (isLead) {
-    steps.push({
-      target: '[data-tour="nav-teams"]',
-      mobileTarget: '[data-mobile-tour="nav-teams"]',
-      title: 'Switch on team modules',
-      body: 'New: when you create or edit a team, toggle on Quality (QMS) tracking — a configurable tracker where you define your own columns — and a lightweight Support-ticket queue. They stay hidden until you turn them on, so teams that don’t need them never see the clutter.',
-      icon: Sparkles,
-      iconBg: '#E0F7FA',
-      iconColor: '#0E7490',
-      side: 'right',
-    });
-  }
-
   if (isAdmin) {
     steps.push({
       target: '[data-tour="nav-console"]',
-      title: 'Administration',
-      body: 'The Console shows the whole workspace — counts, locked accounts, pending invites, recent audit activity. People manages accounts; Logs is the immutable trail.',
+      title: 'Console',
+      body: 'Workspace truth: people, locks, invites, audit. Reputation compounds — the log is the ledger.',
       icon: ShieldCheck,
       iconBg: '#FEF3C7',
       iconColor: '#B45309',

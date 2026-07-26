@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Naval product pass: less theater, more judgment',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Milestones are a quiet toast — no confetti, no fanfare. Task-complete lines are factual. Onboarding is shorter and exceptions-first. Product principles written down (docs/PRODUCT_PRINCIPLES.md): judgment over busyness, leverage, long-term reputation, delete before optimize.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Login quotes: Naval Ravikant only',
     tags: ['improvement'],
     highlight: true,

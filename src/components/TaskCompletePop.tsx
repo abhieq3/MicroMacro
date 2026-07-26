@@ -17,15 +17,14 @@ import { CheckCircle2 } from 'lucide-react';
 
 // Short, varied encouragement lines. Each task picks one deterministically
 // from a stable hash of its id, so the same task always reads the same way.
+// Factual, short — no pep. The close is the signal.
 const LINES = [
-  'You nailed it.',
+  'Done.',
   'Cleared.',
-  'Shipped — clean.',
-  'Off the board.',
-  'Locked in.',
-  'Done and dusted.',
-  'Closed out.',
-  'Top of the list.',
+  'Closed.',
+  'Shipped.',
+  'Off the list.',
+  'Recorded.',
 ] as const;
 
 // Type-specific lead-in. Picks a verb that matches what was actually closed —
