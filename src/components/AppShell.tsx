@@ -12,7 +12,7 @@ import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
 import { WHITEBOARD_ENABLED } from '@/lib/features';
 import { PwaProvider } from './PwaProvider';
-import { PwaInstallBanner, PwaInstallMenuItem } from './PwaInstall';
+import { PwaInstallMenuItem } from './PwaInstall';
 
 // Heavy shell chrome — lazy so first paint of every authed page does not pay
 // for command palette search + calendar month math until the shell is idle.
@@ -1054,7 +1054,6 @@ export default function AppShell({
                   }}
                 />
               )}
-              <PwaInstallBanner />
               <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden">
                 {children}
               </div>

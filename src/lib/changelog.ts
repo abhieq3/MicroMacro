@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Quiet install; lead brief without fluff',
+    tags: ['improvement', 'feature'],
+    highlight: true,
+    body: [
+      'Install-as-app no longer interrupts the work path: the big banner is gone. A single quiet “Install app” line may appear in the account menu only after ~14 days of use (and several active days). Full instructions stay on Profile → Install app, anytime.',
+      'Daily brief for leads: team exceptions first, then your one task. Subject lines carry team counts. Zero metrics are hidden. Motivational “Momentum” quotes are deleted. Foresight only shows when there is real pressure. Leads get Open board + Open My Day.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Install Pragati as an app; retire Top 5 Things',
     tags: ['feature', 'improvement'],
     highlight: true,
