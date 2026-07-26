@@ -96,7 +96,7 @@ function buildSteps(role: string): Step[] {
     {
       target: '[data-tour="nav-whiteboard"]',
       title: 'Think here first',
-      body: 'A full-screen whiteboard, yours alone. Sketch the problem before you argue the solution — no slides, no deck, markers and thinking. When it’s solved, wipe it clean and move on.',
+      body: 'Your private whiteboard — start from First principles, Unblock, Decide, or Delivery path. Name the problem, draw the path, wipe when done. No slides. No audit trail.',
       icon: Presentation,
       iconBg: '#E0F7FA',
       iconColor: '#0E7490',

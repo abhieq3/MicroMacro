@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Whiteboard that people will actually use; Jensen-only login quotes',
+    tags: ['feature', 'improvement'],
+    highlight: true,
+    body: [
+      'Whiteboard: thinking scaffolds (First principles, Unblock, Decide, Delivery path), a sticky “Working on” problem line that autosaves, and an empty state that starts from a template — not a blank freeze. Still private; still wipe-clean.',
+      'Login quotes: Jensen Huang only, expanded set (including later public lines on reinvention and practice). Devices re-cycle from a fresh ledger so the new lines appear.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Delete the morning-priority banner',
     tags: ['improvement'],
     highlight: true,

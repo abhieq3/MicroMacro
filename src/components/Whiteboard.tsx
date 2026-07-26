@@ -22,27 +22,17 @@ import {
   Download,
 } from 'lucide-react';
 import { api } from '@/lib/client/api';
-// onSaveToNotes removed — whiteboard is a scratch surface; notes are independent
+import { BOARD_TEMPLATES, templateById, type BoardTemplateId } from '@/lib/whiteboardTemplates';
 
 /**
- * Whiteboard — a free-form drawing surface for My Day.
+ * Whiteboard — personal thinking surface (Jensen-style).
  *
- * Marker on board, nothing precious. Drag to draw, switch tools, rub
- * things out, start again. Designed for *thinking out loud* — the kind of
- * scrappy sketch a team would draw on a real whiteboard when defending an
- * idea, not the polished node-link diagrams a mind-map app produces.
+ * Real whiteboards win because they force structure: name the problem, strip
+ * to truths, decide. A blank canvas alone freezes people — so we ship light
+ * *thinking scaffolds* (templates) the user can wipe anytime. Marker on board,
+ * nothing precious. Owner-private; not an audit record.
  *
- * Implementation notes:
- *   - One <canvas> with unified pointer handlers. No SVG, no React-DOM
- *     redraws on every stroke — we paint directly with the 2D context so
- *     a busy session stays at 60fps.
- *   - Strokes are stored as polylines (array of points + color + width)
- *     so undo/redo is just a list-pointer move. The canvas is repainted
- *     from the polyline list whenever the pointer changes.
- *   - Autosaves the polyline list as JSON (`PUT /api/scratch/whiteboard`)
- *     ~1.5s after the last stroke. Owner-private — same posture as the
- *     mind-map endpoint it replaced.
- *   - Canvas backing-store is sized to DPR for crisp lines on retina.
+ * Implementation: one canvas, polylines, autosave. Templates are just strokes.
  */
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'rect' | 'ellipse' | 'arrow';
@@ -85,10 +75,14 @@ export function Whiteboard() {
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [busy, setBusy] = useState(false);
   const [editingText, setEditingText] = useState<{ x: number; y: number; value: string } | null>(null);
+  const [prompt, setPrompt] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const dirty = useRef(false);
   // Ref so commitText always reads the latest typed value even when called
   // from onBlur (which fires before the React re-render that would update state).
   const pendingTextValue = useRef('');
+  const promptRef = useRef(prompt);
+  promptRef.current = prompt;
 
   /** Visible (un-redone) prefix of the stroke list. */
   const visibleStrokes = doc.strokes.slice(0, pointer);
@@ -106,16 +100,18 @@ export function Whiteboard() {
 
   // Initial load from the server.
   useEffect(() => {
-    api<{ strokes: Stroke[]; updatedAt?: string }>('/scratch/whiteboard')
+    api<{ strokes: Stroke[]; prompt?: string; updatedAt?: string }>('/scratch/whiteboard')
       .then((d) => {
         const strokes = Array.isArray(d?.strokes) ? d.strokes : [];
         setDoc({ strokes });
         setPointer(strokes.length);
+        setPrompt(typeof d?.prompt === 'string' ? d.prompt : '');
         if (d?.updatedAt) setSavedAt(new Date(d.updatedAt));
       })
       .catch(() => {
         /* empty board */
-      });
+      })
+      .finally(() => setLoaded(true));
   }, []);
 
   // Debounced autosave — fires 1.5s after the last change.
@@ -125,13 +121,16 @@ export function Whiteboard() {
       void save();
     }, 1500);
     return () => clearTimeout(t);
-  }, [doc, pointer]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [doc, pointer, prompt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save() {
     setBusy(true);
     try {
       const strokes = doc.strokes.slice(0, pointer);
-      await api('/scratch/whiteboard', { method: 'PUT', body: { strokes } });
+      await api('/scratch/whiteboard', {
+        method: 'PUT',
+        body: { strokes, prompt: promptRef.current.slice(0, 280) },
+      });
       setSavedAt(new Date());
       dirty.current = false;
     } catch {
@@ -139,6 +138,21 @@ export function Whiteboard() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function applyTemplate(id: BoardTemplateId) {
+    const tpl = templateById(id);
+    if (visibleStrokes.length > 0) {
+      const ok = window.confirm(
+        'Replace the current board with this template? Unsaved strokes on the canvas will be wiped after the next save.',
+      );
+      if (!ok) return;
+    }
+    const strokes = tpl.build() as Stroke[];
+    setDoc({ strokes });
+    setPointer(strokes.length);
+    if (tpl.prompt) setPrompt(tpl.prompt);
+    dirty.current = true;
   }
 
   // ── Canvas rendering ─────────────────────────────────────────────────
@@ -370,9 +384,10 @@ export function Whiteboard() {
   }
 
   function clearAll() {
-    if (!confirm("Erase the whole board? This can't be undone after the next save.")) return;
+    if (!confirm("Wipe the board? Strokes and the problem line clear after the next save.")) return;
     setDoc({ strokes: [] });
     setPointer(0);
+    setPrompt('');
     dirty.current = true;
   }
 
@@ -396,6 +411,50 @@ export function Whiteboard() {
       className="h-full bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden flex flex-col"
       style={{ minHeight: 460 }}
     >
+      {/* Problem line — the board exists to answer this. Autosaved with strokes. */}
+      <div className="shrink-0 px-3 pt-2.5 pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
+        <label className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30 mb-1">
+          Working on
+        </label>
+        <input
+          type="text"
+          value={prompt}
+          maxLength={280}
+          onChange={(e) => {
+            setPrompt(e.target.value);
+            dirty.current = true;
+          }}
+          placeholder="Name the problem in one line — then draw the path."
+          className="w-full bg-transparent text-[14px] font-semibold text-slate-800 dark:text-white/90 placeholder:text-slate-300 dark:placeholder:text-white/20 outline-none border-0 p-0"
+        />
+      </div>
+
+      {/* Thinking scaffolds — why people actually open a board. */}
+      <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] overflow-x-auto">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/25 shrink-0 mr-0.5">
+          Start from
+        </span>
+        {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
+          <button
+            key={tpl.id}
+            type="button"
+            title={tpl.blurb}
+            onClick={() => applyTemplate(tpl.id)}
+            className="shrink-0 rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:text-white/60 hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          >
+            {tpl.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          title="Empty board"
+          onClick={() => applyTemplate('blank')}
+          className="shrink-0 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white/60"
+        >
+          Blank
+        </button>
+      </div>
+
       <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] flex-wrap">
         {/* Tool group */}
         <div className="flex items-center gap-1">
@@ -556,15 +615,35 @@ export function Whiteboard() {
           />
         )}
 
-        {visibleStrokes.length === 0 && !editingText && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center max-w-sm">
-              <Pen size={26} className="mx-auto mb-2 text-slate-300" />
-              <div className="text-sm font-bold text-slate-500">Start drawing</div>
-              <div className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Drag to draw. Switch to highlighter, eraser, or text. Undo with Cmd/Ctrl + Z. Nothing precious
-                — start over any time.
+        {loaded && visibleStrokes.length === 0 && !editingText && (
+          <div className="absolute inset-0 flex items-center justify-center p-4">
+            <div className="text-center max-w-lg w-full">
+              <Pen size={22} className="mx-auto mb-2 text-slate-300 dark:text-white/25" />
+              <div className="text-sm font-bold text-slate-700 dark:text-white/80">
+                Think on the board — not in a deck
               </div>
+              <p className="text-[12px] text-slate-400 dark:text-white/35 mt-1.5 leading-relaxed max-w-sm mx-auto">
+                Pick a scaffold, name the problem above, then draw. When it&apos;s solved, wipe clean.
+                Private to you — never an audit trail.
+              </p>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pointer-events-auto">
+                {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => applyTemplate(tpl.id)}
+                    className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3 py-2.5 hover:border-blue-300 dark:hover:border-blue-400/40 transition-colors"
+                  >
+                    <div className="text-[12px] font-bold text-slate-800 dark:text-white/85">{tpl.label}</div>
+                    <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 leading-snug">
+                      {tpl.blurb}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-3 text-[10px] text-slate-300 dark:text-white/20">
+                Pen · highlighter · text · shapes · Cmd/Ctrl+Z undo
+              </p>
             </div>
           </div>
         )}
