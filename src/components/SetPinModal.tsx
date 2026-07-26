@@ -3,12 +3,10 @@ import { useState } from 'react';
 import { api } from '@/lib/client/api';
 import { KeyRound, ShieldCheck } from 'lucide-react';
 
-// Quick-PIN setup prompt. Shown from the user's SECOND login onward so the
-// first session can focus on the password change + tour without piling on a
-// third blocking modal. The user can dismiss with "Maybe later" — they'll be
-// re-offered the next time they sign in, and can always set it up from
-// Settings. The PIN never replaces the password — it only re-unlocks an idle
-// session on this trusted device.
+// Quick-PIN setup prompt. Offered from login ≥ 3 (AppShell gate) so day one
+// is never password + PIN + welcome stacked. User can dismiss "Maybe later"
+// or set PIN anytime in Settings. PIN never replaces password — only unlocks
+// an idle session on this trusted device.
 export function SetPinModal({ onDone, onDismiss }: { onDone: () => void; onDismiss?: () => void }) {
   const [pin, setPin] = useState('');
   const [confirm, setConfirm] = useState('');

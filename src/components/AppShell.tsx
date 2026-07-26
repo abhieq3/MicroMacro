@@ -42,14 +42,12 @@ const ForcePasswordModal = dynamic(() => import('./ForcePasswordModal').then((m)
   ssr: false,
   loading: () => null,
 });
-// Mandatory Quick-PIN setup on first login — lazy so it stays out of the bundle
-// for everyone who already has a PIN.
+// Quick-PIN setup (login 3+) — lazy so day-one users never download it.
 const SetPinModal = dynamic(() => import('./SetPinModal').then((m) => m.SetPinModal), {
   ssr: false,
   loading: () => null,
 });
-// Guided "spotlight" product tour for first-time users — lazy so its portal,
-// rect-tracking, and step data stay out of the bundle for returning users.
+// One-card first-login welcome — lazy; returning users never pay for it.
 const FirstTimeTour = dynamic(() => import('./FirstTimeTour').then((m) => m.FirstTimeTour), {
   ssr: false,
   loading: () => null,
@@ -147,12 +145,10 @@ export default function AppShell({
   const [idleWarning, setIdleWarning] = useState(false);
   const [dark, toggleDark] = useDarkMode(initialDark);
   const [mustChangePw, setMustChangePw] = useState(!!user.mustChangePassword);
-  // Show the PIN modal only when ALL of these hold:
-  //  • the user doesn't already have a PIN
-  //  • they've completed at least 2 full logins (first visit is busy with
-  //    password change + onboarding tour)
-  //  • they haven't dismissed the prompt this session with "Maybe later"
-  const shouldOfferPin = !user.hasPin && (user.loginCount ?? 0) >= 2 && !user.pinPromptDismissedAt;
+  // PIN is never day-one. First login is password (if required) + one welcome
+  // action only. Offer Quick PIN from the 3rd successful login so drop-in
+  // users aren't piled with a second modal.
+  const shouldOfferPin = !user.hasPin && (user.loginCount ?? 0) >= 3 && !user.pinPromptDismissedAt;
   const [needsPin, setNeedsPin] = useState(shouldOfferPin);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -1306,10 +1302,8 @@ export default function AppShell({
             />
           )}
 
-          {/* Quick-PIN prompt — only after the password step (if any) is cleared,
-          and from the user's second login onward (see shouldOfferPin above).
-          Dismissable: "Maybe later" records pinPromptDismissedAt so we stop
-          blocking and re-offer gently next session. */}
+          {/* Quick-PIN — after password (if any), login ≥ 3 only. "Maybe later"
+          sets pinPromptDismissedAt so we stop blocking day-to-day. */}
           {!mustChangePw && needsPin && (
             <SetPinModal
               onDone={() => {
@@ -1327,11 +1321,8 @@ export default function AppShell({
             />
           )}
 
-          {/* Guided product tour — gated behind the forced-password step so the
-          two full-screen overlays never stack on a brand-new account. The
-          component is itself the source of truth on whether to open: it
-          checks `alreadySeen` (server) and a localStorage fast-path, and
-          POSTs /api/me/tour-seen on dismissal so it never reappears. */}
+          {/* One-card welcome — never stacks on force-password. Marks tour-seen
+          on dismiss (server + localStorage) so it never reappears. */}
           {!mustChangePw && <FirstTimeTour alreadySeen={!!user.hasSeenTour} role={user.role} />}
 
           {/* Sign-out confirmation — fixed centered modal, works in both expanded and collapsed sidebar */}

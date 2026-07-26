@@ -58,6 +58,16 @@ Speed is a feature. Waiting without feedback is disrespect.
 - Instant progress on navigation. Prefetch. Light loading shells.
 - Prefer calm copy over carnival loading lines.
 
+## 7b. First login is a one-shot
+
+Most first-time users drop after the first session. Day one must feel
+inevitable, not like homework.
+
+- At most one forced step (set password if temp). Then one welcome card with
+  **one** next action by role. Skip forever.
+- No multi-step spotlight tours. No PIN on day one (offer from login 3+).
+- Empty states teach by doing: one CTA, not a three-card syllabus.
+
 ## 8. Clear thinking
 
 If you cannot put it on a whiteboard, you do not understand it yet.

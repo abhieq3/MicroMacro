@@ -116,11 +116,10 @@ const UserSchema = new Schema(
     hasSeenTour: { type: Boolean, default: true },
 
     // ── Login history (for deferring blocking onboarding prompts) ───────
-    // loginCount lets us defer the Quick-PIN setup modal until the user's
-    // SECOND login — first time around they get the password-change flow
-    // and the tour; PIN is offered the next time they sign in, when the
-    // workflow is already familiar. Counts successful full logins only
-    // (PIN unlocks don't increment, by design).
+    // loginCount defers Quick-PIN until login ≥ 3 — day one is password
+    // (if required) + one welcome action only. Drop-in users must not face
+    // a modal pile-up. Counts successful full logins only (PIN unlocks
+    // don't increment, by design).
     loginCount: { type: Number, default: 0 },
     // pinPromptDismissedAt: the user dismissed the Set-PIN prompt and we
     // should not block them with it again for some time. We re-offer it

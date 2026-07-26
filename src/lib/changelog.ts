@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'First login: one action, then the product',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'First-time users often leave after one session. Day one is now password (if temp) + a single welcome card with one next action by role — skip forever. No multi-step spotlight tour. Quick PIN waits until login 3+. Empty dashboard states show one CTA that teaches by doing.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Naval product pass: less theater, more judgment',
     tags: ['improvement'],
     highlight: true,
