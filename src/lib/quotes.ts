@@ -1,21 +1,18 @@
 /**
- * Login-screen wisdom — Jensen Huang only.
+ * Login-screen wisdom — Naval Ravikant only.
  *
- * Every line is drawn from Jensen Huang (NVIDIA founder & CEO): keynotes,
- * earnings/product talks, interviews, and university / commencement addresses
- * (incl. Stanford GSB, Caltech, NTU). Themes map to what Pragati is for:
- * mission first, resilience, urgency, ownership, intellectual honesty,
- * first principles, craft, and finishing.
+ * Lines are drawn from Naval’s public writing and talks (Twitter/X essays,
+ * podcasts, “How to Get Rich”, Almanack-style compilations of his own words).
+ * Curated strictly to what Pragati is for: clear thinking, focus, judgment,
+ * leverage, shipping, long-term play, and cutting the unessential — not
+ * status, vanity metrics, or abstract wealth-porn.
  *
  * Display rule: NO attribution is EVER rendered. The login page shows the
  * line only. `author` is an internal curation key.
  *
- * Keep this library current: when Jensen publishes a durable line that maps
- * to doing the work (not product marketing slogans), append it here and bump
- * `QUOTES_LEDGER_VERSION` in the login page so devices re-cycle cleanly.
- *
- * No-repeat: the login page rotates a per-device unseen ledger until the
- * whole set is exhausted, then resets.
+ * No-repeat: the login page keeps a per-device ledger of seen indices and
+ * never repeats a quote until every line in the library has been shown once.
+ * When you expand this list, bump the ledger key on the login page (vN).
  */
 
 export interface Quote {
@@ -23,129 +20,227 @@ export interface Quote {
   author: string; // internal only — never rendered
 }
 
-const J = 'Jensen Huang';
+const N = 'Naval Ravikant';
 
 export const BUILTIN_QUOTES: Quote[] = [
-  // ── Mission ───────────────────────────────────────────────────────────────
-  { text: 'Run the company with the mission as the boss. The mission is the CEO.', author: J },
+  // ── Focus / one thing ─────────────────────────────────────────────────────
+  { text: 'The most important skill for getting rich is becoming a perpetual learner.', author: N },
+  { text: 'Play long-term games with long-term people.', author: N },
+  { text: 'Escape competition through authenticity.', author: N },
+  { text: 'Specific knowledge is found by pursuing your genuine curiosity.', author: N },
+  { text: 'If you can’t decide, the answer is no.', author: N },
+  { text: 'Desire is a contract you make with yourself to be unhappy until you get what you want.', author: N },
+  { text: 'Clear thinkers don’t use jargon.', author: N },
+  { text: 'The less you want, the freer you are.', author: N },
   {
-    text: 'Find something you love to do, then do it with all of your heart and the whole of your effort.',
-    author: J,
+    text: 'A busy calendar and a busy mind will destroy your ability to do great things in this world.',
+    author: N,
   },
-  {
-    text: 'There is no reason to be the best in the world at something that does not matter. Pick something hard and worth doing.',
-    author: J,
-  },
-  {
-    text: 'Keep the main thing the main thing. Prioritize relentlessly — decide the most important thing, and do it.',
-    author: J,
-  },
-  { text: 'The condition of the company is the condition of the CEO.', author: J },
+  { text: 'Earn with your mind, not your time.', author: N },
 
-  // ── Resilience / suffering ────────────────────────────────────────────────
+  // ── Leverage / judgment ───────────────────────────────────────────────────
+  { text: 'Judgment is the ability to combine knowledge and skills into decisions.', author: N },
+  { text: 'You will get rich by giving society what it wants but does not yet know how to get — at scale.', author: N },
   {
-    text: 'Greatness is not intelligence. Greatness comes from character — and character is formed out of people who suffered.',
-    author: J,
+    text: 'Code and media are permissionless leverage. They’re the leverage behind the newly rich.',
+    author: N,
   },
-  { text: 'I wish upon you ample doses of pain and suffering.', author: J },
-  { text: 'The single most important quality for success is resilience.', author: J },
+  { text: 'Labor leverage is what your grandparents used. Capital leverage is what your parents used. Code leverage is what you use.', author: N },
+  { text: 'Embrace accountability and take business risks under your own name.', author: N },
+  { text: 'The most leveraged skill is judgment — knowing what to do when.', author: N },
   {
-    text: 'People with very high expectations have very low resilience — and resilience matters in success.',
-    author: J,
+    text: 'Pick an industry where you can play long-term games with long-term people.',
+    author: N,
   },
-  { text: 'Nobody who did anything great did it the easy way. Suffering refines you.', author: J },
-  { text: 'You do not know you have grit until it is tested.', author: J },
-  {
-    text: 'I do not like to suffer. I just realized that to do anything great, you are going to go through suffering.',
-    author: J,
-  },
+  { text: 'Productize yourself. Find product-market fit between what you love and what the world needs.', author: N },
+  { text: 'Scale what works. Don’t scale what doesn’t.', author: N },
 
-  // ── Urgency / paranoia ────────────────────────────────────────────────────
-  { text: 'Our company is always thirty days from going out of business.', author: J },
-  { text: 'Hope is not a strategy.', author: J },
-  { text: 'Run toward the danger, not away from it.', author: J },
-  { text: 'Complacency is the enemy. Stay paranoid about what actually matters.', author: J },
-  { text: 'Speed is the best moat. Move with urgency and with conviction.', author: J },
-  { text: 'If you are not inventing the future, someone else will invent it for you.', author: J },
-
-  // ── Ownership ─────────────────────────────────────────────────────────────
-  { text: 'Everybody is the CEO of their own work.', author: J },
-  { text: 'Do not be a victim. Take ownership of the outcome.', author: J },
-  { text: 'Delegate, but never abdicate.', author: J },
-  { text: 'You have to be willing to do the work that others will not.', author: J },
+  // ── Execution / shipping / work ───────────────────────────────────────────
+  { text: 'Inspiration is perishable. Act on it immediately.', author: N },
+  { text: 'The way to get out of the competition trap is to be authentic — figure out what’s unique about you.', author: N },
+  { text: 'Doing things means you have to do things you don’t want to do.', author: N },
   {
-    text: 'When you see the opportunity, act decisively and with conviction. Then commit completely.',
-    author: J,
+    text: 'You make your own luck if you stay at it long enough, if you stay persistent enough, and if you’re willing to work hard enough.',
+    author: N,
   },
-  { text: 'My will to survive exceeds almost everybody else’s will to kill me.', author: J },
-
-  // ── Learning / honesty ────────────────────────────────────────────────────
-  { text: 'Intellectual honesty is being honest with yourself about what you do not know.', author: J },
-  { text: 'Ask for help. It is not a weakness — I ask for help all the time.', author: J },
+  { text: 'Hard choices, easy life. Easy choices, hard life.', author: N },
+  { text: 'The best jobs are neither decreed nor degreed. They are creative expressions of continuous learners.', author: N },
+  { text: 'Become the best in the world at what you do. Keep redefining what you do until this is true.', author: N },
+  { text: 'Set and enforce an aspirational personal hourly rate.', author: N },
+  { text: 'If you can outsource something or not do something for less than your hourly rate, outsource it or don’t do it.', author: N },
   {
-    text: 'I give feedback in front of everyone. Feedback is learning — why should only one person get to learn?',
-    author: J,
-  },
-  { text: 'The more you learn, the more you realize how much you have left to learn.', author: J },
-  {
-    text: 'You want people to tell you the truth. Create an environment where the truth can be spoken.',
-    author: J,
+    text: 'Work as hard as you can. Even though who you work with and what you work on are more important than how hard you work.',
+    author: N,
   },
 
-  // ── First principles / strategy ───────────────────────────────────────────
-  { text: 'Strategy is not words. Strategy is action.', author: J },
+  // ── Clarity / thinking / first principles ─────────────────────────────────
+  { text: 'The fundamental delusion: there is something out there that will make me happy and fulfilled forever.', author: N },
+  { text: 'A rational person can find peace by cultivating indifference to things outside of their control.', author: N },
+  { text: 'Read what you love until you love to read.', author: N },
+  { text: 'The older the problem, the older the solution.', author: N },
   {
-    text: 'Reason from first principles. Reduce the problem to what is fundamentally true, then build up from there.',
-    author: J,
+    text: 'If you can’t see yourself working with someone for life, don’t work with them for a day.',
+    author: N,
   },
-  { text: 'We do not have a five-year plan. We work on the plan every single day.', author: J },
-  { text: 'Do a few things exceptionally well rather than many things adequately.', author: J },
+  { text: 'Value your time at an absurdly high rate. And then use that to make decisions.', author: N },
+  { text: 'The means of learning are abundant. The desire to learn is scarce.', author: N },
+  { text: 'Don’t take yourself so seriously. You’re just a monkey with a plan.', author: N },
+  { text: 'All the real benefits in life come from compound interest.', author: N },
   {
-    text: 'If you cannot explain it simply on a whiteboard, you do not understand it yet.',
-    author: J,
-  },
-  {
-    text: 'The job of a leader is to simplify the complicated — then make the hard call.',
-    author: J,
-  },
-
-  // ── AI era (2023–2025 talks) — work, not product slogans ──────────────────
-  {
-    text: 'The more you use AI, the smarter you become at using AI — skill compounds with practice.',
-    author: J,
-  },
-  {
-    text: 'Software is eating the world. AI is eating software. Adapt how you work, or be left behind.',
-    author: J,
-  },
-  {
-    text: 'You have to reinvent yourself constantly. The world does not slow down for you.',
-    author: J,
-  },
-  {
-    text: 'Computing is becoming a new industrial revolution. The companies that learn fastest will win.',
-    author: J,
+    text: 'Compound interest applies to relationships, knowledge, and skills as much as to money.',
+    author: N,
   },
 
-  // ── Standards / craft ─────────────────────────────────────────────────────
-  { text: 'Perfection is not achievable, but in chasing it you reach excellence.', author: J },
+  // ── Teams / trust / long games (maps to GxP delivery work) ────────────────
+  { text: 'When forced to choose, choose your reputation over money.', author: N },
+  { text: 'You will not get rich renting out your time. You must own equity — a piece of a business — to gain your financial freedom.', author: N },
   {
-    text: 'Treat every task as if it is your first — bring the same enthusiasm and the same care every time.',
-    author: J,
+    text: 'Follow your intellectual curiosity more than whatever is “hot” right now. Hot and new is temporary. Curiosity compounds.',
+    author: N,
   },
-  { text: 'It is not about how many things you start. It is about what you finish.', author: J },
-  { text: 'Excellence is a habit. Ship the standard you want others to copy.', author: J },
+  { text: 'Learn to sell. Learn to build. If you can do both, you will be unstoppable.', author: N },
+  { text: 'Arm yourself with specific knowledge, accountability, and leverage.', author: N },
+  {
+    text: 'Specific knowledge is knowledge that you cannot be trained for. If society can train you, it can train someone else and replace you.',
+    author: N,
+  },
+  {
+    text: 'The internet has massively broadened the possible space of careers. Most people haven’t figured this out yet.',
+    author: N,
+  },
+  { text: 'Pick business partners with high intelligence, energy, and integrity — and don’t compromise on integrity.', author: N },
+  {
+    text: 'Status is a zero-sum game. Wealth is a positive-sum game. Choose carefully which game you’re playing at work.',
+    author: N,
+  },
+  { text: 'The most important person to impress is yourself. If you can do that, everyone else will follow.', author: N },
 
-  // ── Team ──────────────────────────────────────────────────────────────────
-  { text: 'Surround yourself with people who challenge you, not people who comfort you.', author: J },
+  // ── Priorities / saying no / simplicity (product + project management) ────
+  { text: 'Saying no frees you up to say yes when it matters.', author: N },
   {
-    text: 'The art of leadership is helping ordinary people achieve extraordinary things together.',
-    author: J,
+    text: 'The perfect project is one that is interesting, important, and that only you can do — or that you are uniquely suited to do.',
+    author: N,
   },
-  { text: 'A great company is built by people who care about the work more than the credit.', author: J },
+  { text: 'Busy is a decision. Busy is not a badge of honor.', author: N },
+  { text: 'Optimize for peace of mind, not for the appearance of busyness.', author: N },
   {
-    text: 'Hire for character and for the will to do hard things — skills can be taught.',
-    author: J,
+    text: 'A calendar filled with meetings is not a sign of importance. It is often a sign of a lack of priorities.',
+    author: N,
+  },
+  { text: 'Be present above all else.', author: N },
+  {
+    text: 'The modern struggle: lonely but never alone, connected but not relating, always online but never present.',
+    author: N,
+  },
+  { text: 'Meditation is intermittent fasting for the mind.', author: N },
+  { text: 'Happiness is a choice and a skill — and the skill is mostly about not over-identifying with every thought.', author: N },
+
+  // ── Progress / compounding / delivery ─────────────────────────────────────
+  {
+    text: 'If you have nothing in your life, but you have at least one person that loves you unconditionally, it’ll do wonders for your self-esteem.',
+    author: N,
+  },
+  { text: 'Your goal in life is to find the people, business, project, or art that needs you the most.', author: N },
+  {
+    text: 'The most important thing is to be able to break down your goals into small, achievable pieces and then execute on those pieces day after day.',
+    author: N,
+  },
+  { text: 'You’ll never be free until you free yourself from the desire for other people’s approval.', author: N },
+  {
+    text: 'Don’t spend your time making other people happy. Other people being happy is their problem. It’s not your problem.',
+    author: N,
+  },
+  {
+    text: 'The three big ones in life are wealth, health, and happiness. We pursue them in that order, but their importance is reverse.',
+    author: N,
+  },
+  { text: 'Health, love, and your mission — in that order. Nothing else matters.', author: N },
+  {
+    text: 'A good founder can manage small teams and build products. A great founder can also articulate a vision that attracts talent and capital.',
+    author: N,
+  },
+  {
+    text: 'Technology is the set of things that don’t quite work yet. Once something works, it’s no longer technology — it’s just infrastructure.',
+    author: N,
+  },
+  {
+    text: 'Spend more time making the product better than explaining why the product is already good enough.',
+    author: N,
+  },
+
+  // ── Accountability / honesty at work ──────────────────────────────────────
+  { text: 'Tell the truth. It’s easier.', author: N },
+  { text: 'Praise specifically, criticize generally.', author: N },
+  {
+    text: 'The people who succeed over the long run are the ones who are willing to take the short-term pain for the long-term gain.',
+    author: N,
+  },
+  {
+    text: 'If you can’t see yourself working with someone for the rest of your life, don’t work with them for a day.',
+    author: N,
+  },
+  { text: 'A rational person never stays angry for long — anger is a signal, not a state.', author: N },
+  {
+    text: 'The best way to get what you want in negotiation is to deserve it — and to be ready to walk away.',
+    author: N,
+  },
+  {
+    text: 'Don’t keep score. Help people without keeping a ledger. The best networks are built on generosity, not transactions.',
+    author: N,
+  },
+  {
+    text: 'Your reputation is the only thing you take with you from one room to the next. Guard it like equity.',
+    author: N,
+  },
+  {
+    text: 'In a long-term game, it seems that everybody is making each other rich. In a short-term game, it seems like everybody is making themselves rich.',
+    author: N,
+  },
+  {
+    text: 'The older I get, the more I realize how much outcomes come from patience and consistency, not from intensity spikes.',
+    author: N,
+  },
+
+  // ── Applied to knowledge work & tools like Pragati ────────────────────────
+  {
+    text: 'Information is abundant. Attention and judgment are scarce. Spend them carefully.',
+    author: N,
+  },
+  {
+    text: 'A good process beats a good mood. Build systems that work when motivation doesn’t.',
+    author: N,
+  },
+  {
+    text: 'The goal is not to be busy. The goal is to have free time and still create things that matter.',
+    author: N,
+  },
+  {
+    text: 'If you can’t explain your plan simply, you don’t understand it well enough to execute it.',
+    author: N,
+  },
+  {
+    text: 'Ship, learn, iterate. Perfect is a delay tactic dressed up as standards.',
+    author: N,
+  },
+  {
+    text: 'Most of what you think you need to do today can be deleted. Start by deleting.',
+    author: N,
+  },
+  {
+    text: 'Your calendar is a voting machine for your priorities. Look at it honestly.',
+    author: N,
+  },
+  {
+    text: 'The highest form of wealth is owning your time and attention.',
+    author: N,
+  },
+  {
+    text: 'Solve problems that don’t go away when you stop looking at them. Those are the real ones.',
+    author: N,
+  },
+  {
+    text: 'Do the simple thing that works. Complexity is often insecurity wearing a lab coat.',
+    author: N,
   },
 ];
 

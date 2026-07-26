@@ -19,18 +19,16 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-/* Rotating, unattributed wisdom — Jensen Huang, drawn from his keynotes,
-   interviews, and commencement addresses (Stanford GSB, Caltech, NTU),
-   curated to what Pragati is for: doing the work — mission first, resilience,
-   urgency, ownership, intellectual honesty, first principles, craft.
-   No name is ever shown, only the line. Never repeats on a device until the
-   whole library has been shown (see unseenQuoteIndices / pickUnseen below). See
-   src/lib/quotes.ts for the sourcing rules. */
+/* Rotating, unattributed wisdom — Naval Ravikant only.
+   Curated to what Pragati is for: focus, judgment, leverage, shipping,
+   long-term games, and cutting the unessential. No name is ever shown —
+   only the line. Never repeats on a device until the whole library has been
+   shown (see unseenQuoteIndices / pickUnseen). See src/lib/quotes.ts. */
 
 // Bumped when the library is re-curated (the ledger is positional, so a fresh
 // key avoids old indices pre-marking different lines).
-// v10 = Jensen Huang only, expanded (mission / resilience / AI-era work habits).
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v10';
+// v11 = Naval Ravikant only — large set for focus / leverage / judgment / ship.
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v11';
 
 /** Indices not yet shown on this device; resets only once the whole set is
  *  exhausted. Takes the library size so a re-curation of the list stays in

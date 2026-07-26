@@ -19,7 +19,7 @@ export default function WhiteboardPageClient() {
         </span>
         <span className="text-slate-300 dark:text-white/15 shrink-0 hidden sm:inline">·</span>
         <span className="text-[12px] text-slate-400 dark:text-white/35 font-medium min-w-0">
-          First principles. Blockers. Decisions. Delivery path. Private — wipe when done.
+          Clear thinking only. Private. Wipe when solved.
         </span>
       </div>
       <div className="flex-1 min-h-0">
