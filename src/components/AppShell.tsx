@@ -1,5 +1,5 @@
 'use client';
-import { Fragment, useState, useEffect, useRef } from 'react';
+import { Fragment, useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -13,6 +13,8 @@ import { api } from '@/lib/client/api';
 import { WHITEBOARD_ENABLED } from '@/lib/features';
 import { PwaProvider } from './PwaProvider';
 import { PwaInstallMenuItem } from './PwaInstall';
+import { NavigationProgress } from './NavigationProgress';
+import { PrefetchOnHover } from './PrefetchOnHover';
 
 // Heavy shell chrome — lazy so first paint of every authed page does not pay
 // for command palette search + calendar month math until the shell is idle.
@@ -219,9 +221,19 @@ export default function AppShell({
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Warm the next-most-likely routes while idle so navigation feels instant.
+  // Warm every primary surface ASAP + again on idle so deep links feel instant.
   useEffect(() => {
-    const routes = ['/projects', '/teams', '/my-day', '/settings', '/whiteboard'];
+    const routes = [
+      '/',
+      '/projects',
+      '/teams',
+      '/my-day',
+      '/settings',
+      '/whiteboard',
+      '/people',
+      '/audit',
+      '/admin',
+    ];
     const warm = () => {
       for (const href of routes) {
         try {
@@ -231,15 +243,17 @@ export default function AppShell({
         }
       }
     };
+    // Immediate: don't wait for idle on the first paint cycle.
+    warm();
     const w = window as Window & {
       requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
       cancelIdleCallback?: (id: number) => void;
     };
     if (typeof w.requestIdleCallback === 'function') {
-      const id = w.requestIdleCallback(warm, { timeout: 1800 });
+      const id = w.requestIdleCallback(warm, { timeout: 1200 });
       return () => w.cancelIdleCallback?.(id);
     }
-    const t = window.setTimeout(warm, 400);
+    const t = window.setTimeout(warm, 200);
     return () => window.clearTimeout(t);
   }, [router]);
   useEffect(() => {
@@ -920,6 +934,11 @@ export default function AppShell({
         }}
         initial={initialAvatars}
       >
+        {/* Instant nav feedback + hover prefetch — every page feels pre-warmed. */}
+        <Suspense fallback={null}>
+          <NavigationProgress />
+        </Suspense>
+        <PrefetchOnHover />
         {/* Fixed-height app shell: the shell itself never scrolls (overflow-hidden),
         so the sidebar stays put — only <main> scrolls. This is what keeps the
         sidebar pinned regardless of how far the page content scrolls. */}

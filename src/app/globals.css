@@ -701,12 +701,10 @@ body {
 /* ── Page transition ─────────────────────────────────────────────────────── */
 @keyframes page-enter {
   from {
-    opacity: 0;
-    transform: translateY(4px);
+    opacity: 0.92;
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 /* `backwards` (not `both`): keep the entrance slide, but DON'T retain
@@ -714,8 +712,9 @@ body {
    wrapper into the containing block for position:fixed, which made modals
    (e.g. "Can't mark completed") center relative to the scrolled page
    instead of the viewport. */
+/* Near-instant settle — motion must never feel like waiting. */
 .page-enter {
-  animation: page-enter 0.12s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: page-enter 0.08s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /* Long lists: skip paint for off-screen rows (big win on team boards). */

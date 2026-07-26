@@ -48,12 +48,26 @@ const nextConfig = {
       : ['mongoose', 'mongodb-memory-server'],
     // Transform barrel imports (e.g. lucide-react) into direct per-icon
     // imports at build time. Harmless win; lucide-react is imported in 26 files.
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ['lucide-react', 'exceljs'],
   },
+  // Immutable hashed assets — browsers keep them forever; deploys change hashes.
+  generateEtags: true,
   eslint: { ignoreDuringBuilds: true },
   async headers() {
     return [
       { source: '/(.*)', headers: securityHeaders },
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      {
+        source: '/icons/(.*)',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' },
+        ],
+      },
       // Service worker + manifest must be fetchable without aggressive caching
       // so a deploy's new SW takes effect promptly.
       {

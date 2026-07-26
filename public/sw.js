@@ -5,7 +5,7 @@
  * live database view (GxP-adjacent work), and a stale cache would show
  * stale status. Always go to the network for page data.
  *
- * BUILD_ID: 2026-07-26-speed-fluid — bump this comment on UX deploys so
+ * BUILD_ID: 2026-07-26-speed-of-light — bump this comment on UX deploys so
  * clients that re-fetch sw.js always get a new byte stream.
  */
 
