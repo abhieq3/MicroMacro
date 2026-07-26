@@ -1795,10 +1795,11 @@ function ActionGroup({
               };
             })();
             return (
-              <li key={t.id}>
+              <li key={t.id} className="list-row-cv">
                 <Link
                   href={`/tasks/${t.id}`}
-                  className={`flex items-center gap-3 px-4 py-2.5 transition-colors group ${
+                  prefetch
+                  className={`flex items-center gap-3 px-4 py-2.5 transition-colors group fluid-press ${
                     isOverdue
                       ? 'hover:bg-red-50/40 dark:hover:bg-red-500/[0.05]'
                       : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'

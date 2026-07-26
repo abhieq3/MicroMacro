@@ -12,9 +12,8 @@ import { useEffect, useRef } from 'react';
  *      back), the page refetches. This is what makes Linear/Vercel-style
  *      dashboards feel current: you never look at stale data.
  *   2. **A gentle interval** — while the tab is visible, refetch every
- *      `intervalMs` (default 30s) so other people's changes appear without you
- *      doing anything. Paused entirely while the tab is hidden, so it costs
- *      nothing in the background.
+ *      `intervalMs` (default 45s) so other people's changes appear without you
+ *      thrashing the main thread. Paused entirely while the tab is hidden.
  *   3. **Same-tab events** — your own actions dispatch `pragati:data-changed`
  *      (see `notifyDataChanged`), so every mounted view updates instantly,
  *      with no reload and no waiting for the interval.
@@ -28,7 +27,7 @@ export function useLiveRefresh(
   opts?: { intervalMs?: number; enabled?: boolean; events?: string[] },
 ) {
   const enabled = opts?.enabled ?? true;
-  const intervalMs = opts?.intervalMs ?? 30_000;
+  const intervalMs = opts?.intervalMs ?? 45_000;
   const events = opts?.events ?? ['pragati:data-changed'];
   const ref = useRef(refresh);
   ref.current = refresh;
@@ -55,7 +54,7 @@ export function useLiveRefresh(
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const onEvent = () => {
       if (debounce) clearTimeout(debounce);
-      debounce = setTimeout(() => ref.current(), 350);
+      debounce = setTimeout(() => ref.current(), 180);
     };
     const evtList = eventsKey ? eventsKey.split(',').filter(Boolean) : [];
     evtList.forEach((name) => window.addEventListener(name, onEvent));

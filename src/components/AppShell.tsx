@@ -218,6 +218,30 @@ export default function AppShell({
     setAccountMenuOpen(false);
     setMobileMenuOpen(false);
   }, [pathname]);
+
+  // Warm the next-most-likely routes while idle so navigation feels instant.
+  useEffect(() => {
+    const routes = ['/projects', '/teams', '/my-day', '/settings', '/whiteboard'];
+    const warm = () => {
+      for (const href of routes) {
+        try {
+          router.prefetch(href);
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(warm, { timeout: 1800 });
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const t = window.setTimeout(warm, 400);
+    return () => window.clearTimeout(t);
+  }, [router]);
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => {
@@ -902,7 +926,7 @@ export default function AppShell({
         <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-page)' }}>
           {/* Mobile backdrop */}
           <div
-            className={`lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${
+            className={`lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-150 ${
               open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
             }`}
             onClick={() => setOpen(false)}
@@ -915,7 +939,7 @@ export default function AppShell({
           shrink-0 flex flex-col
           fixed inset-y-0 left-0 z-50
           lg:sticky lg:top-0 lg:h-screen
-          transition-[transform,width] duration-300 ease-in-out
+          transition-[transform,width] duration-150 ease-out
           ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${collapsed && !open && sidebarHovered ? 'lg:fixed lg:z-50' : ''}
         `}
@@ -1054,7 +1078,10 @@ export default function AppShell({
                   }}
                 />
               )}
-              <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden">
+              <div
+                key={pathname}
+                className="page-enter max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden"
+              >
                 {children}
               </div>
             </main>

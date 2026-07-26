@@ -26,7 +26,7 @@ export default function Loading() {
           className="route-sweep h-full w-1/3 rounded-full"
           style={{
             background: 'linear-gradient(90deg, transparent, #1769C8 30%, #43A047 70%, transparent)',
-            animation: 'route-sweep 1.2s ease-in-out infinite',
+            animation: 'route-sweep 0.9s ease-in-out infinite',
           }}
         />
       </div>
