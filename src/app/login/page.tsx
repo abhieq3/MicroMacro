@@ -28,13 +28,9 @@ function getInitials(name: string) {
    src/lib/quotes.ts for the sourcing rules. */
 
 // Bumped when the library is re-curated (the ledger is positional, so a fresh
-// key avoids old indices pre-marking different lines): v2 = Elon→Naval pool,
-// v3 = Bezos + his reading list, v4 = Elon Musk + the books he recommends,
-// v5 = Naval Ravikant + the thinkers and books he champions,
-// v6 = Elon Musk + the books, authors, and leaders he admires,
-// v7 = Jensen Huang, v8 = Sundar Pichai + the books he recommends,
-// v9 = Jensen Huang only.
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v9';
+// key avoids old indices pre-marking different lines).
+// v10 = Jensen Huang only, expanded (mission / resilience / AI-era work habits).
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v10';
 
 /** Indices not yet shown on this device; resets only once the whole set is
  *  exhausted. Takes the library size so a re-curation of the list stays in
