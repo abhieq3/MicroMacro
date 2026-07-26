@@ -38,14 +38,12 @@ test.describe('UX polish', () => {
     await expect(page.getByRole('img', { name: /pragati/i }).first()).toBeVisible();
   });
 
-  test('first-time tour does NOT appear for an account that already saw it', async ({ page, request }) => {
-    // Bootstrap lead's hasSeenTour is set to false on registration; mark it
-    // seen via the API so the next visit should NOT show the tour modal.
+  test('first-time welcome does NOT appear for an account that already saw it', async ({ page, request }) => {
+    // Mark welcome as seen so the next visit must not show the one-card modal.
     await login(page);
     await page.request.post('/api/me/tour-seen');
-    await page.evaluate(() => localStorage.setItem('pragati-tour-v1', '1'));
+    await page.evaluate(() => localStorage.setItem('pragati-tour-v6', '1'));
     await page.reload();
-    // Tour title would be "Welcome to Pragati" — must NOT appear.
-    await expect(page.getByText(/welcome to pragati$/i)).toHaveCount(0);
+    await expect(page.getByText(/you.?re in\. one thing first/i)).toHaveCount(0);
   });
 });

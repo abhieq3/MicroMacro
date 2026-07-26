@@ -34,10 +34,7 @@ import {
   ChevronDown,
   TrendingUp,
   Clock,
-  Sparkles,
   ArrowRight,
-  UserPlus,
-  Plus,
   Maximize2,
   X,
   BarChart3,
@@ -787,9 +784,7 @@ function SummaryTaskPopup({
 }
 
 /* ── Contributor welcome ──────────────────────────────────────────────────
-   A brand-new contributor with nothing assigned would otherwise land on an
-   empty board. One warm card points at the two things they can do today —
-   plan in My Day, or search / quick-add with ⌘K — instead of dead air. */
+   Empty board on day one. Naval: one next action, no keyboard homework. */
 function ContributorWelcome({ name }: { name: string }) {
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   return (
@@ -797,115 +792,55 @@ function ContributorWelcome({ name }: { name: string }) {
       className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] p-5"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
-      <div className="flex items-center gap-2 mb-1.5">
-        <Sparkles size={15} className="text-blue-500" />
-        <h2 className="text-sm font-bold text-slate-800 dark:text-white/80">Welcome, {first} 👋</h2>
-      </div>
-      <p className="text-xs text-slate-500 dark:text-white/40 leading-relaxed mb-3.5">
-        Nothing’s assigned to you yet — when your lead adds tasks, they’ll show up right here. Until then,
-        you can plan your own day.
+      <h2 className="text-sm font-bold text-slate-800 dark:text-white/80">Welcome, {first}</h2>
+      <p className="mt-1.5 text-xs text-slate-500 dark:text-white/40 leading-relaxed">
+        Nothing assigned yet — normal on day one. When your lead adds work, it lands here.
       </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <Link
-          href="/my-day"
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white transition-all"
-          style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
-        >
-          Open My Day <ArrowRight size={13} />
-        </Link>
-        <span className="text-[11px] text-slate-400 dark:text-white/30">
-          or press{' '}
-          <kbd className="px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 font-mono text-[10px]">
-            ⌘K
-          </kbd>{' '}
-          to search and quick-add
-        </span>
-      </div>
+      <Link
+        href="/my-day"
+        className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white transition-all"
+        style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
+      >
+        Open My Day <ArrowRight size={13} />
+      </Link>
     </div>
   );
 }
 
 /* ── First-run guide ──────────────────────────────────────────────────────
-   Shown to a lead/admin whose workspace has no projects yet. A three-step
-   path — team → members → project — so a brand-new admin always knows the
-   next click instead of staring at empty panels. */
+   Lead/admin, empty workspace. One next step only — not a three-card syllabus. */
 function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
-  const steps = [
-    {
-      href: '/teams',
-      icon: UsersIcon,
-      tint: 'blue' as const,
-      title: 'Create your team',
-      body: 'Give your group a name. Every project rolls up to a team.',
-      done: hasTeam,
-    },
-    {
-      href: '/people',
-      icon: UserPlus,
-      tint: 'teal' as const,
-      title: 'Add your people',
-      body: 'Add members with their company username + employee ID. They become assignable instantly.',
-      done: hasTeam,
-    },
-    {
-      href: '/projects/new',
-      icon: Plus,
-      tint: 'green' as const,
-      title: 'Create your first project',
-      body: 'Pick a lifecycle, assign it to your team, and start adding tasks.',
-      done: false,
-    },
-  ];
-  const tints: Record<'blue' | 'teal' | 'green', string> = {
-    blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
-    teal: 'bg-teal-50 dark:bg-teal-500/10 text-teal-600 dark:text-teal-400',
-    green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  };
+  const next = hasTeam
+    ? {
+        href: '/projects/new',
+        title: 'Create your first project',
+        body: 'Pick a lifecycle, put it on a team, add one task. The rest follows.',
+        cta: 'New project',
+      }
+    : {
+        href: '/teams',
+        title: 'Create a team',
+        body: 'Name the group you ship with. Projects and people hang off a team.',
+        cta: 'Create a team',
+      };
 
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-3">
-        <Sparkles size={14} className="text-blue-500" />
-        <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
-          Let’s get you set up
-        </h2>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {steps.map((s, i) => {
-          const Icon = s.icon;
-          return (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="fluid-card group bg-white dark:bg-[#2a2a28] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] p-5 flex flex-col"
-              style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${tints[s.tint]}`}>
-                  <Icon size={17} />
-                </div>
-                {s.done ? (
-                  <CheckCircle2 size={18} className="text-emerald-500" />
-                ) : (
-                  <span className="text-[11px] font-bold text-slate-300 dark:text-white/20">
-                    STEP {i + 1}
-                  </span>
-                )}
-              </div>
-              <div className="font-bold text-slate-800 dark:text-white/80 text-sm mb-1 flex items-center gap-1">
-                {s.title}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-white/40 leading-relaxed flex-1">{s.body}</p>
-              <div className="mt-3 text-xs font-semibold text-blue-600 dark:text-blue-400 inline-flex items-center gap-1 group-hover:gap-1.5 transition-all">
-                {s.done ? 'Review' : 'Start'} <ArrowRight size={13} />
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-      <p className="text-xs text-slate-400 dark:text-white/25 mt-3 text-center">
-        Your dashboard fills in automatically as you create projects and assign tasks.
+    <div
+      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] p-5 max-w-lg"
+      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+    >
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
+        One thing first
       </p>
+      <h2 className="mt-1.5 text-sm font-bold text-slate-800 dark:text-white/80">{next.title}</h2>
+      <p className="mt-1.5 text-xs text-slate-500 dark:text-white/40 leading-relaxed">{next.body}</p>
+      <Link
+        href={next.href}
+        className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white transition-all"
+        style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
+      >
+        {next.cta} <ArrowRight size={13} />
+      </Link>
     </div>
   );
 }
