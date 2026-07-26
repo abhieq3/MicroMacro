@@ -146,8 +146,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition:
-    background 0.2s ease,
-    color 0.2s ease;
+    background 0.12s ease,
+    color 0.12s ease;
+  /* Momentum scrolling on iOS; avoid rubber-band fighting fixed chrome */
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ── Selection ────────────────────────────────────────────────────────────── */
@@ -699,7 +702,7 @@ body {
 @keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;
@@ -712,7 +715,13 @@ body {
    (e.g. "Can't mark completed") center relative to the scrolled page
    instead of the viewport. */
 .page-enter {
-  animation: page-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation: page-enter 0.12s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+/* Long lists: skip paint for off-screen rows (big win on team boards). */
+.list-row-cv {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
 }
 
 /* ── Stat-card stagger ───────────────────────────────────────────────────── */
@@ -754,20 +763,12 @@ body {
     background-position: 200% 50%;
   }
 }
+/* Static brand ink — infinite shine was decoration that burned GPU for no leverage. */
 .hero-greeting {
-  background: linear-gradient(110deg, #0f172a 0%, #0f172a 35%, #1565c0 50%, #0f172a 65%, #0f172a 100%);
-  background-size: 220% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
-  animation: hero-shine 7s ease-in-out infinite;
+  color: #0f172a;
 }
 .dark .hero-greeting {
-  background: linear-gradient(110deg, #faf9f5 0%, #faf9f5 35%, #d97757 50%, #faf9f5 65%, #faf9f5 100%);
-  background-size: 220% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
+  color: #faf9f5;
 }
 
 /* ── Generic small fade-in (used by inline forms) ────────────────────────── */
@@ -788,7 +789,9 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .fade-up-stagger,
   .fade-in-late,
-  .hero-greeting {
+  .page-enter,
+  .fade-in-soft,
+  .skeleton {
     animation: none !important;
   }
   .hero-greeting {
@@ -796,6 +799,30 @@ body {
     -webkit-text-fill-color: #0f172a;
     color: #0f172a;
   }
+  .btn-primary:hover:not(:disabled),
+  .btn-secondary:hover,
+  .card-hover:hover {
+    transform: none;
+  }
+}
+
+/* ── Fluid interaction language (Jensen: speed is the product) ───────────── */
+@media (hover: hover) and (pointer: fine) {
+  .fluid-row {
+    transition:
+      background-color 0.1s ease,
+      border-color 0.1s ease;
+  }
+  .fluid-row:hover {
+    background-color: rgba(15, 23, 42, 0.03);
+  }
+  .dark .fluid-row:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+}
+.fluid-press:active {
+  transform: scale(0.985);
+  transition: transform 0.08s ease;
 }
 
 /* ── Command palette / modal ─────────────────────────────────────────────── */
@@ -843,7 +870,7 @@ body {
 .skeleton {
   background: linear-gradient(90deg, #eef3f8 0%, #f7f9fb 42%, #eef3f8 84%);
   background-size: 220% auto;
-  animation: shimmer 1.45s ease-in-out infinite;
+  animation: shimmer 1.05s ease-in-out infinite;
   border-radius: 6px;
   color: transparent;
 }

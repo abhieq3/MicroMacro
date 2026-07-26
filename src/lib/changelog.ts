@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-26',
+    title: 'Whole app: faster, fluid, less noise',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Snappier route transitions, idle prefetch of core pages, shorter shell animations, faster same-tab live updates with lighter polling, content-visibility on long lists, and no infinite decorative motion. Speed is the product.',
+    ],
+  },
+  {
+    date: '2026-07-26',
     title: 'Whiteboard text is canvas ink — no DOM text box',
     tags: ['improvement'],
     highlight: true,
