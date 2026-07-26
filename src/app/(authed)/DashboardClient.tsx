@@ -51,7 +51,6 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
-import { TopFivePanel } from '@/components/TopFive';
 // The Morning Brief stays available through its other channels (push, email,
 // calendar feed) — the dashboard card was removed by owner decision: the
 // Up Next panel and the summary chips already answer "what's on today" here.
@@ -697,10 +696,6 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                 suppressHeaderDesktop
               />
               <MyTasksPanel tasks={visibleTasks} myId={myId} />
-              {/* Top 5 Things — everyone writes theirs, everyone reads the
-                  team's. Signals travel with no layer in between, and leads
-                  scan the feed for the weak signal before it gets loud. */}
-              <TopFivePanel myUserId={myId} />
               {/* Leads see workload across their ICs. */}
               {isLead && <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />}
             </div>

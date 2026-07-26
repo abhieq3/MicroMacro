@@ -40,7 +40,7 @@ never mean "anyone can sign up as the owner." Every account after the first
 comes from an invite inside the app, so you won't need the flag again.
 
 You now have a private Pragati: dashboard, projects, teams, My Day,
-whiteboard, bird's-eye view, Top 5 Things, the morning-priority spotlight —
+whiteboard, bird's-eye view, installable PWA, the morning-priority spotlight —
 all working.
 
 ### Optional extras (each one independent, each one free)

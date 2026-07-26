@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
 import { ToastProvider } from '@/components/Toast';
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { Analytics } from '@vercel/analytics/next';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
@@ -14,10 +15,28 @@ export const metadata: Metadata = {
     "Pragati — a bird's-eye view of your projects. Minimal, focused project intelligence for team leads.",
   // Favicon is supplied by src/app/icon.svg via the Next.js file convention.
   robots: { index: false, follow: false },
+  // PWA: installable web app (home screen / dock). Manifest + apple web-app
+  // meta make Chrome/Edge/Safari treat Pragati as an installable application.
+  manifest: '/manifest.webmanifest',
+  applicationName: 'Pragati',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Pragati',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
 };
 
 export const viewport = {
-  themeColor: '#1565C0',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#1565C0' },
+    { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
+  ],
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
@@ -60,6 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ToastProvider>{children}</ToastProvider>
+        <ServiceWorkerRegister />
         {/* Vercel telemetry — already ships with defer; loading them at the
             end of <body> keeps them off the critical path. */}
         <Analytics />

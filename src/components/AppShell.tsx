@@ -11,6 +11,8 @@ import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
 import { WHITEBOARD_ENABLED } from '@/lib/features';
+import { PwaProvider } from './PwaProvider';
+import { PwaInstallBanner, PwaInstallMenuItem } from './PwaInstall';
 
 // Heavy shell chrome — lazy so first paint of every authed page does not pay
 // for command palette search + calendar month math until the shell is idle.
@@ -530,6 +532,8 @@ export default function AppShell({
         );
       })}
 
+      <PwaInstallMenuItem dark={dark} onDone={() => setAccountMenuOpen(false)} />
+
       <div className="my-1.5 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }} />
       <button
         type="button"
@@ -880,6 +884,7 @@ export default function AppShell({
   );
 
   return (
+    <PwaProvider>
     <CurrentUserProvider user={user}>
       <AvatarRegistryProvider
         seed={{
@@ -1049,6 +1054,7 @@ export default function AppShell({
                   }}
                 />
               )}
+              <PwaInstallBanner />
               <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden">
                 {children}
               </div>
@@ -1469,5 +1475,6 @@ export default function AppShell({
         </div>
       </AvatarRegistryProvider>
     </CurrentUserProvider>
+    </PwaProvider>
   );
 }

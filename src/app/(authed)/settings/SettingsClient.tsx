@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/client/api';
 import { Avatar, formatDateTime } from '@/components/ui';
+import { PwaInstallSection } from '@/components/PwaInstall';
 // The contribution heatmap is a sizeable, below-the-fold client component —
 // lazy-load it so it never blocks first paint of the profile page.
 const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m) => m.ActivityGraph), {
@@ -1585,6 +1586,9 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
           <ActivityGraph />
         </Section>
       </div>
+
+      {/* ── Install as app (PWA) ──────────────────────────────────────────── */}
+      <PwaInstallSection />
 
       {/* ── Daily task email — personal opt-in, then (admin) workspace config ── */}
       <DailyDigestToggle initialUser={initialUser} />

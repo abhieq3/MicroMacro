@@ -30,6 +30,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-07-26',
+    title: 'Install Pragati as an app; retire Top 5 Things',
+    tags: ['feature', 'improvement'],
+    highlight: true,
+    body: [
+      'Pragati is now a Progressive Web App: install from the browser (or Add to Home Screen on iOS) for a standalone window on your dock or home screen. Service worker registration powers installability and Web Push; app data is intentionally not offline-cached — a live GxP-adjacent tool must never show a stale board.',
+      'Install surfaces: a dismissible banner in the shell, an account-menu action when the browser allows it, and a full “Install app” card on Profile & activity with platform-specific guidance.',
+      'Removed Top 5 Things from the dashboard (and the supporting API surface). The Up Next panel and delivery signals already carry the weak-signal scan without a second weekly habit layer.',
+    ],
+  },
+  {
     date: '2026-06-25',
     title: 'Quality (QMS) tracking is now a generic, configurable tracker',
     tags: ['feature', 'improvement'],
