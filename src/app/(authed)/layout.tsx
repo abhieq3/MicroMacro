@@ -61,7 +61,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         avatarBg: (dbUser as any)?.avatarBg || '',
         avatarFont: (dbUser as any)?.avatarFont ?? 0,
         avatarImage: (dbUser as any)?.avatarImage || '',
-        soundDropEnabled: (dbUser as any)?.soundDropEnabled !== false,
+        soundDropEnabled: !!(dbUser as any)?.soundDropEnabled,
         hasSeenTour: (dbUser as any)?.hasSeenTour !== false,
       }}
       initialDark={initialDark}

@@ -264,25 +264,31 @@ function FlowActionsRow({
     );
   }
 
-  // Inferred quick check — show the four small choices in one row.
+  // Inferred check — three choices max. Taxonomy busywork loses to open-or-act.
   return (
-    <div className="mt-1 flex items-center gap-1 flex-wrap">
-      {[
-        { label: 'Still moving', action: 'still_moving' as const },
-        { label: 'Waiting on someone', action: 'waiting_other' as const },
-        { label: 'Need a decision', action: 'decision_needed' as const },
-        { label: 'Need help', action: 'help_needed' as const },
-      ].map((b) => (
-        <button
-          key={b.action}
-          type="button"
-          disabled={busy}
-          onClick={() => onAction(item.taskId, b.action)}
-          className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5 disabled:opacity-50"
-        >
-          {b.label}
-        </button>
-      ))}
+    <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+      <Link
+        href={`/tasks/${item.taskId}`}
+        className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5"
+      >
+        Open
+      </Link>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onAction(item.taskId, 'still_moving')}
+        className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5 disabled:opacity-50"
+      >
+        {busy ? 'Saving…' : 'OK'}
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => onAction(item.taskId, 'help_needed')}
+        className="text-[11px] font-semibold text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-md px-2 py-0.5 disabled:opacity-50"
+      >
+        Blocked
+      </button>
     </div>
   );
 }

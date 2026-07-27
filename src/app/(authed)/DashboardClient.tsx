@@ -16,16 +16,6 @@ import { DatePicker } from '@/components/DatePicker';
 import { UserAvatar } from '@/components/AvatarRegistry';
 import { useIsLead } from '@/components/CurrentUserContext';
 import dynamic from 'next/dynamic';
-// Lazy — only the lead's contributor-activity modal needs it, so it stays out
-// of the main dashboard bundle (helps FCP/LCP).
-const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m) => m.ActivityGraph), {
-  ssr: false,
-  loading: () => <div className="h-40 rounded-xl bg-slate-50 animate-pulse" />,
-});
-
-function warmActivityGraph(userId?: string) {
-  void import('@/components/ActivityGraph').then((m) => m.preloadActivityGraphData({ userId }));
-}
 import {
   AlertTriangle,
   FolderKanban,
@@ -37,7 +27,6 @@ import {
   ArrowRight,
   Maximize2,
   X,
-  BarChart3,
 } from 'lucide-react';
 // Lazy — the bird's-eye view is a heavy SVG layout component and most
 // visits won't open it. Keep it out of the dashboard's first paint.
@@ -266,7 +255,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   // component (router.refresh) is the cheapest way to pull fresh rollups when
   // the tab regains focus, on a gentle interval, and on app-wide change events.
   useLiveRefresh(() => router.refresh());
-  const [summaryModal, setSummaryModal] = useState<null | 'open' | 'overdue'>(null);
+  const [summaryModal, setSummaryModal] = useState<null | 'overdue'>(null);
   // Bird's-eye view — the lead's whole workspace as a packed tree. Opened
   // from the small compass icon in the greeting row.
   const [birdsEyeOpen, setBirdsEyeOpen] = useState(false);
@@ -309,6 +298,17 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       openTasks.filter((t) => isOverdue(t.ccTcd || t.dueDate, t.status)),
     [openTasks],
   );
+
+  // One next action — soonest overdue, else soonest due open work. Jensen: exceptions first.
+  const doThisFirst = useMemo(() => {
+    const pool = overdueTasks.length > 0 ? overdueTasks : openTasks;
+    if (pool.length === 0) return null;
+    return [...pool].sort((a, b) => {
+      const da = new Date(a.ccTcd || a.dueDate || '9999').getTime();
+      const db = new Date(b.ccTcd || b.dueDate || '9999').getTime();
+      return da - db;
+    })[0];
+  }, [overdueTasks, openTasks]);
 
   // Expanded project view: everyone sees the whole project's tasks, so an IC
   // can see the path of work around their own assignments — not just their
@@ -366,51 +366,58 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
         <>
           {isNewContributor && <ContributorWelcome name={dash.user.name} />}
 
+          {/* One next action — judgment over inventory counts. */}
+          {doThisFirst && (
+            <Link
+              href={`/tasks/${doThisFirst.id}`}
+              className="mb-4 flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#2a2a28] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
+              style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+            >
+              <div className="min-w-0 flex-1">
+                <div
+                  className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
+                    overdueTasks.some((t) => t.id === doThisFirst.id)
+                      ? 'text-red-600 dark:text-red-400'
+                      : 'text-blue-600 dark:text-blue-400'
+                  }`}
+                >
+                  Do this first
+                </div>
+                <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
+                  {doThisFirst.title}
+                </div>
+                <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 truncate">
+                  {doThisFirst.projectName || doThisFirst.projectCode || 'Task'}
+                  {(doThisFirst.ccTcd || doThisFirst.dueDate) &&
+                    ` · ${formatDate(doThisFirst.ccTcd || doThisFirst.dueDate)}`}
+                </div>
+              </div>
+              <ArrowRight size={16} className="text-slate-300 dark:text-white/25 shrink-0 mt-1" />
+            </Link>
+          )}
+
           {/* ── Quick check / Needs attention strip ────────────────────────
               Renders nothing when there's nothing to surface — silence is
               the correct product state. */}
           <FlowSignalStrip data={dash.flowSignal} />
 
-          {/* Priority lives in the board — chips, Up Next, My Tasks — not a
-              separate banner or modal. Ceremony deleted; the work is the UI. */}
-
-          {/* ── Summary strip ──────────────────────────────────────────── */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            <SummaryChip
-              label="Ongoing projects"
-              value={ongoingProjects.length}
-              accent="blue"
-              href="/projects"
-            />
-            <SummaryChip
-              label="Open tasks"
-              value={openTasks.length}
-              accent="slate"
-              onClick={() => setSummaryModal('open')}
-            />
-            <SummaryChip
-              label="Overdue"
-              value={overdueTasks.length}
-              accent={overdueTasks.length > 0 ? 'red' : 'slate'}
-              onClick={() => setSummaryModal('overdue')}
-            />
-            <SummaryChip
-              label={dash.teamCount === 1 ? 'Team' : 'Teams'}
-              value={dash.teamCount}
-              accent="green"
-              href="/teams"
-            />
-          </div>
+          {/* Exception chips only — hide zeros, no vanity inventory. */}
+          {overdueTasks.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-5">
+              <SummaryChip
+                label="Overdue"
+                value={overdueTasks.length}
+                accent="red"
+                onClick={() => setSummaryModal('overdue')}
+              />
+            </div>
+          )}
           {summaryModal && (
             <SummaryTaskPopup
-              title={summaryModal === 'open' ? 'Open tasks' : 'Overdue tasks'}
-              subtitle={
-                summaryModal === 'open'
-                  ? 'Everything still moving across your visible work.'
-                  : 'Work that has crossed its target/due date.'
-              }
-              tone={summaryModal === 'overdue' ? 'red' : 'blue'}
-              tasks={summaryModal === 'open' ? openTasks : overdueTasks}
+              title="Overdue tasks"
+              subtitle="Work that has crossed its target/due date."
+              tone="red"
+              tasks={overdueTasks}
               onClose={() => setSummaryModal(null)}
             />
           )}
@@ -858,12 +865,6 @@ function ProjectsColumn({
   suppressHeaderDesktop?: boolean;
 }) {
   const isLead = useIsLead();
-  const [showExpandNudge, setShowExpandNudge] = useState(true);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setShowExpandNudge(false), 2800);
-    return () => window.clearTimeout(t);
-  }, []);
   return (
     <section className="min-w-0">
       <div
@@ -906,13 +907,8 @@ function ProjectsColumn({
         </div>
       ) : (
         <div className="space-y-3">
-          {projects.map((p, index) => (
-            <ProjectRow
-              key={p.id}
-              project={p}
-              tasks={tasksByProject.get(p.id) || []}
-              nudgeExpand={showExpandNudge && index === 0}
-            />
+          {projects.map((p) => (
+            <ProjectRow key={p.id} project={p} tasks={tasksByProject.get(p.id) || []} />
           ))}
         </div>
       )}
@@ -1119,11 +1115,9 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
 function ProjectRow({
   project,
   tasks,
-  nudgeExpand = false,
 }: {
   project: DashProject;
   tasks: TeamTask[];
-  nudgeExpand?: boolean;
 }) {
   // Collapsed by default — the dashboard should land quiet. The user expands
   // only what they want to inspect.
@@ -1166,13 +1160,7 @@ function ProjectRow({
         onClick={() => setOpen((o) => !o)}
         className="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none"
       >
-        <span
-          className={`p-1 text-emerald-500 dark:text-emerald-400 rounded-full shrink-0 inline-flex ${nudgeExpand && !open ? 'pragati-drop-ripple' : ''}`}
-          aria-hidden
-        >
-          {/* Points right when collapsed, down when open. The nudge ripples a
-              green ring around the icon (box-shadow only) — it never animates
-              the icon's transform, so the arrow keeps its orientation. */}
+        <span className="p-1 text-emerald-500 dark:text-emerald-400 rounded-full shrink-0 inline-flex" aria-hidden>
           <ChevronDown
             size={14}
             className="transition-transform duration-200"
@@ -1803,18 +1791,8 @@ function ContributorsPanel({
   people: DashPerson[];
   tasksByAssignee: Map<string, TeamTask[]>;
 }) {
-  // Collapsed by default — keeps the dashboard quiet on landing; the lead
-  // expands when they want a contributor-by-contributor breakdown.
+  // Collapsed by default — expand when the lead wants a person-by-person view.
   const [panelOpen, setPanelOpen] = useState(false);
-  const [showExpandNudge, setShowExpandNudge] = useState(true);
-  // The contributor whose activity graph is being viewed (lead-only deep-dive,
-  // same gesture as the team & people pages).
-  const [activityPerson, setActivityPerson] = useState<DashPerson | null>(null);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setShowExpandNudge(false), 2800);
-    return () => window.clearTimeout(t);
-  }, []);
 
   if (people.length === 0) {
     return (
@@ -1831,8 +1809,10 @@ function ContributorsPanel({
     );
   }
 
-  // Sort: most loaded first
-  const sorted = [...people].sort((a, b) => b.loadScore - a.loadScore);
+  // Exceptions first: overdue load, then open work — not motion scores.
+  const sorted = [...people].sort(
+    (a, b) => b.overdueCount - a.overdueCount || b.openTasks - a.openTasks,
+  );
 
   return (
     <section
@@ -1846,10 +1826,7 @@ function ContributorsPanel({
         count={people.length}
         onClick={() => setPanelOpen((o) => !o)}
         trailing={
-          <span
-            className={`inline-flex p-1 rounded-full text-violet-500 dark:text-violet-400 ${showExpandNudge && !panelOpen ? 'pragati-drop-ripple' : ''}`}
-            aria-hidden
-          >
+          <span className="inline-flex p-1 rounded-full text-violet-500 dark:text-violet-400" aria-hidden>
             <ChevronDown
               size={14}
               className="transition-transform duration-200"
@@ -1862,43 +1839,9 @@ function ContributorsPanel({
       {panelOpen && (
         <ul className="divide-y divide-slate-50 dark:divide-white/[0.04] border-t border-slate-100 dark:border-white/[0.05]">
           {sorted.map((p) => (
-            <ContributorRow
-              key={p.id}
-              person={p}
-              tasks={tasksByAssignee.get(p.id) || []}
-              onViewActivity={() => setActivityPerson(p)}
-            />
+            <ContributorRow key={p.id} person={p} tasks={tasksByAssignee.get(p.id) || []} />
           ))}
         </ul>
-      )}
-
-      {activityPerson && (
-        <ModalPortal>
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
-            onClick={() => setActivityPerson(null)}
-          >
-            <div
-              className="bg-white rounded-2xl shadow-2xl border border-slate-100 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto modal-in"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start gap-3 mb-5">
-                <UserAvatar userId={activityPerson.id} name={activityPerson.name} size={44} />
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-black text-slate-900 truncate">{activityPerson.name}</h3>
-                  <div className="text-xs text-slate-400 mt-0.5">Performance overview</div>
-                </div>
-                <button
-                  onClick={() => setActivityPerson(null)}
-                  className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <ActivityGraph userId={activityPerson.id} name={activityPerson.name} />
-            </div>
-          </div>
-        </ModalPortal>
       )}
     </section>
   );
@@ -1911,12 +1854,6 @@ function ContributorsPanel({
    affordance — even though the content is role-appropriate. */
 function MyFocusPanel({ tasks, projects, myId }: { tasks: TeamTask[]; projects: any[]; myId: string }) {
   const [panelOpen, setPanelOpen] = useState(true);
-  const [showExpandNudge, setShowExpandNudge] = useState(true);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setShowExpandNudge(false), 2800);
-    return () => window.clearTimeout(t);
-  }, []);
 
   const myOpen = tasks.filter((t) => t.assigneeId === myId && t.status !== 'done');
   if (myOpen.length === 0) return null;
@@ -1954,7 +1891,7 @@ function MyFocusPanel({ tasks, projects, myId }: { tasks: TeamTask[]; projects: 
         </span>
         <ChevronDown
           size={12}
-          className={`text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full ${showExpandNudge && !panelOpen ? 'pragati-row-expand-blink' : ''}`}
+          className="text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform duration-200 rounded-full"
           style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         />
       </div>
@@ -1995,31 +1932,29 @@ function MyFocusPanel({ tasks, projects, myId }: { tasks: TeamTask[]; projects: 
 function ContributorRow({
   person,
   tasks,
-  onViewActivity,
 }: {
   person: DashPerson;
   tasks: TeamTask[];
-  onViewActivity?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
-  // Sort tasks: in_progress first, then by due date
-  const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3 };
+  // Overdue first, then in_progress / blocked / review, then due date.
+  const STATUS_ORDER: Record<string, number> = {
+    blocked: 0,
+    in_progress: 1,
+    review: 2,
+    todo: 3,
+  };
   const sorted = [...tasks].sort((a, b) => {
+    const aOver = isOverdue(a.ccTcd || a.dueDate, a.status) ? 0 : 1;
+    const bOver = isOverdue(b.ccTcd || b.dueDate, b.status) ? 0 : 1;
+    if (aOver !== bOver) return aOver - bOver;
     const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
     if (s !== 0) return s;
     const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
     const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
     return da - db;
   });
-
-  const loadBadge = {
-    overloaded: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
-    busy: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    healthy: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  }[person.loadLevel];
-
-  const loadLabel = { overloaded: 'Overloaded', busy: 'Busy', healthy: 'Steady' }[person.loadLevel];
 
   return (
     <li>
@@ -2034,24 +1969,6 @@ function ContributorRow({
               <span className="text-xs font-semibold text-slate-800 dark:text-white/75 truncate">
                 {person.name}
               </span>
-              {/* Activity deep-dive — same gesture as the team & people pages.
-                  Always visible (no hover-reveal) so a viewer doesn't need to
-                  discover that the row is clickable. */}
-              {onViewActivity && (
-                <button
-                  onMouseEnter={() => warmActivityGraph(person.id)}
-                  onFocus={() => warmActivityGraph(person.id)}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    warmActivityGraph(person.id);
-                    onViewActivity();
-                  }}
-                  title={`View ${person.name}'s activity`}
-                  className="text-slate-400 dark:text-white/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0"
-                >
-                  <BarChart3 size={13} />
-                </button>
-              )}
             </div>
             <div className="text-[10px] text-slate-400 dark:text-white/30 truncate">
               {person.openTasks} open
@@ -2060,16 +1977,13 @@ function ContributorRow({
                   · {person.overdueCount} overdue
                 </span>
               )}
-              {person.completedThisWeek > 0 && (
-                <span className="text-emerald-600 dark:text-emerald-400 ml-1.5">
-                  · {person.completedThisWeek} done·7d
-                </span>
-              )}
             </div>
           </div>
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${loadBadge}`}>
-            {loadLabel}
-          </span>
+          {person.overdueCount > 0 && (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">
+              Overdue
+            </span>
+          )}
           <button
             className="p-0.5 text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform"
             style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
@@ -2082,8 +1996,8 @@ function ContributorRow({
       {open && (
         <div className="pb-2 fade-in-soft">
           {sorted.length === 0 ? (
-            <div className="px-4 pb-3 text-[11px] text-slate-400 dark:text-white/25 italic">
-              No open assignments — capacity available.
+            <div className="px-4 pb-3 text-[11px] text-slate-400 dark:text-white/25">
+              No open assignments.
             </div>
           ) : (
             <ul className="mx-3 mb-2 divide-y divide-slate-100 dark:divide-white/[0.05] rounded-xl border border-slate-100 dark:border-white/[0.06] overflow-hidden bg-white dark:bg-white/[0.02]">

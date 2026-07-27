@@ -51,10 +51,10 @@ export function playSuccessChime() {
   }
 }
 
-/** Read user preference — defaults to enabled. */
+/** Read user preference — defaults to OFF (Naval: no status soundtrack). */
 export function soundEnabled(): boolean {
   if (typeof window === 'undefined') return false;
-  return localStorage.getItem('pragati-sound') !== 'off';
+  return localStorage.getItem('pragati-sound') === 'on';
 }
 
 /** Plays the chime only when the user hasn't muted sounds. */

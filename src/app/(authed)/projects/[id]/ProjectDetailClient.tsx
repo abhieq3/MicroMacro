@@ -158,7 +158,7 @@ function KanbanBoard({
 }) {
   const dark = useIsDark();
   const currentUser = useCurrentUser();
-  const soundEnabled = currentUser?.soundDropEnabled !== false;
+  const soundEnabled = !!currentUser?.soundDropEnabled;
   const [localTasks, setLocalTasks] = useState<any[]>(tasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   // Where the dragged card would land: a column + the insertion index within it.
@@ -2129,79 +2129,63 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         </div>
       </div>
 
-      {/* Stat cards — only numbers that matter (hide empty zeros). */}
-      <div
-        className={`grid gap-3 ${
-          [true, phases.length > 0, waitingCount > 0, true].filter(Boolean).length >= 4
-            ? 'grid-cols-2 md:grid-cols-4'
-            : 'grid-cols-2 md:grid-cols-3'
-        }`}
-      >
-        {(
-          [
-            {
-              label: 'Progress',
-              value: `${pct}%`,
-              sub: `${tasks.filter((t: any) => t.status === 'done').length}/${tasks.length} tasks`,
-              danger: false,
-              warn: false,
-            },
-            phases.length > 0
-              ? {
-                  label: 'Phases',
-                  value: phases.length,
-                  sub: 'lifecycle stages',
-                  danger: false,
-                  warn: false,
-                }
-              : null,
-            waitingCount > 0
-              ? {
-                  label: 'Waiting on',
-                  value: waitingCount,
-                  sub: 'pending on someone',
-                  danger: false,
-                  warn: true,
-                }
-              : null,
-            {
-              label: 'Overdue',
-              value: overdue,
-              sub: overdue > 0 ? 'past deadline' : 'on track',
-              danger: overdue > 0,
-              warn: false,
-            },
-          ] as const
-        )
-          .filter(Boolean)
-          .map((stat: any) => (
-            <div
-              key={stat.label}
-              className={`bg-white dark:bg-[#262624] rounded-2xl border p-4 space-y-1 ${
-                stat.danger
-                  ? 'border-red-200 dark:border-red-500/30'
-                  : 'border-slate-200/80 dark:border-white/[0.08]'
-              }`}
-              style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                {stat.label}
-              </div>
+      {/* Exception stats only — progress % lives on the board, not as vanity tiles. */}
+      {(waitingCount > 0 || overdue > 0) && (
+        <div
+          className={`grid gap-3 ${waitingCount > 0 && overdue > 0 ? 'grid-cols-2' : 'grid-cols-1 max-w-xs'}`}
+        >
+          {(
+            [
+              waitingCount > 0
+                ? {
+                    label: 'Waiting on',
+                    value: waitingCount,
+                    sub: 'pending on someone',
+                    danger: false,
+                    warn: true,
+                  }
+                : null,
+              overdue > 0
+                ? {
+                    label: 'Overdue',
+                    value: overdue,
+                    sub: 'past deadline',
+                    danger: true,
+                    warn: false,
+                  }
+                : null,
+            ] as const
+          )
+            .filter(Boolean)
+            .map((stat: any) => (
               <div
-                className={`text-2xl font-black ${
+                key={stat.label}
+                className={`bg-white dark:bg-[#262624] rounded-2xl border p-4 space-y-1 ${
                   stat.danger
-                    ? 'text-red-600'
-                    : stat.warn
-                      ? 'text-amber-600'
-                      : 'text-slate-800 dark:text-white/90'
+                    ? 'border-red-200 dark:border-red-500/30'
+                    : 'border-slate-200/80 dark:border-white/[0.08]'
                 }`}
+                style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
               >
-                {stat.value}
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  {stat.label}
+                </div>
+                <div
+                  className={`text-2xl font-black ${
+                    stat.danger
+                      ? 'text-red-600'
+                      : stat.warn
+                        ? 'text-amber-600'
+                        : 'text-slate-800 dark:text-white/90'
+                  }`}
+                >
+                  {stat.value}
+                </div>
+                <div className="text-xs text-slate-400">{stat.sub}</div>
               </div>
-              <div className="text-xs text-slate-400">{stat.sub}</div>
-            </div>
-          ))}
-      </div>
+            ))}
+        </div>
+      )}
 
       {/* Clear-first strip — exceptions before the full tree. */}
       {overdueTasks.length > 0 && (
