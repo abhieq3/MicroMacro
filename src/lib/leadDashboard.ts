@@ -247,11 +247,7 @@ async function computeLeadDashboardData(jwtUser: {
   const projStats = new Map(projectTaskAgg.map((s: any) => [String(s._id), s]));
 
   const projectList = projects
-    // Recurring-activity holder projects are system-managed — their task
-    // occurrences still flow into the due/assigned task views (we keep them in
-    // `projects` above so their tasks load), but they must never appear as a
-    // project card on the dashboard.
-    .filter((p) => !(p as any).isSystem)
+    // Recurring Activities holders (isSystem) show as projects again — badge in UI.
     .map((p) => {
     const s: any = projStats.get(String(p._id)) ?? { total: 0, done: 0, overdue: 0, lastCompletedAt: null };
     const open = s.total - s.done;

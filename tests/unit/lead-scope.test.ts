@@ -9,7 +9,7 @@
  *     personal project — privacy survives workspace.view_all.
  *  2. A restricted (lead/contributor) scope must stay fenced to the viewer's
  *     own teams and ownership.
- *  3. System projects (recurring holders) never appear in project lists.
+ *  3. Recurring Activities (isSystem) projects ARE visible as normal projects.
  */
 
 import assert from 'node:assert/strict';
@@ -32,30 +32,32 @@ function makeScope(unrestricted: boolean): LeadScope {
 }
 
 describe('projectsVisibleFilter', () => {
-  it('unrestricted scope sees shared projects, personal stays owner-only, system excluded', () => {
+  it('unrestricted scope sees shared + system projects; personal stays owner-only', () => {
     const scope = makeScope(true);
     const filter = projectsVisibleFilter(scope) as any;
 
-    // Shape: { $and: [ { $or: [owner, NOT_PERSONAL] }, NOT_SYSTEM ] }
-    assert.ok(filter.$and, 'unrestricted filter must AND privacy with not-system');
-    assert.equal(filter.$and.length, 2);
-    const personalRule = filter.$and[0];
-    assert.deepEqual(personalRule.$or[0], { ownerId: scope.userOid });
-    assert.deepEqual(personalRule.$or[1], NOT_PERSONAL);
-    assert.deepEqual(filter.$and[1], NOT_SYSTEM);
+    // Shape: { $or: [owner, NOT_PERSONAL] } — no NOT_SYSTEM gate.
+    assert.ok(filter.$or, 'unrestricted filter is owner-or-not-personal');
+    assert.deepEqual(filter.$or[0], { ownerId: scope.userOid });
+    assert.deepEqual(filter.$or[1], NOT_PERSONAL);
+    assert.equal(filter.$and, undefined, 'system projects are not filtered out');
   });
 
-  it('restricted scope is fenced to own teams + own projects, system excluded', () => {
+  it('restricted scope is fenced to own teams + own projects (system included)', () => {
     const scope = makeScope(false);
     const filter = projectsVisibleFilter(scope) as any;
 
-    assert.ok(filter.$and, 'restricted filter must AND personal, system, and team fence');
-    assert.equal(filter.$and.length, 3);
-    const [personalRule, notSystem, teamFence] = filter.$and;
+    assert.ok(filter.$and, 'restricted filter must AND personal + team fence');
+    assert.equal(filter.$and.length, 2);
+    const [personalRule, teamFence] = filter.$and;
     assert.deepEqual(personalRule.$or[0], { ownerId: scope.userOid });
     assert.deepEqual(personalRule.$or[1], NOT_PERSONAL);
-    assert.deepEqual(notSystem, NOT_SYSTEM);
     assert.deepEqual(teamFence.$or, [{ ownerId: scope.userOid }, { teamId: { $in: scope.teamOids } }]);
+    // Ensure NOT_SYSTEM is not in the filter chain.
+    assert.ok(
+      !JSON.stringify(filter).includes('isSystem'),
+      'recurring system projects must be listable',
+    );
   });
 
   it('NOT_PERSONAL excludes both the flag and legacy PRSN- codes', () => {
@@ -63,17 +65,12 @@ describe('projectsVisibleFilter', () => {
     assert.ok(String(NOT_PERSONAL.code.$not).includes('PRSN-'));
   });
 
-  it('NOT_SYSTEM excludes isSystem holders', () => {
+  it('NOT_SYSTEM helper still exists for callers that need plumbing-only queries', () => {
     assert.deepEqual(NOT_SYSTEM, { isSystem: { $ne: true } });
   });
 });
 
 describe('getLeadScope — unrestricted is a flag, never an enumeration', () => {
-  // The scaling invariant (docs/SCALING.md rule #1): an admin's all-seeing
-  // scope must not enumerate the workspace into id arrays that callers would
-  // spread into $in clauses. The unrestricted path returns before any DB
-  // query, which is also why this is testable without a database — if this
-  // test starts needing Mongo, the invariant has been broken.
   it('returns empty id lists + the flag for admin/master_admin, with no DB call', async () => {
     for (const role of ['admin', 'master_admin']) {
       const scope = await getLeadScope(String(oid()), role);

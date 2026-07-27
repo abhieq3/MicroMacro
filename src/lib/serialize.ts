@@ -130,6 +130,7 @@ export function project(p: any, extras: Any = {}) {
     archivedBy: id(p.archivedBy),
     isPersonal: !!(p.isPersonal || p.personal),
     personal: !!(p.isPersonal || p.personal),
+    isSystem: !!p.isSystem,
     ccNo: p.ccNo || '',
     refLabel: p.refLabel || '',
     createdAt: date(p.createdAt),

@@ -42,8 +42,11 @@ test.describe('UX polish', () => {
     // Mark welcome as seen so the next visit must not show the one-card modal.
     await login(page);
     await page.request.post('/api/me/tour-seen');
-    await page.evaluate(() => localStorage.setItem('pragati-tour-v6', '1'));
+    await page.evaluate(() => {
+      localStorage.setItem('pragati-tour-v7', '1');
+      localStorage.setItem('pragati-tour-v6', '1');
+    });
     await page.reload();
-    await expect(page.getByText(/you.?re in\. one thing first/i)).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /you.?re in/i })).toHaveCount(0);
   });
 });

@@ -28,9 +28,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = req.nextUrl;
     const q: any = { ...visibilityFilter };
-    // System-managed projects (the per-team recurring-activity holder) never
-    // appear in the project list — their task occurrences surface as tasks.
-    q.isSystem = { $ne: true };
+    // Recurring Activities holders (isSystem) are listed as normal projects.
 
     // Archived projects are hidden by default — pass ?includeArchived=1
     // to retrieve them, or ?archived=1 to fetch *only* the archive bin.
@@ -65,7 +63,7 @@ export async function GET(req: NextRequest) {
     }
     const projects = await Project.find(q)
       .select(
-        'code ccNo refLabel name description lifecycle status priority teamId ownerId startDate dueDate completedAt gxpImpact archived archivedAt archivedBy isPersonal personal createdAt',
+        'code ccNo refLabel name description lifecycle status priority teamId ownerId startDate dueDate completedAt gxpImpact archived archivedAt archivedBy isPersonal personal isSystem createdAt',
       )
       .sort({ createdAt: -1 })
       .limit(200)

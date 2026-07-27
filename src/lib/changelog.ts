@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-07-27',
+    title: 'Project detail + first login polish; recurring projects return',
+    tags: ['feature', 'improvement'],
+    highlight: true,
+    body: [
+      'Recurring Activities boards show again as normal projects (Recurring badge) on list, dashboard, and detail — with a schedule link to the team tab. Project detail: pulse chips, Do this first / Clear first / Blocked strips, clearer empty states. First-login card and empty-workspace guides refined (one CTA, soft path).',
+    ],
+  },
+  {
+    date: '2026-07-27',
     title: 'Naval + Jensen product pass: exceptions only',
     tags: ['improvement'],
     highlight: true,
