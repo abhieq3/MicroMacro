@@ -260,6 +260,10 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-600 bg-violet-50 dark:bg-violet-500/15 dark:text-violet-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
                         <Lock size={9} /> Private
                       </span>
+                    ) : p.isSystem ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 bg-teal-50 dark:bg-teal-500/15 dark:text-teal-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Recurring
+                      </span>
                     ) : (
                       <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-slate-400 dark:text-white/30 bg-slate-50 dark:bg-white/[0.05] px-2 py-0.5 rounded">
                         {p.ccNo || p.code}

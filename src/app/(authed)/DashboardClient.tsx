@@ -90,6 +90,7 @@ interface DashProject {
   overdueCount: number;
   health: 'healthy' | 'at_risk' | 'critical';
   healthReasons?: string[];
+  isSystem?: boolean;
 }
 
 interface DashPerson {
@@ -791,32 +792,56 @@ function SummaryTaskPopup({
 }
 
 /* ── Contributor welcome ──────────────────────────────────────────────────
-   Empty board on day one. Naval: one next action, no keyboard homework. */
+   Empty board on day one. One next action, premium calm. */
 function ContributorWelcome({ name }: { name: string }) {
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   return (
     <div
-      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] p-5"
+      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] overflow-hidden max-w-xl"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
-      <h2 className="text-sm font-bold text-slate-800 dark:text-white/80">Welcome, {first}</h2>
-      <p className="mt-1.5 text-xs text-slate-500 dark:text-white/40 leading-relaxed">
-        Nothing assigned yet — normal on day one. When your lead adds work, it lands here.
-      </p>
-      <Link
-        href="/my-day"
-        className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white transition-all"
-        style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
-      >
-        Open My Day <ArrowRight size={13} />
-      </Link>
+      <div
+        className="h-1"
+        style={{ background: 'linear-gradient(90deg, #1256B0 0%, #22c55e 100%)' }}
+      />
+      <div className="p-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+          Welcome
+        </p>
+        <h2 className="mt-1 text-base font-black text-slate-800 dark:text-white/85 tracking-tight">
+          Hi, {first}
+        </h2>
+        <p className="mt-1.5 text-[13px] text-slate-500 dark:text-white/40 leading-relaxed">
+          Nothing assigned yet — normal on day one. When your lead adds work, it lands here.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Link
+            href="/my-day"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-all"
+            style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
+          >
+            Open My Day <ArrowRight size={13} />
+          </Link>
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-500 hover:text-blue-600 dark:text-white/40 dark:hover:text-blue-400"
+          >
+            Browse projects
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
 
 /* ── First-run guide ──────────────────────────────────────────────────────
-   Lead/admin, empty workspace. One next step only — not a three-card syllabus. */
+   Lead/admin empty workspace. Soft path + one CTA (not a three-button syllabus). */
 function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
+  const steps = [
+    { label: 'Team', done: hasTeam },
+    { label: 'Project', done: false },
+    { label: 'First task', done: false },
+  ];
   const next = hasTeam
     ? {
         href: '/projects/new',
@@ -833,21 +858,58 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
 
   return (
     <div
-      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] p-5 max-w-lg"
+      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] overflow-hidden max-w-xl"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-400 dark:text-white/30">
-        One thing first
-      </p>
-      <h2 className="mt-1.5 text-sm font-bold text-slate-800 dark:text-white/80">{next.title}</h2>
-      <p className="mt-1.5 text-xs text-slate-500 dark:text-white/40 leading-relaxed">{next.body}</p>
-      <Link
-        href={next.href}
-        className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold text-white transition-all"
-        style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
-      >
-        {next.cta} <ArrowRight size={13} />
-      </Link>
+      <div
+        className="h-1"
+        style={{ background: 'linear-gradient(90deg, #1256B0 0%, #22c55e 100%)' }}
+      />
+      <div className="p-5">
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
+          Get started
+        </p>
+        <div className="mt-3 flex items-center gap-2 flex-wrap">
+          {steps.map((s, i) => (
+            <div key={s.label} className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-full ${
+                  s.done
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                    : i === (hasTeam ? 1 : 0)
+                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 ring-1 ring-blue-200/80 dark:ring-blue-500/30'
+                      : 'bg-slate-50 text-slate-400 dark:bg-white/[0.04] dark:text-white/30'
+                }`}
+              >
+                {s.done ? (
+                  <CheckCircle2 size={12} />
+                ) : (
+                  <span className="w-4 h-4 rounded-full grid place-items-center text-[10px] border border-current/30">
+                    {i + 1}
+                  </span>
+                )}
+                {s.label}
+              </span>
+              {i < steps.length - 1 && (
+                <span className="text-slate-200 dark:text-white/15 text-xs">→</span>
+              )}
+            </div>
+          ))}
+        </div>
+        <h2 className="mt-4 text-base font-black text-slate-800 dark:text-white/85 tracking-tight">
+          {next.title}
+        </h2>
+        <p className="mt-1.5 text-[13px] text-slate-500 dark:text-white/40 leading-relaxed">
+          {next.body}
+        </p>
+        <Link
+          href={next.href}
+          className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-all"
+          style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
+        >
+          {next.cta} <ArrowRight size={13} />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -1186,7 +1248,12 @@ function ProjectRow({
           {/* Identity + metadata pills — replaces the dot-separated strip so
               each fact reads as its own chip and the row scans cleanly. */}
           <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-            {cat && (
+            {project.isSystem && (
+              <span className="text-[10px] font-semibold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-500/10 px-1.5 py-0.5 rounded">
+                Recurring
+              </span>
+            )}
+            {cat && !project.isSystem && (
               <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
                 {cat}
               </span>

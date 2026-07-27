@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import {
@@ -186,10 +186,22 @@ export default function TeamDetailPage() {
   // what — by grouping tasks under each person; an IC sees only their own.
   // "Foresight" (lead/admin only) sits between the two — the predictive capacity
   // read, on demand rather than taking up permanent vertical space. Everyone
-  // opens on Work.
+  // opens on Work — unless deep-linked via ?view= (e.g. from a Recurring project).
+  const searchParams = useSearchParams();
+  const viewParam = searchParams?.get('view');
+  const initialView = (
+    viewParam === 'recurring' ||
+    viewParam === 'projects' ||
+    viewParam === 'qms' ||
+    viewParam === 'tickets' ||
+    viewParam === 'foresight' ||
+    viewParam === 'work'
+      ? viewParam
+      : 'work'
+  ) as 'work' | 'foresight' | 'projects' | 'qms' | 'tickets' | 'recurring';
   const [view, setView] = useState<
     'work' | 'foresight' | 'projects' | 'qms' | 'tickets' | 'recurring'
-  >('work');
+  >(initialView);
 
   async function load() {
     setLoadError('');

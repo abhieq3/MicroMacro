@@ -165,15 +165,14 @@ export async function GET(req: NextRequest) {
       summary,
       tasks: taskList,
       subtasks: [], // kept for API compat; subtasks remain separate
-      projects: allProjects
-        .filter((p) => !(p as any).isSystem)
-        .map((p) => ({
-          id: String(p._id),
-          name: p.name,
-          code: (p as any).ccNo || p.code,
-          status: p.status,
-          lifecycle: p.lifecycle,
-        })),
+      projects: allProjects.map((p) => ({
+        id: String(p._id),
+        name: p.name,
+        code: (p as any).ccNo || p.code,
+        status: p.status,
+        lifecycle: p.lifecycle,
+        isSystem: !!(p as any).isSystem,
+      })),
       orgTotals,
     });
   } catch (e) {

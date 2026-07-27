@@ -34,6 +34,8 @@ export interface ProjectListItem {
   done7d?: number;
   donePrev7d?: number;
   archived?: boolean;
+  /** Per-team Recurring Activities board (isSystem holder). */
+  isSystem?: boolean;
 }
 
 /**

@@ -40,6 +40,8 @@ import {
   Eye,
   Sparkles,
   ChevronDown,
+  RefreshCw,
+  ArrowRight,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { ForecastChip } from '@/components/ForecastChip';
@@ -1410,6 +1412,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // than a low one. See src/lib/progress.ts.
   const pct = weightedProgress(tasks);
   const waitingCount = tasks.filter((t: any) => t.pendingWith && t.status !== 'done').length;
+  const blockedCount = tasks.filter((t: any) => t.status === 'blocked').length;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const overdue = tasks.filter(
@@ -1703,6 +1706,31 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       );
   })();
 
+  const blockedTasks = tasks
+    .filter((t: any) => t.status === 'blocked')
+    .slice()
+    .sort((a: any, b: any) => {
+      const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return da - db;
+    });
+
+  // Single next action on this project — soonest overdue, else blocked, else next due.
+  const doThisFirst = (() => {
+    if (overdueTasks[0]) return { task: overdueTasks[0], why: 'overdue' as const };
+    if (blockedTasks[0]) return { task: blockedTasks[0], why: 'blocked' as const };
+    const open = tasks
+      .filter((t: any) => t.status !== 'done')
+      .slice()
+      .sort((a: any, b: any) => {
+        const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+        const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+        return da - db;
+      });
+    if (open[0]) return { task: open[0], why: 'next' as const };
+    return null;
+  })();
+
   // Open work before done within a phase; among open, overdue first.
   function sortTasksForPhase(ts: any[]) {
     const start = new Date();
@@ -1743,6 +1771,28 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             >
               Jump to list
             </a>
+          )}
+        </div>
+      )}
+      {project.isSystem && (
+        <div className="rounded-xl border border-teal-200/80 dark:border-teal-500/25 bg-teal-50/80 dark:bg-teal-500/[0.08] px-4 py-3 flex items-start gap-3">
+          <RefreshCw size={16} className="text-teal-700 dark:text-teal-400 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-bold text-teal-900 dark:text-teal-200">
+              Recurring activities board
+            </div>
+            <div className="text-[12px] text-teal-800/80 dark:text-teal-300/70 mt-0.5 leading-relaxed">
+              Occurrences land here as tasks. Manage the schedule on the team’s Recurring tab —
+              close a task when the work is done.
+            </div>
+          </div>
+          {project.teamId && (
+            <Link
+              href={`/teams/${project.teamId}?view=recurring`}
+              className="shrink-0 text-[11px] font-bold text-teal-800 dark:text-teal-300 underline underline-offset-2"
+            >
+              Open schedule
+            </Link>
           )}
         </div>
       )}
@@ -1920,6 +1970,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                 <Lock size={11} /> Private
               </span>
             )}
+            {project.isSystem && (
+              <span className="tag border border-teal-200 bg-teal-50 text-teal-800 font-semibold inline-flex items-center gap-1.5 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300">
+                <RefreshCw size={11} /> Recurring
+              </span>
+            )}
             {project.archived && (
               <span
                 className="tag border border-amber-200 bg-amber-50 text-amber-800 font-semibold inline-flex items-center gap-1.5"
@@ -1928,9 +1983,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                 <Archive size={11} /> Archived
               </span>
             )}
-            {!project.isPersonal && <LifecycleTag lifecycle={project.lifecycle} />}
-            <PriorityTag priority={project.priority} />
-            {!project.isPersonal && !project.archived && <ForecastChip projectId={project.id} />}
+            {!project.isPersonal && !project.isSystem && <LifecycleTag lifecycle={project.lifecycle} />}
+            {!project.isSystem && <PriorityTag priority={project.priority} />}
+            {!project.isPersonal && !project.isSystem && !project.archived && (
+              <ForecastChip projectId={project.id} />
+            )}
           </div>
           {/* Description — owner can hover to reveal edit affordance, click to edit inline */}
           {editingDesc ? (
@@ -2129,62 +2186,79 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         </div>
       </div>
 
-      {/* Exception stats only — progress % lives on the board, not as vanity tiles. */}
-      {(waitingCount > 0 || overdue > 0) && (
-        <div
-          className={`grid gap-3 ${waitingCount > 0 && overdue > 0 ? 'grid-cols-2' : 'grid-cols-1 max-w-xs'}`}
-        >
-          {(
-            [
-              waitingCount > 0
-                ? {
-                    label: 'Waiting on',
-                    value: waitingCount,
-                    sub: 'pending on someone',
-                    danger: false,
-                    warn: true,
-                  }
-                : null,
-              overdue > 0
-                ? {
-                    label: 'Overdue',
-                    value: overdue,
-                    sub: 'past deadline',
-                    danger: true,
-                    warn: false,
-                  }
-                : null,
-            ] as const
-          )
-            .filter(Boolean)
-            .map((stat: any) => (
-              <div
-                key={stat.label}
-                className={`bg-white dark:bg-[#262624] rounded-2xl border p-4 space-y-1 ${
-                  stat.danger
-                    ? 'border-red-200 dark:border-red-500/30'
-                    : 'border-slate-200/80 dark:border-white/[0.08]'
-                }`}
-                style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-              >
-                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  {stat.label}
-                </div>
-                <div
-                  className={`text-2xl font-black ${
-                    stat.danger
-                      ? 'text-red-600'
-                      : stat.warn
-                        ? 'text-amber-600'
-                        : 'text-slate-800 dark:text-white/90'
-                  }`}
-                >
-                  {stat.value}
-                </div>
-                <div className="text-xs text-slate-400">{stat.sub}</div>
-              </div>
-            ))}
+      {/* Pulse strip — open always; exceptions and progress when they matter. */}
+      {tasks.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-100 dark:bg-white/[0.06] text-[12px] font-semibold text-slate-600 dark:text-white/55">
+            <span className="font-black tabular-nums text-slate-800 dark:text-white/85">{openTaskCount}</span>
+            open
+          </span>
+          {overdue > 0 && (
+            <a
+              href="#project-overdue"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-50 dark:bg-red-500/10 text-[12px] font-semibold text-red-700 dark:text-red-400 hover:brightness-95"
+            >
+              <span className="font-black tabular-nums">{overdue}</span>
+              overdue
+            </a>
+          )}
+          {blockedCount > 0 && (
+            <a
+              href="#project-blocked"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-[12px] font-semibold text-amber-800 dark:text-amber-400 hover:brightness-95"
+            >
+              <span className="font-black tabular-nums">{blockedCount}</span>
+              blocked
+            </a>
+          )}
+          {waitingCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-violet-50 dark:bg-violet-500/10 text-[12px] font-semibold text-violet-700 dark:text-violet-400">
+              <span className="font-black tabular-nums">{waitingCount}</span>
+              waiting
+            </span>
+          )}
+          {tasks.length >= 2 && (
+            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-[12px] font-semibold text-blue-700 dark:text-blue-400">
+              <span className="font-black tabular-nums">{pct}%</span>
+              done
+            </span>
+          )}
         </div>
+      )}
+
+      {/* One next action — judgment over a wall of phases. */}
+      {doThisFirst && (
+        <Link
+          href={`/tasks/${doThisFirst.task.id}`}
+          className="flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#262624] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
+          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+        >
+          <div className="min-w-0 flex-1">
+            <div
+              className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
+                doThisFirst.why === 'overdue'
+                  ? 'text-red-600 dark:text-red-400'
+                  : doThisFirst.why === 'blocked'
+                    ? 'text-amber-700 dark:text-amber-400'
+                    : 'text-blue-600 dark:text-blue-400'
+              }`}
+            >
+              {doThisFirst.why === 'overdue'
+                ? 'Clear first'
+                : doThisFirst.why === 'blocked'
+                  ? 'Unblock first'
+                  : 'Do this first'}
+            </div>
+            <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
+              {doThisFirst.task.title}
+            </div>
+            <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 truncate">
+              {doThisFirst.task.assigneeName || 'Unassigned'}
+              {doThisFirst.task.dueDate && ` · ${formatDate(doThisFirst.task.dueDate)}`}
+            </div>
+          </div>
+          <ArrowRight size={16} className="text-slate-300 dark:text-white/25 shrink-0 mt-1" />
+        </Link>
       )}
 
       {/* Clear-first strip — exceptions before the full tree. */}
@@ -2239,27 +2313,75 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         </section>
       )}
 
+      {/* Blocked strip — second only to overdue. */}
+      {blockedTasks.length > 0 && (
+        <section
+          id="project-blocked"
+          className="scroll-mt-4 rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-white dark:bg-[#262624] overflow-hidden"
+          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+        >
+          <div className="px-4 py-2.5 border-b border-amber-100 dark:border-amber-500/15 flex items-center gap-2 bg-amber-50/60 dark:bg-amber-500/[0.06]">
+            <AlertTriangle size={14} className="text-amber-700 dark:text-amber-400" />
+            <h3 className="text-[12px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
+              Blocked
+            </h3>
+            <span className="text-[11px] font-bold text-amber-700/80 dark:text-amber-400/80">
+              {blockedTasks.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-amber-50 dark:divide-amber-500/10">
+            {blockedTasks.slice(0, 8).map((t: any) => (
+              <li key={t.id}>
+                <Link
+                  href={`/tasks/${t.id}`}
+                  prefetch
+                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/50 dark:hover:bg-amber-500/[0.05] transition-colors group"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[13px] font-semibold text-slate-800 dark:text-white/85 truncate group-hover:text-amber-800 dark:group-hover:text-amber-300">
+                      {t.title}
+                    </div>
+                    <div className="text-[11px] text-slate-400 dark:text-white/30 truncate mt-0.5">
+                      {t.assigneeName || 'Unassigned'}
+                      {t.pendingWith ? ` · waiting on ${t.pendingWith}` : ''}
+                    </div>
+                  </div>
+                  <ArrowRight size={14} className="text-slate-300 dark:text-white/20 shrink-0" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* View toggle */}
-      <div
-        className="flex items-center gap-1 bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/[0.08] rounded-xl p-1 w-fit"
-        style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-      >
-        {[
-          ['phases', 'By phase'],
-          ['board', 'Kanban'],
-        ].map(([k, l]) => (
-          <button
-            key={k}
-            onClick={() => setView(k as any)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              view === k
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
-            }`}
-          >
-            {l}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div
+          className="flex items-center gap-1 bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/[0.08] rounded-xl p-1 w-fit"
+          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+        >
+          {[
+            ['phases', 'By phase'],
+            ['board', 'Kanban'],
+          ].map(([k, l]) => (
+            <button
+              key={k}
+              onClick={() => setView(k as any)}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                view === k
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
+              }`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        {tasks.length === 0 && canManage && (
+          <p className="text-[12px] text-slate-400 dark:text-white/35">
+            Add the first task in a phase below — then the board fills itself.
+          </p>
+        )}
       </div>
 
       {/* Phases view */}
@@ -2267,7 +2389,26 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         <div className="space-y-3">
           {phases.length === 0 && (
             <Card>
-              <p className="text-slate-500 text-sm">No phases yet.</p>
+              <div className="py-6 px-2 text-center max-w-md mx-auto">
+                <div className="text-sm font-bold text-slate-700 dark:text-white/70 mb-1">
+                  {project.isSystem ? 'No open occurrences yet' : 'No phases yet'}
+                </div>
+                <p className="text-xs text-slate-400 dark:text-white/35 leading-relaxed">
+                  {project.isSystem
+                    ? 'When a recurring activity is due, its task will appear on this board. Manage the cadence from the team Recurring tab.'
+                    : canManage
+                      ? 'Lifecycle templates add phases on create. Put open work in Unphased below, or open Kanban to add tasks.'
+                      : 'Your lead will structure this project. Check back soon.'}
+                </p>
+                {project.isSystem && project.teamId && (
+                  <Link
+                    href={`/teams/${project.teamId}?view=recurring`}
+                    className="btn-primary text-xs inline-flex mt-4"
+                  >
+                    Open schedule <ArrowRight size={13} />
+                  </Link>
+                )}
+              </div>
             </Card>
           )}
           {phases.map((ph: any, i: number) => {

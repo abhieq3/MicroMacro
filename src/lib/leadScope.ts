@@ -67,9 +67,10 @@ export const NOT_PERSONAL = {
 } as const;
 
 /**
- * System projects (e.g. per-team "Recurring Activities" holders) are plumbing
- * for tasks — never a user-facing project. Occurrences still appear as normal
- * tasks on calendars, My Day, and the team's Recurring panel.
+ * Legacy helper: previously excluded system projects from lists.
+ * Recurring Activities holders are user-facing projects again (`isSystem`
+ * is still set for UI badges and restricted delete — not for visibility).
+ * Kept exported so older call sites/tests can migrate cleanly.
  */
 export const NOT_SYSTEM = { isSystem: { $ne: true } } as const;
 
@@ -79,18 +80,18 @@ export const NOT_SYSTEM = { isSystem: { $ne: true } } as const;
 // Personal projects are private to their owner: they're only ever returned
 // when the viewer owns them — never to another lead, and never to the admin
 // (even though the admin otherwise sees everything).
-// System projects are never listed as projects (tasks only).
+// Recurring Activities (isSystem) projects ARE visible — they are the board
+// for that team's recurring work.
 export function projectsVisibleFilter(scope: LeadScope) {
   const minePersonalOrNotPersonal = {
     $or: [{ ownerId: scope.userOid }, NOT_PERSONAL],
   };
   if (scope.unrestricted) {
-    return { $and: [minePersonalOrNotPersonal, NOT_SYSTEM] };
+    return minePersonalOrNotPersonal;
   }
   return {
     $and: [
       minePersonalOrNotPersonal,
-      NOT_SYSTEM,
       { $or: [{ ownerId: scope.userOid }, { teamId: { $in: scope.teamOids } }] },
     ],
   };
