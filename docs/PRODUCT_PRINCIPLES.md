@@ -75,7 +75,17 @@ If you cannot put it on a whiteboard, you do not understand it yet.
 - Private whiteboard for first principles, unblock, decide, delivery path.
 - Status updates come after thinking, not instead of it.
 
+## 9. Jensen: exceptions first for leaders
+
+A lead’s morning is for unblock, not inventory.
+
+- Surfaces answer: what is late, blocked, or at risk — then one personal next action.
+- Counts of “active projects,” “closed yesterday,” “healthy,” load badges, and
+  done·7d are motion metrics. Prefer delete over dashboarding them.
+- Sound and completion theater default off. The work is the reward.
+
 ---
 
 When in doubt: **would Naval keep this, or delete it?** If it exists for
 status, novelty, or fear of looking empty — delete it.
+Would Jensen use it before the first meeting? If no — hide it.

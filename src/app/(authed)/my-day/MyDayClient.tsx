@@ -49,49 +49,13 @@ interface UserNote {
   updatedAt: string;
 }
 
-/* Time-of-day encouragement in the house voice (Jensen's): mornings are for
-   the highest-priority work — same ritual, every day; afternoons for finishing;
-   evenings belong to your people, not your backlog; and past midnight the app
-   is allowed one raised eyebrow. Rotated by day-of-year within each window so
-   the line changes daily but never mid-morning. */
-const MORNING_LINES = [
-  'Do your highest-priority work first',
-  'Same ritual, every morning: the main thing first',
-  'Pick the one thing that matters, then start',
-  'Morning brain is for the hard problem',
-  'First principles before first meeting',
-];
-const AFTERNOON_LINES = [
-  'Finish beats start — close something out',
-  'One clear thought at a time',
-  'Small steps, real progress',
-  'Capture it, then conquer it',
-  'Progress beats perfection',
-];
-const EVENING_LINES = [
-  'Wrap it up — the people at home outrank the backlog',
-  'Write tomorrow’s first move, then log off',
-  'The work will keep. Dinner won’t',
-  'Park your thoughts here and go home proud',
-];
-const LATE_NIGHT_LINES = [
-  'Still here? Write it down and go to bed',
-  'Nothing on this list beats eight hours of sleep',
-  'The board will still be here at sunrise. You should not be',
-];
-function encouragement() {
-  const d = new Date();
-  const h = d.getHours();
-  const pool =
-    h >= 5 && h < 12
-      ? MORNING_LINES
-      : h >= 12 && h < 18
-        ? AFTERNOON_LINES
-        : h >= 18 && h < 23
-          ? EVENING_LINES
-          : LATE_NIGHT_LINES;
-  const dayOfYear = Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 0).getTime()) / 86_400_000);
-  return pool[dayOfYear % pool.length];
+/* Quiet greeting — date + name only. Pep lines train status, not focus. */
+function dayGreeting(now = new Date()): string {
+  const h = now.getHours();
+  if (h < 5) return 'Still here';
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 function useDateLabel() {
@@ -623,7 +587,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
             </div>
             <h1 className="text-[1.7rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
               <span suppressHydrationWarning>
-                {encouragement()}
+                {dayGreeting()}
                 {firstName ? ', ' : '.'}
               </span>
               {firstName && (
@@ -644,8 +608,11 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
 
       {/* Tasks stay full-width; secondary tools live in unobtrusive hanging buttons. */}
       <div>
-        {/* ── Left: capture + todo list ────────────────────────────── */}
+        {/* ── Left: assigned reality first, then personal capture ─── */}
         <div className="min-w-0">
+          <TodayFromProjects />
+          <MyDayForesight />
+
           {/* ── Capture bar ────────────────────────────────────────── */}
           <form onSubmit={add} className="mb-4">
             <div className="relative rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm hover:border-slate-300/80 focus-within:border-blue-500/60 dark:focus-within:border-blue-500/50 focus-within:shadow-[0_0_0_3px_rgba(21,101,192,0.10)] transition-all">
@@ -664,7 +631,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                 <input
                   ref={inputRef}
                   className="flex-1 bg-transparent text-[15px] text-slate-800 dark:text-white/90 placeholder-slate-400 dark:placeholder-white/30 border-0 outline-none py-1 min-w-0"
-                  placeholder="Empty your mind — what do you want to get done today?"
+                  placeholder="What needs to get done today?"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   autoFocus
@@ -688,15 +655,12 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
 
           {/* ── Empty state ──────────────────────────────────────── */}
           {open.length === 0 && done.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] p-12 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 flex items-center justify-center mx-auto mb-3">
-                <Sparkles size={22} className="text-blue-400 dark:text-blue-400/70" />
-              </div>
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] p-8 text-center">
               <div className="text-sm font-bold text-slate-700 dark:text-white/60 mb-1">
-                A clear head starts here
+                Capture one thing
               </div>
               <div className="text-xs text-slate-400 dark:text-white/25 max-w-xs mx-auto leading-relaxed">
-                Jot anything — ideas, blockers, follow-ups. Unfinished notes carry over automatically.
+                Ideas, blockers, follow-ups. Unfinished notes carry over.
               </div>
             </div>
           )}
@@ -857,9 +821,6 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
               )}
             </div>
           )}
-
-          <MyDayForesight />
-          <TodayFromProjects />
         </div>
       </div>
 

@@ -182,7 +182,8 @@ const UserSchema = new Schema(
 
     // Audible drop-cue preference. Defaults to true (ships with sound).
     // Synthesised in-browser via Web Audio, so there's no asset to deliver.
-    soundDropEnabled: { type: Boolean, default: true },
+    // Default off — work needs no chime. Opt in from Settings.
+    soundDropEnabled: { type: Boolean, default: false },
 
     // ── Social / public profile ─────────────────────────────────────────
     // Legacy single GitHub field — superseded by `links` below, but kept so

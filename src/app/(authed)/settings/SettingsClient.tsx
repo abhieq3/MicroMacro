@@ -1112,13 +1112,10 @@ function AdminDigestSettings() {
             onChange={(e) => set('dueSoonDays', Math.max(0, Math.min(14, parseInt(e.target.value, 10) || 0)))}
           />
         </DigestRow>
-        <DigestRow label="Project updates" desc="Projects with work completed in the last 24h.">
-          <DigestSwitch
-            on={!!cfg.projectUpdates}
-            onClick={() => set('projectUpdates', !cfg.projectUpdates)}
-          />
-        </DigestRow>
-        <DigestRow label="Send when nothing's due" desc="Off = skip people with an empty day.">
+        <DigestRow
+          label="Send when nothing’s due"
+          desc="Off by default — empty days stay silent (no vanity “all clear” mail)."
+        >
           <DigestSwitch on={!!cfg.sendWhenEmpty} onClick={() => set('sendWhenEmpty', !cfg.sendWhenEmpty)} />
         </DigestRow>
 
@@ -1684,7 +1681,7 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
               <QuickPinSection />
             </div>
 
-            <DropSoundToggle initial={initialUser.soundDropEnabled !== false} />
+            <DropSoundToggle initial={!!initialUser.soundDropEnabled} />
 
             {user.role === 'admin' && (
               <div id="recovery-key" className="scroll-mt-6">

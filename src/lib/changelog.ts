@@ -30,6 +30,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-07-27',
+    title: 'Naval + Jensen product pass: exceptions only',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Dashboard leads with “Do this first” and overdue chips only — no vanity inventory counts. Contributors sort by exceptions, not load badges. Task-complete is a quiet ack; sounds default off. My Day: assigned work before notes, no pep hero. Digests drop “moved yesterday” and closed-count vanity. Project list and detail hide healthy-% theater. Flow check is Open / OK / Blocked.',
+    ],
+  },
+  {
     date: '2026-07-26',
     title: 'First login: one action, then the product',
     tags: ['improvement'],

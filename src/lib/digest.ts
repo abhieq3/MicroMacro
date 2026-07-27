@@ -267,9 +267,10 @@ export function bucketTasks(
   return { overdue, today, soon };
 }
 
-/** Does a section set contain anything worth emailing? */
+/** Does a section set contain anything worth emailing?
+ *  Velocity (“moved yesterday”) does not count — exceptions and due work only. */
 export function digestHasContent(s: DigestSections): boolean {
-  return s.overdue.length > 0 || s.today.length > 0 || s.soon.length > 0 || s.projectUpdates.length > 0;
+  return s.overdue.length > 0 || s.today.length > 0 || s.soon.length > 0;
 }
 
 function escapeHtml(s: string): string {
@@ -499,7 +500,12 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     subjectCore = teamBits.length ? `Team: ${teamBits.join(' · ')}${you}` : `You: ${subjectCore}`;
   } else if (leadershipBrief?.workspace) {
     const w = leadershipBrief.workspace;
-    subjectCore = `Workspace: ${w.overdueTotal} overdue · ${w.doneYesterday} closed`;
+    subjectCore =
+      w.overdueTotal > 0
+        ? `Workspace: ${w.overdueTotal} overdue`
+        : w.risky.length > 0
+          ? `Workspace: ${w.risky.length} to watch`
+          : 'Workspace: clear';
   }
   const subject = `${test ? '[Test] ' : ''}Your ${weekday} brief — ${subjectCore}`;
 
@@ -518,18 +524,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       '#0f172a',
     ),
     renderSection('Coming up', rest.soon.map(row).join(''), '#2563eb'),
-    sections.projectUpdates.length
-      ? renderSection(
-          'Moved yesterday',
-          sections.projectUpdates
-            .map(
-              (p) =>
-                `<tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px;color:#0f172a;">${escapeHtml(p.name)}</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;color:#16a34a;font-size:13px;font-weight:700;">${p.count} done</td></tr>`,
-            )
-            .join(''),
-          '#16a34a',
-        )
-      : '',
+    // Intentionally no “Moved yesterday” — motion counts reward busyness.
   ].join('');
 
   // Compact metric chips — only non-zero (zeros burn attention).
@@ -577,8 +572,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     const w = leadershipBrief.workspace;
     const chips = [
       metricChip(w.overdueTotal, 'Overdue', '#dc2626'),
-      metricChip(w.doneYesterday, 'Closed yesterday', '#16a34a'),
-      metricChip(w.activeProjects, 'Active projects', '#2563eb'),
+      metricChip(w.risky.length, 'At risk', '#ea580c'),
     ].filter(Boolean);
     leadershipHtml = `<div style="margin:0 0 20px;padding:14px 16px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;">
           <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:6px;">Workspace</div>
@@ -687,10 +681,11 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       '',
     );
   } else if (leadershipBrief?.workspace) {
+    const w = leadershipBrief.workspace;
     lines.push(
       'WORKSPACE',
       leadershipBrief.headline,
-      `Closed yesterday: ${leadershipBrief.workspace.doneYesterday} · Overdue: ${leadershipBrief.workspace.overdueTotal} · Active: ${leadershipBrief.workspace.activeProjects}`,
+      `Overdue: ${w.overdueTotal}${w.risky.length ? ` · Watch: ${w.risky.map((p) => p.name).join(', ')}` : ''}`,
       '',
     );
   }
@@ -713,11 +708,6 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   textSection('Also overdue', rest.overdue);
   textSection('Due today', rest.today);
   textSection('Coming up', rest.soon);
-  if (sections.projectUpdates.length) {
-    lines.push('MOVED YESTERDAY');
-    for (const p of sections.projectUpdates) lines.push(`  • ${p.name} — ${p.count} done`);
-    lines.push('');
-  }
   if (!digestHasContent(sections) && !leadershipBrief) lines.push('All clear — nothing due today.');
   if (appUrl) {
     if (isLead || isAdmin) lines.push('', `Open board: ${appUrl}/`);

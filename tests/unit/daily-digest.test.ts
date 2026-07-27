@@ -89,10 +89,29 @@ describe('bucketTasks', () => {
 // ── digestHasContent ──────────────────────────────────────────────────────────
 
 describe('digestHasContent', () => {
-  it('is false only when every section is empty', () => {
+  it('is false when exceptions and due work are empty (velocity alone is not content)', () => {
     assert.equal(digestHasContent({ overdue: [], today: [], soon: [], projectUpdates: [] }), false);
     assert.equal(
       digestHasContent({ overdue: [], today: [], soon: [], projectUpdates: [{ name: 'P', count: 1 }] }),
+      false,
+    );
+    assert.equal(
+      digestHasContent({
+        overdue: [],
+        today: [
+          {
+            id: 't',
+            title: 'x',
+            priority: 'medium',
+            projectId: 'p',
+            bucket: 'today',
+            label: 'Today',
+            effDue: new Date(),
+          },
+        ],
+        soon: [],
+        projectUpdates: [],
+      }),
       true,
     );
   });
@@ -203,7 +222,8 @@ describe('renderDigestEmail', () => {
     });
     assert.match(out.html, />Workspace</);
     assert.match(out.html, /Workspace: 5 tasks closed yesterday/);
-    assert.match(out.subject, /Workspace:/);
+    // Subject is exceptions-first (overdue), not closed-count vanity.
+    assert.match(out.subject, /Workspace: 2 overdue/);
   });
 
   it('keeps the subject short — does not splice the full leadership headline into it', () => {

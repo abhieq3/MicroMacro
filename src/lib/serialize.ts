@@ -67,7 +67,7 @@ export function u(user: any) {
     avatarBg: user.avatarBg || '',
     avatarImage: user.avatarImage || '',
     avatarFont: typeof user.avatarFont === 'number' ? user.avatarFont : 0,
-    soundDropEnabled: user.soundDropEnabled !== false,
+    soundDropEnabled: !!user.soundDropEnabled,
     githubUrl: user.githubUrl || '',
     links: (user.links || [])
       .map((l: any) => ({ url: String(l?.url || ''), label: String(l?.label || '') }))
