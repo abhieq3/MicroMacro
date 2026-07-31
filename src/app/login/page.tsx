@@ -66,6 +66,14 @@ function StrengthMeter({ password }: { password: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
+  // Product is dark. Login is always black; pin the session theme so the
+  // app shell does not flash light after sign-in.
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    document.cookie = 'pragati_theme=dark; path=/; max-age=31536000; SameSite=Lax';
+    document.cookie = 'theme=; path=/; max-age=0; SameSite=Lax';
+  }, []);
+
   const [mode, setMode] = useState<'login' | 'setup' | 'unlock'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

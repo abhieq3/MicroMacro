@@ -112,9 +112,11 @@ function useDarkMode(initialDark: boolean): [boolean, () => void] {
   const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    // Persist via cookie so the next SSR render starts in the right
-    // mode. 365 d, sameSite=lax so it travels with normal navigation.
-    document.cookie = `theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
+    // Product is dark-first. Cookie name bumped so old theme=light sessions
+    // don't pin users to the washed-out light UI after the redesign.
+    document.cookie = `pragati_theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
+    // Clear legacy cookie so it can't fight the new default.
+    document.cookie = 'theme=; path=/; max-age=0; SameSite=Lax';
   }, [dark]);
   return [dark, () => setDark((d) => !d)];
 }

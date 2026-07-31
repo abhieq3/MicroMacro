@@ -342,7 +342,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
         <div className="min-w-0 flex-1">
           <h1 className="text-[1.75rem] sm:text-[1.9rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
             <span suppressHydrationWarning>
-              {greeting()}, <span className="text-blue-700 dark:text-blue-400">{firstName}.</span>
+              {greeting()}, <span className="text-zinc-900 dark:text-white">{firstName}.</span>
             </span>
           </h1>
         </div>
@@ -371,7 +371,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
           {doThisFirst && (
             <Link
               href={`/tasks/${doThisFirst.id}`}
-              className="mb-4 flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0a0a0a] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
+              className="mb-4 flex items-start gap-3 border border-zinc-200/90 dark:border-white/[0.1] bg-white dark:bg-[#0a0a0a] px-4 py-3.5 hover:border-zinc-400 dark:hover:border-white/25 transition-colors"
+              style={{ borderRadius: 6 }}
               style={{ boxShadow: 'none' }}
             >
               <div className="min-w-0 flex-1">
@@ -379,7 +380,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                   className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
                     overdueTasks.some((t) => t.id === doThisFirst.id)
                       ? 'text-red-600 dark:text-red-400'
-                      : 'text-blue-600 dark:text-blue-400'
+                      : 'text-zinc-900 dark:text-white'
                   }`}
                 >
                   Priority
@@ -445,7 +446,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               </div>
               <Link
                 href="/projects"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 shrink-0 whitespace-nowrap transition-colors"
+                className="text-xs font-semibold text-zinc-800 hover:text-black dark:text-white dark:hover:text-white/75 shrink-0 whitespace-nowrap transition-colors"
               >
                 All projects →
               </Link>
@@ -621,7 +622,7 @@ function SummaryChip({
   onClick?: () => void;
 }) {
   const styles = {
-    blue: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    blue: 'bg-zinc-100 dark:bg-white/10 text-zinc-800 dark:text-white',
     red: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
     slate: 'bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-white/55',
     green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
@@ -711,14 +712,14 @@ function SummaryTaskPopup({
     tone === 'red' ? (
       <AlertTriangle size={14} className="text-red-500" />
     ) : (
-      <CheckCircle2 size={14} className="text-blue-500" />
+      <CheckCircle2 size={14} className="text-zinc-500 dark:text-white/45" />
     );
 
   return (
     <FullScreenOverlay title={title} icon={icon} onClose={onClose}>
       <div className="px-5 pb-5">
         <div
-          className={`mb-3 rounded-xl border px-3 py-2.5 ${tone === 'red' ? 'border-red-100 bg-red-50 text-red-700' : 'border-blue-100 bg-blue-50 text-blue-700'}`}
+          className={`mb-3 border px-3 py-2.5 ${tone === 'red' ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300' : 'border-zinc-200 dark:border-white/12 bg-zinc-50 dark:bg-white/[0.04] text-zinc-700 dark:text-white/70'}`}
         >
           <div className="text-xs font-bold">
             {sorted.length} task{sorted.length === 1 ? '' : 's'}
@@ -943,7 +944,7 @@ function ProjectsColumn({
         </div>
         <Link
           href="/projects"
-          className="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 shrink-0 whitespace-nowrap transition-colors"
+          className="text-xs font-semibold text-zinc-800 hover:text-black dark:text-white dark:hover:text-white/75 shrink-0 whitespace-nowrap transition-colors"
         >
           All projects →
         </Link>
@@ -1009,7 +1010,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           </span>
           <Link
             href={`/projects/${projectId}`}
-            className="text-[9.5px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            className="text-[9.5px] font-bold text-zinc-900 dark:text-white hover:text-black dark:hover:text-white/75 transition-colors"
           >
             Board →
           </Link>
@@ -1100,7 +1101,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
                       className={`flex-1 min-w-0 text-[13px] font-semibold line-clamp-1 leading-snug ${
                         isDone
                           ? 'line-through decoration-slate-300/60 dark:decoration-white/20 text-slate-400 dark:text-white/35'
-                          : 'text-slate-800 dark:text-white/85 group-hover:text-blue-700 dark:group-hover:text-blue-400'
+                          : 'text-slate-800 dark:text-white/85 group-hover:text-black dark:group-hover:text-white'
                       }`}
                     >
                       {t.title}
@@ -1164,7 +1165,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
             className="group flex items-center justify-between gap-3 px-5 py-2.5 text-[10.5px] hover:bg-white dark:hover:bg-white/[0.04] transition-colors"
           >
             <span className="text-slate-400 dark:text-white/28">Showing 20 of {sorted.length} tasks</span>
-            <span className="text-blue-600 dark:text-blue-400 font-semibold group-hover:translate-x-0.5 transition-transform">
+            <span className="text-zinc-900 dark:text-white font-semibold group-hover:translate-x-0.5 transition-transform">
               Open project board →
             </span>
           </Link>
@@ -1238,7 +1239,7 @@ function ProjectRow({
           <Link
             href={`/projects/${project.id}`}
             onClick={(e) => e.stopPropagation()}
-            className="block text-[15px] font-bold text-slate-800 dark:text-white/85 hover:text-blue-700 dark:hover:text-blue-400 line-clamp-2 sm:truncate leading-snug"
+            className="block text-[15px] font-bold text-slate-800 dark:text-white/85 hover:text-black dark:hover:text-white line-clamp-2 sm:truncate leading-snug"
           >
             {project.name}
           </Link>
@@ -1254,7 +1255,7 @@ function ProjectRow({
               </span>
             )}
             {cat && !project.isSystem && (
-              <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-semibold text-zinc-800 dark:text-white bg-zinc-100 dark:bg-white/10 px-1.5 py-0.5" style={{ borderRadius: 3 }}>
                 {cat}
               </span>
             )}
@@ -1317,7 +1318,7 @@ function ProjectRow({
               </div>
               <Link
                 href={`/projects/${project.id}`}
-                className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700"
+                className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-zinc-900 dark:text-white hover:text-black dark:hover:text-white/75"
               >
                 Open the project board →
               </Link>
@@ -1341,7 +1342,7 @@ function TaskTableRow({ t }: { t: TeamTask }) {
       <td className="px-4 py-2.5">
         <Link
           href={`/tasks/${t.id}`}
-          className="text-xs text-slate-800 font-medium hover:text-blue-700 line-clamp-1 group-hover:underline underline-offset-2"
+          className="text-xs text-zinc-800 dark:text-white/85 font-medium hover:text-black dark:hover:text-white line-clamp-1 group-hover:underline underline-offset-2"
         >
           {t.title}
         </Link>
@@ -1460,7 +1461,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
                     style={{ background: dotColor, boxShadow: `0 0 0 3px ${dotColor}28` }}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/75 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
+                    <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/75 line-clamp-1 group-hover:text-black dark:group-hover:text-white">
                       {t.title}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
@@ -1495,7 +1496,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
           {myTasks.length > 15 && (
             <li className="px-4 py-2.5 text-[10px] text-slate-400 dark:text-white/30">
               +{myTasks.length - 15} more —{' '}
-              <Link href="/my-day" className="text-blue-600 dark:text-blue-400 font-bold">
+              <Link href="/my-day" className="text-zinc-900 dark:text-white font-bold">
                 view in My Day →
               </Link>
             </li>
@@ -1635,7 +1636,7 @@ function UpNextPanel({
           <div>
             <div className="flex items-center justify-between px-4 py-2 bg-slate-50/40 dark:bg-white/[0.03] border-b border-slate-100 dark:border-white/[0.05]">
               <div className="flex items-center gap-1.5">
-                <Clock size={11} className="text-blue-500" />
+                <Clock size={11} className="text-zinc-500 dark:text-white/45" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/35">
                   Due
                 </span>
@@ -1655,7 +1656,7 @@ function UpNextPanel({
                     onClick={() => setFilter(f.key)}
                     className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors ${
                       filter === f.key
-                        ? 'bg-blue-600 text-white shadow-sm'
+                        ? 'bg-black text-white dark:bg-white dark:text-black'
                         : 'bg-slate-50 dark:bg-white/[0.04] text-slate-500 dark:text-white/35 hover:bg-slate-100 dark:hover:bg-white/[0.08]'
                     }`}
                   >
@@ -1679,7 +1680,7 @@ function UpNextPanel({
               title=""
               count={due.length}
               icon={null}
-              dotClass="bg-blue-400"
+              dotClass="bg-zinc-400 dark:bg-white/50"
               tasks={due}
               showAll={expanded}
               emptyHint={
@@ -1698,7 +1699,7 @@ function UpNextPanel({
   return expanded ? (
     <FullScreenOverlay
       title="Due"
-      icon={<TrendingUp size={14} className="text-blue-500" />}
+      icon={<TrendingUp size={14} className="text-zinc-500 dark:text-white/45" />}
       onClose={() => setExpanded(false)}
     >
       {inner}
@@ -1796,7 +1797,7 @@ function ActionGroup({
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/85 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                    <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/85 line-clamp-1 group-hover:text-black dark:group-hover:text-white">
                       {t.title}
                     </div>
                     <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
@@ -2092,7 +2093,7 @@ function ContributorRow({
                         }}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="text-[11.5px] font-semibold text-slate-700 dark:text-white/70 hover:text-blue-700 dark:group-hover:text-blue-400 line-clamp-1">
+                        <div className="text-[11.5px] font-semibold text-slate-700 dark:text-white/70 hover:text-black dark:group-hover:text-white line-clamp-1">
                           {t.title}
                         </div>
                         <div className="text-[10px] text-slate-400 dark:text-white/30 mt-0.5 flex items-center gap-1.5 flex-wrap">

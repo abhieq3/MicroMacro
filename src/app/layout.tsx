@@ -39,8 +39,8 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Dark-first. Only explicit light cookie opts out — pure black is the product.
-  const theme = cookies().get('theme')?.value;
+  // Dark-first. New cookie name so old light sessions don't stick.
+  const theme = cookies().get('pragati_theme')?.value;
   const dark = theme !== 'light';
 
   return (
