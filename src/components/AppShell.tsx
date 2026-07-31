@@ -417,11 +417,11 @@ export default function AppShell({
   // admin-only surface, appended via adminExtra below.
   // My Day is pinned above the footer as a personal surface. Shared org
   // views (Dashboard / Projects / Teams) stay in the main list above.
-  // Monochrome nav — no rainbow icon tiles. Active = white ink on black.
-  const ink = dark ? '#fafafa' : '#09090b';
-  const inkMuted = dark ? '#71717a' : '#71717a';
-  const inkBg = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-  const inkBgActive = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+  // Mars-themed nav icons — muted stone inactive, rust active (never pure black fill).
+  const ink = dark ? '#ea580c' : '#c2410c';
+  const inkMuted = dark ? '#a8a29e' : '#57534e';
+  const inkBg = dark ? 'rgba(234,88,12,0.1)' : 'rgba(194,65,12,0.08)';
+  const inkBgActive = dark ? 'rgba(234,88,12,0.18)' : 'rgba(194,65,12,0.14)';
   const leadNav: NavItem[] = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
@@ -508,7 +508,7 @@ export default function AppShell({
       className="absolute left-3 bottom-[72px] z-30 w-[270px] border p-1.5"
       style={{
         background: dark ? '#16181c' : '#ffffff',
-        borderColor: dark ? '#2f3336' : '#eff3f4',
+        borderColor: dark ? '#292524' : '#e7e5e4',
         borderRadius: 16,
         boxShadow: dark ? '0 0 15px rgba(255,255,255,0.08)' : '0 0 15px rgba(0,0,0,0.08)',
       }}
@@ -619,7 +619,7 @@ export default function AppShell({
           </span>
           {!showCollapsed && (
             <span
-              className={`brand-wordmark text-[20px] whitespace-nowrap ${dark ? 'text-[#e7e9ea]' : 'text-[#0f1419]'}`}
+              className={`brand-wordmark text-[20px] whitespace-nowrap ${dark ? 'text-[#fafaf9]' : 'text-[#1c1917]'}`}
             >
               Pragati
             </span>
@@ -649,8 +649,8 @@ export default function AppShell({
             showCollapsed ? 'p-2.5 justify-center' : 'w-full px-4 py-2.5'
           } ${
             dark
-              ? 'text-[#71767b] hover:text-[#e7e9ea] bg-[#16181c] hover:bg-[#1e2026]'
-              : 'text-[#536471] hover:text-[#0f1419] bg-[#eff3f4] hover:bg-[#e7e9ea]'
+              ? 'text-[#a8a29e] hover:text-[#fafaf9] bg-[#1c1917] hover:bg-[#292524]'
+              : 'text-[#57534e] hover:text-[#1c1917] bg-[#f5f2ed] hover:bg-[#e7e5e4]'
           }`}
           style={{ borderRadius: 9999 }}
         >
@@ -701,18 +701,19 @@ export default function AppShell({
                   className={`flex items-center gap-5 ${showCollapsed ? 'justify-center px-0 py-3' : 'px-3.5 py-3'} text-[20px] transition-colors duration-150 ${
                     active
                       ? dark
-                        ? 'text-[#e7e9ea] font-bold'
-                        : 'text-[#0f1419] font-bold'
+                        ? 'text-[#fafaf9] font-bold'
+                        : 'text-[#1c1917] font-bold'
                       : dark
-                        ? 'text-[#e7e9ea] font-normal hover:bg-[rgba(231,233,234,0.1)]'
-                        : 'text-[#0f1419] font-normal hover:bg-[rgba(15,20,25,0.1)]'
+                        ? 'text-[#a8a29e] font-normal hover:bg-[rgba(231,229,228,0.08)] hover:text-[#fafaf9]'
+                        : 'text-[#57534e] font-normal hover:bg-[rgba(28,25,23,0.05)] hover:text-[#1c1917]'
                   }`}
                   style={{ borderRadius: 9999 }}
                 >
                   <Icon
                     size={showCollapsed ? 24 : 26}
-                    strokeWidth={active ? 2.5 : 1.75}
+                    strokeWidth={active ? 2.25 : 1.6}
                     className="shrink-0"
+                    style={{ color: active ? ink : inkMuted }}
                   />
                   {!showCollapsed && <span className="flex-1 truncate leading-none">{n.label}</span>}
                 </Link>
@@ -727,7 +728,7 @@ export default function AppShell({
         {/* Personal: My Day */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
-          style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}
+          style={{ borderColor: dark ? '#292524' : '#e7e5e4' }}
         >
           {[myDayItem].map((n) => {
             const Icon = n.icon;
@@ -742,18 +743,19 @@ export default function AppShell({
                 className={`flex items-center gap-5 ${showCollapsed ? 'justify-center px-0 py-3' : 'px-3.5 py-3'} text-[20px] transition-colors duration-150 ${
                   active
                     ? dark
-                      ? 'text-[#e7e9ea] font-bold'
-                      : 'text-[#0f1419] font-bold'
+                      ? 'text-[#fafaf9] font-bold'
+                      : 'text-[#1c1917] font-bold'
                     : dark
-                      ? 'text-[#e7e9ea] font-normal hover:bg-[rgba(231,233,234,0.1)]'
-                      : 'text-[#0f1419] font-normal hover:bg-[rgba(15,20,25,0.1)]'
+                      ? 'text-[#a8a29e] font-normal hover:bg-[rgba(231,229,228,0.08)] hover:text-[#fafaf9]'
+                      : 'text-[#57534e] font-normal hover:bg-[rgba(28,25,23,0.05)] hover:text-[#1c1917]'
                 }`}
                 style={{ borderRadius: 9999 }}
               >
                 <Icon
                   size={showCollapsed ? 24 : 26}
-                  strokeWidth={active ? 2.5 : 1.75}
+                  strokeWidth={active ? 2.25 : 1.6}
                   className="shrink-0"
+                  style={{ color: active ? ink : inkMuted }}
                 />
                 {!showCollapsed && <span className="flex-1 truncate leading-none">{n.label}</span>}
               </Link>
@@ -766,7 +768,7 @@ export default function AppShell({
       {showCollapsed ? (
         <div
           className="px-2 py-3 border-t shrink-0 flex flex-col items-center gap-1.5 relative"
-          style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}
+          style={{ borderColor: dark ? '#292524' : '#e7e5e4' }}
         >
           {AccountMenu}
           {/* Notifications are intentionally NOT shown on the collapsed rail —
@@ -801,7 +803,7 @@ export default function AppShell({
          corner — it feels like a deliberate identity panel. */
         <div
           className="p-3 border-t shrink-0 relative"
-          style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}
+          style={{ borderColor: dark ? '#292524' : '#e7e5e4' }}
         >
           {AccountMenu}
 
@@ -908,8 +910,8 @@ export default function AppShell({
         `}
             style={{
               width: showCollapsed ? 72 : Math.max(sidebarWidth, 260),
-              background: dark ? '#000000' : '#ffffff',
-              borderRight: dark ? '1px solid #2f3336' : '1px solid #eff3f4',
+              background: dark ? '#0c0a09' : '#faf8f5',
+              borderRight: dark ? '1px solid #292524' : '1px solid #e7e5e4',
               boxShadow: undefined,
             }}
             onMouseEnter={() => {
@@ -938,7 +940,7 @@ export default function AppShell({
                 >
                   <div
                     className="absolute right-0 top-0 bottom-0 w-[2px] transition-all duration-100 opacity-0 group-hover/drag:opacity-100"
-                    style={{ background: dark ? '#1d9bf0' : '#1d9bf0', margin: '8px 0' }}
+                    style={{ background: dark ? 'var(--mars)' : 'var(--mars)', margin: '8px 0' }}
                   />
                 </div>
                 <div
@@ -949,7 +951,7 @@ export default function AppShell({
                 >
                   <div
                     className="absolute right-0 top-0 bottom-0 w-[2px] transition-all duration-100 opacity-0 group-hover/drag2:opacity-100"
-                    style={{ background: dark ? '#1d9bf0' : '#1d9bf0', margin: '8px 0' }}
+                    style={{ background: dark ? 'var(--mars)' : 'var(--mars)', margin: '8px 0' }}
                   />
                 </div>
               </>
@@ -961,7 +963,7 @@ export default function AppShell({
             <button
               className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-[25] w-5 h-8 items-center justify-center transition-colors cursor-pointer"
               style={{
-                background: dark ? '#000000' : '#ffffff',
+                background: dark ? '#0c0a09' : '#faf8f5',
                 border: dark ? '1px solid #2f3336' : '1px solid #cfd9de',
                 borderRadius: 9999,
                 boxShadow: 'none',
@@ -1107,7 +1109,7 @@ export default function AppShell({
               <div
                 className="absolute inset-x-0 bottom-0 p-5 space-y-0.5"
                 style={{
-                  background: dark ? '#000000' : '#ffffff',
+                  background: dark ? '#0c0a09' : '#faf8f5',
                   borderTop: dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
                   borderRadius: '10px 10px 0 0',
                 }}
@@ -1241,7 +1243,7 @@ export default function AppShell({
               <div
                 className="w-[300px] rounded-2xl p-6 flex flex-col items-center gap-4 text-center shadow-2xl"
                 style={{
-                  background: dark ? '#000000' : '#ffffff',
+                  background: dark ? '#0c0a09' : '#faf8f5',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1295,7 +1297,7 @@ export default function AppShell({
               <div
                 className="w-[340px] rounded-2xl p-5 shadow-2xl"
                 style={{
-                  background: dark ? '#000000' : '#ffffff',
+                  background: dark ? '#0c0a09' : '#faf8f5',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1368,7 +1370,7 @@ export default function AppShell({
               <div
                 className="w-[320px] rounded-2xl p-6 flex flex-col gap-4 text-center shadow-2xl"
                 style={{
-                  background: dark ? '#000000' : '#ffffff',
+                  background: dark ? '#0c0a09' : '#faf8f5',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
               >

@@ -204,7 +204,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
   function hoverAccentColor(list: CalTask[]): string {
     const sig = signals(list);
     if (sig.overdue) return '#f4212e';
-    if (sig.mine) return '#1d9bf0';
+    if (sig.mine) return 'var(--mars)';
     return '#00ba7c';
   }
 
@@ -271,7 +271,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
             <button
               onClick={isCurrentMonth ? undefined : goToday}
               className={`flex items-baseline gap-1 text-[11px] tracking-tight transition-colors ${
-                isCurrentMonth ? 'cursor-default' : 'hover:text-[#1d9bf0] cursor-pointer'
+                isCurrentMonth ? 'cursor-default' : 'hover:text-[var(--mars)] cursor-pointer'
               }`}
               title={isCurrentMonth ? undefined : 'Jump to this month'}
             >
@@ -280,7 +280,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                 {monthYear}
               </span>
               {!isCurrentMonth && (
-                <span className="text-[10px] font-bold text-[#1d9bf0] ml-1">Today</span>
+                <span className="text-[10px] font-bold text-[var(--mars)] ml-1">Today</span>
               )}
             </button>
 
@@ -359,7 +359,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                       <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#f4212e' }} />
                     )}
                     {!sig?.overdue && sig?.mine && (
-                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#1d9bf0' }} />
+                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: 'var(--mars)' }} />
                     )}
                     {!sig?.overdue && sig?.team && (
                       <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#00ba7c' }} />
@@ -419,7 +419,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                     >
                       <span
                         className="w-[5px] h-[5px] rounded-full mt-[5px] shrink-0"
-                        style={{ background: overdue ? '#f4212e' : t.mine ? '#1d9bf0' : '#00ba7c' }}
+                        style={{ background: overdue ? '#f4212e' : t.mine ? 'var(--mars)' : '#00ba7c' }}
                       />
                       <div className="min-w-0 flex-1">
                         <div
@@ -431,7 +431,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                           className={`text-[9.5px] mt-px flex items-center gap-1 min-w-0 ${dark ? 'text-[#71767b]' : 'text-slate-400'}`}
                         >
                           {t.mine ? (
-                            <span className="font-semibold text-[#1d9bf0] shrink-0">You</span>
+                            <span className="font-semibold text-[var(--mars)] shrink-0">You</span>
                           ) : t.assigneeName ? (
                             <span className="font-semibold shrink-0" style={{ color: '#00ba7c' }}>
                               {firstName(t.assigneeName)}

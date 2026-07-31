@@ -299,7 +299,7 @@ function TeamCard({
         </span>
         <Link
           href={`/teams/${team.id}`}
-          className="group/cta inline-flex items-center gap-1 text-[12px] font-semibold text-[#1d9bf0] dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          className="group/cta inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--mars)] dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
           Open
           <ArrowRight size={12} className="transition-transform group-hover/cta:translate-x-0.5" />

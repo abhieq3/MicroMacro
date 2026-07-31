@@ -1,4 +1,4 @@
-/** Pragati mark — black tile, white rising chevrons. High contrast in tabs + dark chrome. */
+/** Pragati mark — Mars rust tile, white chevrons. */
 export function PragatiMark({
   size = 96,
   flat = false,
@@ -19,8 +19,8 @@ export function PragatiMark({
         width: size,
         height: size,
         borderRadius: r,
-        background: '#000000',
-        border: flat ? '1px solid #2f3336' : '1px solid #000000',
+        background: 'var(--mars, #c2410c)',
+        border: flat ? '1px solid transparent' : 'none',
         boxShadow: 'none',
       }}
     >
@@ -34,7 +34,7 @@ export function PragatiMark({
         strokeLinejoin="round"
       >
         <path d="M14 40 L32 22 L50 40" stroke="#ffffff" strokeWidth="7" />
-        <path d="M18 52 L32 38 L46 52" stroke="#ffffff" strokeWidth="5.5" opacity="0.55" />
+        <path d="M18 52 L32 38 L46 52" stroke="#ffffff" strokeWidth="5.5" opacity="0.65" />
       </svg>
     </div>
   );

@@ -607,7 +607,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
 
           {/* Capture — short list, hard day */}
           <form onSubmit={add} className="mb-4">
-            <div className="relative border border-[#eff3f4] dark:border-[#2f3336] bg-transparent px-3.5 py-3 focus-within:border-[#1d9bf0] transition-colors" style={{ borderRadius: 16 }}>
+            <div className="relative border border-[#eff3f4] dark:border-[#2f3336] bg-transparent px-3.5 py-3 focus-within:border-[var(--mars)] transition-colors" style={{ borderRadius: 16 }}>
               <div className="flex items-center gap-3">
                 <PenLine size={18} className="text-[#71767b] shrink-0" />
                 <input
