@@ -372,8 +372,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
             <Link
               href={`/tasks/${doThisFirst.id}`}
               className="mb-4 flex items-start gap-3 border border-zinc-200/90 dark:border-white/[0.1] bg-white dark:bg-[#0a0a0a] px-4 py-3.5 hover:border-zinc-400 dark:hover:border-white/25 transition-colors"
-              style={{ borderRadius: 6 }}
-              style={{ boxShadow: 'none' }}
+              style={{ borderRadius: 6, boxShadow: 'none' }}
             >
               <div className="min-w-0 flex-1">
                 <div
