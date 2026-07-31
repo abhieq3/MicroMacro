@@ -4,15 +4,15 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 
 // ── Status dots ───────────────────────────────────────────────────────────────
 const STATUS_DOT: Record<string, string> = {
-  todo: '#71717a',
-  in_progress: '#fafafa',
-  review: '#eab308',
-  blocked: '#ef4444',
-  done: '#22c55e',
-  planning: '#71717a',
-  on_hold: '#eab308',
-  completed: '#22c55e',
-  cancelled: '#ef4444',
+  todo: '#71767b',
+  in_progress: '#1d9bf0',
+  review: '#ffd400',
+  blocked: '#f4212e',
+  done: '#00ba7c',
+  planning: '#71767b',
+  on_hold: '#ffd400',
+  completed: '#00ba7c',
+  cancelled: '#f4212e',
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -28,29 +28,29 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  todo: 'bg-zinc-100 text-zinc-600 dark:bg-white/10 dark:text-zinc-300',
-  in_progress: 'bg-zinc-900 text-white dark:bg-white dark:text-black',
-  review: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-  blocked: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
-  done: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
-  planning: 'bg-zinc-100 text-zinc-600 dark:bg-white/10 dark:text-zinc-300',
-  on_hold: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-  completed: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
-  cancelled: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  todo: 'bg-[#eff3f4] text-[#536471] dark:bg-[#16181c] dark:text-[#71767b]',
+  in_progress: 'bg-[#1d9bf0]/15 text-[#1d9bf0] dark:bg-[#1d9bf0]/15 dark:text-[#1d9bf0]',
+  review: 'bg-[#ffd400]/15 text-[#b38600] dark:bg-[#ffd400]/12 dark:text-[#ffd400]',
+  blocked: 'bg-[#f4212e]/12 text-[#f4212e] dark:bg-[#f4212e]/15 dark:text-[#f4212e]',
+  done: 'bg-[#00ba7c]/12 text-[#00ba7c] dark:bg-[#00ba7c]/15 dark:text-[#00ba7c]',
+  planning: 'bg-[#eff3f4] text-[#536471] dark:bg-[#16181c] dark:text-[#71767b]',
+  on_hold: 'bg-[#ffd400]/15 text-[#b38600] dark:bg-[#ffd400]/12 dark:text-[#ffd400]',
+  completed: 'bg-[#00ba7c]/12 text-[#00ba7c] dark:bg-[#00ba7c]/15 dark:text-[#00ba7c]',
+  cancelled: 'bg-[#f4212e]/12 text-[#f4212e] dark:bg-[#f4212e]/15 dark:text-[#f4212e]',
 };
 
 export const PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-zinc-100 text-zinc-500 dark:bg-white/10 dark:text-zinc-400',
-  medium: 'bg-zinc-200 text-zinc-700 dark:bg-white/15 dark:text-zinc-200',
-  high: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
-  critical: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  low: 'bg-[#eff3f4] text-[#536471] dark:bg-[#16181c] dark:text-[#71767b]',
+  medium: 'bg-[#1d9bf0]/12 text-[#1d9bf0] dark:bg-[#1d9bf0]/15 dark:text-[#1d9bf0]',
+  high: 'bg-[#ffd400]/15 text-[#b38600] dark:bg-[#ffd400]/12 dark:text-[#ffd400]',
+  critical: 'bg-[#f4212e]/12 text-[#f4212e] dark:bg-[#f4212e]/15 dark:text-[#f4212e]',
 };
 
 const PRIORITY_DOT: Record<string, string> = {
-  low: '#71717a',
-  medium: '#a1a1aa',
-  high: '#eab308',
-  critical: '#ef4444',
+  low: '#71767b',
+  medium: '#1d9bf0',
+  high: '#ffd400',
+  critical: '#f4212e',
 };
 
 export const LIFECYCLE_LABELS: Record<string, string> = {
@@ -114,11 +114,11 @@ export const ROLE_LABEL: Record<string, string> = {
   employee: 'Individual Contributor',
 };
 const ROLE_BADGE_CLASS: Record<string, string> = {
-  admin: 'bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-black dark:border-white',
-  pm: 'bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-white/10 dark:text-zinc-100 dark:border-white/15',
-  lead: 'bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-white/10 dark:text-zinc-100 dark:border-white/15',
-  contributor: 'bg-zinc-50 text-zinc-600 border-zinc-200 dark:bg-white/5 dark:text-zinc-300 dark:border-white/10',
-  employee: 'bg-zinc-50 text-zinc-600 border-zinc-200 dark:bg-white/5 dark:text-zinc-300 dark:border-white/10',
+  admin: 'bg-[#0f1419] text-white border-[#0f1419] dark:bg-[#e7e9ea] dark:text-[#0f1419] dark:border-[#e7e9ea]',
+  pm: 'bg-[#eff3f4] text-[#0f1419] border-[#cfd9de] dark:bg-[#16181c] dark:text-[#e7e9ea] dark:border-[#2f3336]',
+  lead: 'bg-[#eff3f4] text-[#0f1419] border-[#cfd9de] dark:bg-[#16181c] dark:text-[#e7e9ea] dark:border-[#2f3336]',
+  contributor: 'bg-transparent text-[#536471] border-[#cfd9de] dark:text-[#71767b] dark:border-[#2f3336]',
+  employee: 'bg-transparent text-[#536471] border-[#cfd9de] dark:text-[#71767b] dark:border-[#2f3336]',
 };
 export function roleLabel(role?: string | null): string {
   return ROLE_LABEL[role || 'contributor'] ?? 'Individual Contributor';
@@ -174,15 +174,16 @@ export function ProgressBar({ value, className = '' }: { value: number; classNam
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div
-      className={`relative w-full bg-zinc-200 dark:bg-white/10 h-0.5 overflow-hidden ${className}`}
-      style={{ borderRadius: 1 }}
+      className={`relative w-full bg-[#eff3f4] dark:bg-[#2f3336] h-1 overflow-hidden ${className}`}
+      style={{ borderRadius: 9999 }}
     >
       <div
-        className="progress-bar-fill h-0.5"
+        className="progress-bar-fill h-1"
         style={{
           width: `${pct}%`,
           transition: 'width 400ms ease',
-          borderRadius: 1,
+          borderRadius: 9999,
+          background: '#1d9bf0',
         }}
       />
     </div>
@@ -280,10 +281,10 @@ const AVATAR_GRADIENTS: Array<[string, string]> = [
   ['#27272a', '#09090b'],
   ['#3f3f46', '#18181b'],
   ['#52525b', '#27272a'],
-  ['#0a0a0a', '#000000'],
+  ['#000000', '#000000'],
   ['#1c1917', '#0c0a09'],
   ['#292524', '#1c1917'],
-  ['#171717', '#0a0a0a'],
+  ['#171717', '#000000'],
   ['#262626', '#171717'],
   ['#404040', '#262626'],
 ];
@@ -612,7 +613,7 @@ export function StatusPillRow({
     const others = (options as string[]).filter((o) => o !== value);
     return (
       <div
-        className={`group inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.04] p-1 ${className}`}
+        className={`group inline-flex items-center gap-1 rounded-xl border border-slate-200 dark:border-[#2f3336] bg-slate-50/70 dark:bg-white/[0.04] p-1 ${className}`}
         title="Change status"
       >
         {pill(value)}

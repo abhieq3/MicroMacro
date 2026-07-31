@@ -1734,12 +1734,12 @@ export function BirdsEyeView({
       >
         {/* Header — full-width band above the canvas. Title block left, controls
             right; both wrap independently so neither is clipped on a phone. */}
-        <div className="shrink-0 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between px-5 py-3 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-black">
+        <div className="shrink-0 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between px-5 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 dark:text-white/35">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#536471] dark:text-[#71767b]">
               Map
             </div>
-            <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white tracking-tight leading-tight break-words">
+            <div className="text-base sm:text-lg font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight leading-tight break-words">
               {data.rootLabel}
             </div>
             {data.rootSubLabel && (
@@ -2345,7 +2345,7 @@ export function BirdsEyeView({
             One glance, one click, total clarity. */}
         <div className="shrink-0 border-t border-slate-200 bg-white dark:bg-slate-950/80">
           {/* Urgency Command Bar – the "greatest on earth" moment */}
-          <div className="flex items-center gap-2 px-4 py-2 text-[11px] border-b border-slate-100 dark:border-white/10">
+          <div className="flex items-center gap-2 px-4 py-2 text-[11px] border-b border-slate-100 dark:border-[#2f3336]">
             <span className="font-bold uppercase tracking-[1.5px] text-slate-400 mr-1">Focus</span>
             {urgencyChips.map((chip) => {
               const active = urgencyFocus === chip.value;

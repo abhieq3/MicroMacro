@@ -119,7 +119,7 @@ export function ProfileHero({
         </div>
       </div>
 
-      {footer && <div className="mt-5 pt-4 border-t border-slate-100 dark:border-white/[0.06]">{footer}</div>}
+      {footer && <div className="mt-5 pt-4 border-t border-slate-100 dark:border-[#2f3336]">{footer}</div>}
     </section>
   );
 }

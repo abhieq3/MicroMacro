@@ -649,10 +649,10 @@ export function Whiteboard() {
 
   return (
     <div
-      className="h-full bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden flex flex-col"
+      className="h-full bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-[#2f3336] overflow-hidden flex flex-col"
       style={{ minHeight: 460 }}
     >
-      <div className="shrink-0 px-3 pt-2.5 pb-1.5 border-b border-slate-100 dark:border-white/[0.06]">
+      <div className="shrink-0 px-3 pt-2.5 pb-1.5 border-b border-slate-100 dark:border-[#2f3336]">
         <label className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30 mb-1">
           Working on
         </label>
@@ -669,7 +669,7 @@ export function Whiteboard() {
         />
       </div>
 
-      <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] overflow-x-auto">
+      <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-[#2f3336] overflow-x-auto">
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/25 shrink-0 mr-0.5">
           Start from
         </span>
@@ -679,7 +679,7 @@ export function Whiteboard() {
             type="button"
             title={tpl.blurb}
             onClick={() => applyTemplate(tpl.id)}
-            className="shrink-0 rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:text-white/60 hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            className="shrink-0 rounded-full border border-slate-200 dark:border-[#2f3336] bg-slate-50 dark:bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:text-white/60 hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
           >
             {tpl.label}
           </button>
@@ -694,7 +694,7 @@ export function Whiteboard() {
         </button>
       </div>
 
-      <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] flex-wrap">
+      <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 dark:border-[#2f3336] flex-wrap">
         <div className="flex items-center gap-1">
           <ToolBtn active={tool === 'pen'} label="Pen (V)" icon={<Pen size={14} />} onClick={() => setTool('pen')} />
           <ToolBtn
@@ -898,7 +898,7 @@ export function Whiteboard() {
                     key={tpl.id}
                     type="button"
                     onClick={() => applyTemplate(tpl.id)}
-                    className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-3 py-2.5 hover:border-blue-300 dark:hover:border-blue-400/40 transition-colors"
+                    className="rounded-xl border border-slate-200 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] px-3 py-2.5 hover:border-blue-300 dark:hover:border-blue-400/40 transition-colors"
                   >
                     <div className="text-[12px] font-bold text-slate-800 dark:text-white/85">{tpl.label}</div>
                     <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 leading-snug">

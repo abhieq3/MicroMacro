@@ -1624,7 +1624,7 @@ export default function PeopleClient({
       )}
 
       {/* Header */}
-      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-[#2f3336]">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 page-icon-box bg-indigo-50 dark:bg-indigo-500/10 shrink-0">

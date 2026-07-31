@@ -204,10 +204,10 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
       <>
         {/* Add note form */}
           <form onSubmit={addNote} className="mb-4">
-            <div className="rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden focus-within:border-amber-400/60 dark:focus-within:border-amber-500/40 focus-within:shadow-[0_0_0_3px_rgba(245,158,11,0.08)] transition-all">
+            <div className="rounded-xl border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] overflow-hidden focus-within:border-amber-400/60 dark:focus-within:border-amber-500/40 focus-within:shadow-[0_0_0_3px_rgba(245,158,11,0.08)] transition-all">
               {showTitle && (
                 <input
-                  className="w-full bg-transparent text-[13px] font-semibold text-slate-700 dark:text-white/80 placeholder-slate-300 dark:placeholder-white/25 border-0 border-b border-slate-100 dark:border-white/[0.06] outline-none px-3 py-2"
+                  className="w-full bg-transparent text-[13px] font-semibold text-slate-700 dark:text-white/80 placeholder-slate-300 dark:placeholder-white/25 border-0 border-b border-slate-100 dark:border-[#2f3336] outline-none px-3 py-2"
                   placeholder="Title (optional)"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -264,7 +264,7 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-slate-100 dark:border-white/[0.06] p-3 space-y-1.5"
+                  className="rounded-xl border border-slate-100 dark:border-[#2f3336] p-3 space-y-1.5"
                 >
                   <div className="skeleton h-3 w-2/3" />
                   <div className="skeleton h-2.5 w-full" />
@@ -274,7 +274,7 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
           )}
 
           {!loading && notes.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/[0.07] p-6 text-center">
+            <div className="rounded-xl border border-dashed border-slate-200 dark:border-[#2f3336] p-6 text-center">
               <FileText size={16} className="mx-auto mb-2 text-slate-300 dark:text-white/15" />
               <div className="text-[11px] text-slate-400 dark:text-white/25">
                 No notes yet. Save anything you want to keep.
@@ -289,14 +289,14 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
                 className={`group rounded-xl border transition-all cursor-pointer ${
                   note.pinned
                     ? 'border-amber-200/80 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/[0.06]'
-                    : 'border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12'
+                    : 'border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12'
                 }`}
                 onClick={() => setExpandedId(expandedId === note.id ? null : note.id)}
               >
                 {editingId === note.id ? (
                   <div className="p-3 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                     <input
-                      className="w-full bg-transparent text-[12px] font-semibold text-slate-600 dark:text-white/70 placeholder-slate-300 border-b border-slate-100 dark:border-white/[0.07] outline-none pb-1.5"
+                      className="w-full bg-transparent text-[12px] font-semibold text-slate-600 dark:text-white/70 placeholder-slate-300 border-b border-slate-100 dark:border-[#2f3336] outline-none pb-1.5"
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
                       placeholder="Title (optional)"
@@ -426,7 +426,7 @@ function NotesFAB() {
             />
             <div className="relative w-full h-full bg-slate-50 dark:bg-[#1e1e1c] shadow-2xl flex flex-col fade-in-soft">
               <div
-                className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
+                className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-[#2f3336] shrink-0"
                 style={{ background: 'linear-gradient(to right, rgba(245,158,11,0.08), transparent)' }}
               >
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
@@ -615,7 +615,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
 
           {/* ── Capture bar ────────────────────────────────────────── */}
           <form onSubmit={add} className="mb-4">
-            <div className="relative rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm hover:border-slate-300/80 focus-within:border-blue-500/60 dark:focus-within:border-blue-500/50 focus-within:shadow-[0_0_0_3px_rgba(21,101,192,0.10)] transition-all">
+            <div className="relative rounded-2xl border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm hover:border-slate-300/80 focus-within:border-blue-500/60 dark:focus-within:border-blue-500/50 focus-within:shadow-[0_0_0_3px_rgba(21,101,192,0.10)] transition-all">
               <div className="flex items-center gap-3">
                 {/* Capture icon — a pen, matching the "empty your mind" prompt */}
                 <div
@@ -655,7 +655,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
 
           {/* ── Empty state ──────────────────────────────────────── */}
           {open.length === 0 && done.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-[#2f3336] p-8 text-center">
               <div className="text-sm font-bold text-slate-700 dark:text-white/60 mb-1">
                 Capture one thing
               </div>
@@ -679,7 +679,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                       ${
                         isChecking
                           ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/80 dark:bg-emerald-500/[0.08] scale-[0.995]'
-                          : 'border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12 hover:shadow-sm dark:hover:bg-white/[0.045]'
+                          : 'border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12 hover:shadow-sm dark:hover:bg-white/[0.045]'
                       }
                     `}
                   >
@@ -1114,7 +1114,7 @@ function MyDayForesight() {
 
   return (
     <div
-      className="mt-5 rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] px-3.5 py-3"
+      className="mt-5 rounded-xl border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025] px-3.5 py-3"
       style={{ borderLeft: `3px solid ${accent}` }}
     >
       <div className="flex items-center gap-1.5 mb-1">
@@ -1170,7 +1170,7 @@ function TodayFromProjects() {
   if (rows.length === 0) return null;
 
   return (
-    <div className="mt-5 rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] px-3.5 py-2.5">
+    <div className="mt-5 rounded-xl border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025] px-3.5 py-2.5">
       <div className="flex items-center gap-2 mb-1">
         <FolderKanban size={12} className="text-slate-400 dark:text-white/30 shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">

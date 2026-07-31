@@ -63,7 +63,7 @@ export function TaskCompletePop({
       onClick={() => onDone()}
     >
       <div
-        className="flex items-start gap-2.5 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#262624] px-3.5 py-2.5 shadow-lg"
+        className="flex items-start gap-2.5 rounded-2xl border border-slate-200/90 dark:border-[#2f3336] bg-white dark:bg-[#262624] px-3.5 py-2.5 shadow-lg"
         style={{ animation: 'fade-in-soft-2 0.18s ease-out both' }}
       >
         <span className="mt-0.5 grid h-6 w-6 place-items-center rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shrink-0">

@@ -43,7 +43,7 @@ export function UserPicker({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       aria-label={ariaLabel}
-      className={`${small ? 'text-xs px-2 py-1' : 'text-sm px-3 py-2'} w-full rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-800 dark:text-white/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${className}`}
+      className={`${small ? 'text-xs px-2 py-1' : 'text-sm px-3 py-2'} w-full rounded-lg border border-slate-200 dark:border-[#2f3336] bg-white dark:bg-white/5 text-slate-800 dark:text-white/90 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${className}`}
     >
       <option value="">{placeholder}</option>
       {members.map((m) => (

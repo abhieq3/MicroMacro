@@ -236,7 +236,7 @@ export function RecurringPanel({
 
       {/* Create / edit form */}
       {isLead && editing !== null && (
-        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 mb-4 space-y-3 bg-slate-50/60 dark:bg-white/[0.02]">
+        <div className="rounded-xl border border-slate-200 dark:border-[#2f3336] p-4 mb-4 space-y-3 bg-slate-50/60 dark:bg-white/[0.02]">
           <div className="flex items-center justify-between">
             <div className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
               {editing === 'new' ? 'New recurring activity' : 'Edit activity'}
@@ -398,7 +398,7 @@ export function RecurringPanel({
               key={a.id}
               className={`rounded-xl border p-3 ${
                 a.active
-                  ? 'border-slate-200 dark:border-white/10'
+                  ? 'border-slate-200 dark:border-[#2f3336]'
                   : 'border-slate-100 dark:border-white/5 opacity-60'
               }`}
             >

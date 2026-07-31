@@ -129,7 +129,7 @@ function DropSoundToggle({ initial }: { initial: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/10 p-5">
+    <div className="rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-[#2f3336] p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-bold text-slate-800 dark:text-white/90">Drop sound</div>
@@ -494,7 +494,7 @@ function LinksEditor({
           return (
             <div key={i} className="flex items-center gap-2">
               <span
-                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0"
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-[#2f3336] flex items-center justify-center shrink-0"
                 style={{ color: m ? m.color : '#94a3b8' }}
                 title={m ? m.label : 'Add a link'}
               >
@@ -914,7 +914,7 @@ function CalendarFeedSection() {
                 Other app, or copy the link
               </summary>
               <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <code className="text-[11px] font-mono bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1.5 break-all flex-1 min-w-[200px]">
+                <code className="text-[11px] font-mono bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-[#2f3336] rounded-lg px-2 py-1.5 break-all flex-1 min-w-[200px]">
                   {state.url}
                 </code>
                 <button
