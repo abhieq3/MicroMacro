@@ -97,7 +97,7 @@ export function ProfileStatTiles({ stats }: { stats: ProfileStats }) {
       value: stats.doneThisYear,
       sub: new Date().getFullYear().toString(),
       icon: CalendarRange,
-      color: '#1565C0',
+      color: 'currentColor',
       bg: '#eff6ff',
     },
     {

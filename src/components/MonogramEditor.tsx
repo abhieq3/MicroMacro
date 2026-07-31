@@ -112,7 +112,7 @@ export function MonogramEditor({ initial, name, onSave, onClose }: Props) {
               type="button"
               onClick={surpriseMe}
               className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
-              style={{ background: 'linear-gradient(120deg, #1565C0 0%, #1976D2 45%, #2E7D32 100%)' }}
+              style={{ background: '#000000' }}
             >
               <Sparkles size={15} className="transition-transform duration-500 group-hover:rotate-180" />
               Surprise me
@@ -144,7 +144,7 @@ export function MonogramEditor({ initial, name, onSave, onClose }: Props) {
                     {active && (
                       <span
                         className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
-                        style={{ background: '#1565C0' }}
+                        style={{ background: '#000000' }}
                       />
                     )}
                   </button>

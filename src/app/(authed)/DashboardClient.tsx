@@ -39,7 +39,7 @@ import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
 // The Morning Brief stays available through its other channels (push, email,
 // calendar feed) — the dashboard card was removed by owner decision: the
-// Up Next panel and the summary chips already answer "what's on today" here.
+// Due panel and the summary chips already answer "what's on today" here.
 
 /* ── Types matching /api/lead-dashboard ──────────────────────────────────── */
 interface TeamTask {
@@ -260,7 +260,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   // Bird's-eye view — the lead's whole workspace as a packed tree. Opened
   // from the small compass icon in the greeting row.
   const [birdsEyeOpen, setBirdsEyeOpen] = useState(false);
-  // Up Next's expand state is lifted here so the shared two-column header bar
+  // Due's expand state is lifted here so the shared two-column header bar
   // (below) can own the expand control — keeping both column titles on one
   // inline header row instead of two floating labels.
   const [upNextExpanded, setUpNextExpanded] = useState(false);
@@ -371,8 +371,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
           {doThisFirst && (
             <Link
               href={`/tasks/${doThisFirst.id}`}
-              className="mb-4 flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#2a2a28] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
-              style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+              className="mb-4 flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0a0a0a] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
+              style={{ boxShadow: 'none' }}
             >
               <div className="min-w-0 flex-1">
                 <div
@@ -382,7 +382,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                       : 'text-blue-600 dark:text-blue-400'
                   }`}
                 >
-                  Do this first
+                  Priority
                 </div>
                 <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
                   {doThisFirst.title}
@@ -454,13 +454,13 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               <div className="flex items-center gap-2 min-w-0">
                 <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
                 <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
-                  Up Next
+                  Due
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setUpNextExpanded(true)}
-                aria-label="Expand Up Next"
+                aria-label="Expand Due"
                 className="shrink-0 p-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
               >
                 <Maximize2 size={13} />
@@ -556,7 +556,7 @@ function ExpandButton({ onClick }: { onClick: () => void }) {
 /* ── Shared right-column panel header ─────────────────────────────────────
    Styled to match the left column's "Your team's projects" section label —
    plain muted icon, uppercase tracking-wider title, light count — so both
-   columns read as one inline layout. One geometry across Up Next / My Tasks /
+   columns read as one inline layout. One geometry across Due / My Tasks /
    Individual Contributors keeps the right rail even; an optional trailing slot
    carries the maximize / overdue / chevron affordance. `tint` is accepted for
    call-site compatibility but no longer painted as a tile. */
@@ -601,7 +601,7 @@ function PanelHeader({
 }
 
 const PANEL_TINTS = {
-  blue: { bg: 'rgba(21,101,192,0.10)', fg: '#1565C0' },
+  blue: { bg: 'rgba(255,255,255,0.08)', fg: '#fafafa' },
   emerald: { bg: 'rgba(16,185,129,0.12)', fg: '#059669' },
   violet: { bg: 'rgba(124,58,237,0.12)', fg: '#7c3aed' },
 } as const;
@@ -797,36 +797,36 @@ function ContributorWelcome({ name }: { name: string }) {
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   return (
     <div
-      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] overflow-hidden max-w-xl"
-      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#0a0a0a] overflow-hidden max-w-xl"
+      style={{ boxShadow: 'none' }}
     >
       <div
         className="h-1"
-        style={{ background: 'linear-gradient(90deg, #1256B0 0%, #22c55e 100%)' }}
+        style={{ background: '#ffffff' }}
       />
       <div className="p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-          Welcome
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 dark:text-white/30">
+          No work yet
         </p>
-        <h2 className="mt-1 text-base font-black text-slate-800 dark:text-white/85 tracking-tight">
-          Hi, {first}
+        <h2 className="mt-1 text-base font-bold text-zinc-900 dark:text-white tracking-tight">
+          {first}
         </h2>
-        <p className="mt-1.5 text-[13px] text-slate-500 dark:text-white/40 leading-relaxed">
-          Nothing assigned yet — normal on day one. When your lead adds work, it lands here.
+        <p className="mt-1.5 text-[13px] text-zinc-500 dark:text-white/40 leading-relaxed">
+          Nothing assigned. New work shows here.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Link
             href="/my-day"
             className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-all"
-            style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
+            style={{ background: '#000000', border: '1px solid rgba(255,255,255,0.12)' }}
           >
             Open My Day <ArrowRight size={13} />
           </Link>
           <Link
             href="/projects"
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-500 hover:text-blue-600 dark:text-white/40 dark:hover:text-blue-400"
+            className="inline-flex items-center gap-1 text-[12px] font-semibold text-zinc-500 hover:text-zinc-900 dark:text-white/40 dark:hover:text-white"
           >
-            Browse projects
+            Projects
           </Link>
         </div>
       </div>
@@ -846,28 +846,28 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
     ? {
         href: '/projects/new',
         title: 'Create your first project',
-        body: 'Pick a lifecycle, put it on a team, add one task. The rest follows.',
+        body: 'Pick a type, assign a team, add a task.',
         cta: 'New project',
       }
     : {
         href: '/teams',
         title: 'Create a team',
-        body: 'Name the group you ship with. Projects and people hang off a team.',
+        body: 'Name the team. Projects and people attach to it.',
         cta: 'Create a team',
       };
 
   return (
     <div
-      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#2a2a28] overflow-hidden max-w-xl"
-      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#0a0a0a] overflow-hidden max-w-xl"
+      style={{ boxShadow: 'none' }}
     >
       <div
         className="h-1"
-        style={{ background: 'linear-gradient(90deg, #1256B0 0%, #22c55e 100%)' }}
+        style={{ background: '#ffffff' }}
       />
       <div className="p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-          Get started
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 dark:text-white/30">
+          Setup
         </p>
         <div className="mt-3 flex items-center gap-2 flex-wrap">
           {steps.map((s, i) => (
@@ -877,7 +877,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
                   s.done
                     ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
                     : i === (hasTeam ? 1 : 0)
-                      ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-400 ring-1 ring-blue-200/80 dark:ring-blue-500/30'
+                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-black'
                       : 'bg-slate-50 text-slate-400 dark:bg-white/[0.04] dark:text-white/30'
                 }`}
               >
@@ -905,7 +905,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
         <Link
           href={next.href}
           className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-all"
-          style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
+          style={{ background: '#000000', border: '1px solid rgba(255,255,255,0.12)' }}
         >
           {next.cta} <ArrowRight size={13} />
         </Link>
@@ -952,7 +952,7 @@ function ProjectsColumn({
       {projects.length === 0 ? (
         <div
           className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] text-center py-12 px-6"
-          style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+          style={{ boxShadow: 'none' }}
         >
           <FolderKanban size={26} className="mx-auto text-slate-300 dark:text-white/20 mb-3" />
           <div className="text-sm font-semibold text-slate-600 dark:text-white/55 mb-1">
@@ -1029,7 +1029,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
             if (isBlocked) return ['#ef4444', 'Blocked'];
             if (overdue) return ['#ef4444', 'Overdue'];
             if (dueIn !== null && dueIn <= 3) return ['#d97706', 'Due soon'];
-            if (t.status === 'in_progress') return ['#1565C0', 'In progress'];
+            if (t.status === 'in_progress') return ['#fafafa', 'In progress'];
             if (t.status === 'review') return ['#7c3aed', 'In review'];
             return ['#94a3b8', 'To do'];
           })();
@@ -1037,7 +1037,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           const stateMeta = ((): { label: string; fg: string; bg: string } | null => {
             if (isDone) return { label: 'Done', fg: '#059669', bg: 'rgba(16,185,129,0.12)' };
             if (t.status === 'in_progress')
-              return { label: 'In progress', fg: '#1565C0', bg: 'rgba(21,101,192,0.12)' };
+              return { label: 'In progress', fg: '#fafafa', bg: 'rgba(255,255,255,0.1)' };
             if (t.status === 'review')
               return { label: 'In review', fg: '#7c3aed', bg: 'rgba(124,58,237,0.12)' };
             if (t.status === 'todo' || !t.status)
@@ -1213,7 +1213,7 @@ function ProjectRow({
   return (
     <article
       className="min-w-0 bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden transition-all"
-      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+      style={{ boxShadow: 'none' }}
     >
       {/* Collapsed-state header — two readable rows, never a 5-piece chip strip.
           Row 1: title + identity badges (code, lifecycle, health). Row 2: the
@@ -1414,7 +1414,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
   return (
     <section
       className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
-      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+      style={{ boxShadow: 'none' }}
     >
       <PanelHeader
         icon={<CheckCircle2 size={13} />}
@@ -1594,7 +1594,7 @@ function UpNextPanel({
           <div className="flex items-center gap-2 min-w-0">
             <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
             <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
-              Up Next
+              Due
             </h2>
             <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
               {totalCount}
@@ -1603,7 +1603,7 @@ function UpNextPanel({
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            aria-label="Expand Up Next"
+            aria-label="Expand Due"
             className="shrink-0 p-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
           >
             <Maximize2 size={13} />
@@ -1612,7 +1612,7 @@ function UpNextPanel({
       )}
       <div
         className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
-        style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+        style={{ boxShadow: 'none' }}
       >
         <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100vh - 220px)' : '60vh' }}>
           {/* Overdue group — sits at the top: nothing to filter, just the
@@ -1697,7 +1697,7 @@ function UpNextPanel({
 
   return expanded ? (
     <FullScreenOverlay
-      title="Up Next"
+      title="Due"
       icon={<TrendingUp size={14} className="text-blue-500" />}
       onClose={() => setExpanded(false)}
     >
@@ -1727,7 +1727,7 @@ function ActionGroup({
   emptyHint?: string;
   showAll?: boolean;
   /** When true, the small group header is suppressed — the parent has
-   *  already rendered its own (e.g. the Up Next panel pulls the Due header
+   *  already rendered its own (e.g. the Due panel pulls the Due header
    *  out so the filter chips can sit between it and the list). */
   hideHeader?: boolean;
 }) {
@@ -1865,7 +1865,7 @@ function ContributorsPanel({
     return (
       <section
         className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
-        style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+        style={{ boxShadow: 'none' }}
       >
         <PanelHeader
           icon={<UsersIcon size={13} />}
@@ -1884,7 +1884,7 @@ function ContributorsPanel({
   return (
     <section
       className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
-      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+      style={{ boxShadow: 'none' }}
     >
       <PanelHeader
         icon={<UsersIcon size={13} />}
@@ -1943,7 +1943,7 @@ function MyFocusPanel({ tasks, projects, myId }: { tasks: TeamTask[]; projects: 
   return (
     <section
       className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
-      style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+      style={{ boxShadow: 'none' }}
     >
       <div
         className="px-4 py-3 flex items-center gap-2 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] select-none transition-colors"

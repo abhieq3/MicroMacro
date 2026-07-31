@@ -92,12 +92,12 @@ export function NavigationProgress() {
         className="h-full rounded-r-full"
         style={{
           width: done ? '100%' : '70%',
-          background: 'linear-gradient(90deg, #1565C0, #2E7D32)',
+          background: 'var(--text-primary)',
           transition: done
             ? 'width 140ms ease-out, opacity 160ms ease 40ms'
             : 'width 4s cubic-bezier(0.1, 0.05, 0, 1)',
           opacity: done ? 0 : 1,
-          boxShadow: '0 0 8px rgba(21,101,192,0.45)',
+          boxShadow: 'none',
         }}
       />
     </div>

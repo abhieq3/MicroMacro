@@ -202,7 +202,7 @@ export default function ProfileView({
           <div className="section-head px-5 py-4 border-b flex items-center gap-3">
             <div
               className="flex items-center justify-center w-8 h-8 rounded-lg shrink-0"
-              style={{ background: 'linear-gradient(135deg, #eff6ff, #dbeafe)' }}
+              style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border-card)' }}
             >
               <Activity size={18} className="text-blue-500" />
             </div>

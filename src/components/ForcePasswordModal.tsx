@@ -127,7 +127,7 @@ export function ForcePasswordModal({ onDone }: { onDone: () => void }) {
             type="submit"
             disabled={saving || !strong || pw !== confirm}
             className="w-full py-2.5 rounded-lg text-sm font-bold text-white transition-all disabled:opacity-50 mt-1"
-            style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
+            style={{ background: '#000000' }}
           >
             {saving ? 'Saving…' : 'Set password & continue →'}
           </button>

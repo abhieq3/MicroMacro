@@ -4,13 +4,13 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 
 // ── Status dots ───────────────────────────────────────────────────────────────
 const STATUS_DOT: Record<string, string> = {
-  todo: '#94a3b8',
-  in_progress: '#3b82f6',
-  review: '#f59e0b',
+  todo: '#71717a',
+  in_progress: '#fafafa',
+  review: '#eab308',
   blocked: '#ef4444',
   done: '#22c55e',
-  planning: '#94a3b8',
-  on_hold: '#f59e0b',
+  planning: '#71717a',
+  on_hold: '#eab308',
   completed: '#22c55e',
   cancelled: '#ef4444',
 };
@@ -28,28 +28,28 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  todo: 'bg-slate-100 text-slate-600',
-  in_progress: 'bg-blue-50 text-blue-700',
-  review: 'bg-amber-50 text-amber-700',
-  blocked: 'bg-red-50 text-red-600',
-  done: 'bg-green-50 text-green-700',
-  planning: 'bg-slate-100 text-slate-600',
-  on_hold: 'bg-amber-50 text-amber-700',
-  completed: 'bg-green-50 text-green-700',
-  cancelled: 'bg-red-50 text-red-600',
+  todo: 'bg-zinc-100 text-zinc-600 dark:bg-white/10 dark:text-zinc-300',
+  in_progress: 'bg-zinc-900 text-white dark:bg-white dark:text-black',
+  review: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  blocked: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+  done: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
+  planning: 'bg-zinc-100 text-zinc-600 dark:bg-white/10 dark:text-zinc-300',
+  on_hold: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  completed: 'bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300',
+  cancelled: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
 };
 
 export const PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-slate-100 text-slate-500',
-  medium: 'bg-sky-50 text-sky-700',
-  high: 'bg-orange-50 text-orange-700',
-  critical: 'bg-red-50 text-red-700',
+  low: 'bg-zinc-100 text-zinc-500 dark:bg-white/10 dark:text-zinc-400',
+  medium: 'bg-zinc-200 text-zinc-700 dark:bg-white/15 dark:text-zinc-200',
+  high: 'bg-amber-50 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+  critical: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
 };
 
 const PRIORITY_DOT: Record<string, string> = {
-  low: '#94a3b8',
-  medium: '#0ea5e9',
-  high: '#f97316',
+  low: '#71717a',
+  medium: '#a1a1aa',
+  high: '#eab308',
   critical: '#ef4444',
 };
 
@@ -75,24 +75,23 @@ export const LIFECYCLE_LABELS: Record<string, string> = {
 };
 
 export const LIFECYCLE_COLORS: Record<string, string> = {
-  // Generic templates
-  agile_sprint: 'text-violet-700 bg-violet-50',
-  software_release: 'text-sky-700 bg-sky-50',
-  product_launch: 'text-orange-700 bg-orange-50',
-  research: 'text-teal-700 bg-teal-50',
-  // Life Sciences templates
-  csv: 'text-indigo-700 bg-indigo-50',
-  sop: 'text-emerald-700 bg-emerald-50',
-  deviation: 'text-rose-700 bg-rose-50',
-  capa: 'text-orange-700 bg-orange-50',
-  deviation_capa: 'text-red-600 bg-red-50',
-  change_control: 'text-amber-700 bg-amber-50',
-  software_change: 'text-blue-700 bg-blue-50',
-  audit: 'text-purple-700 bg-purple-50',
-  validation: 'text-sky-700 bg-sky-50',
-  data_integrity: 'text-teal-700 bg-teal-50',
-  pharmacovigilance: 'text-pink-700 bg-pink-50',
-  generic: 'text-slate-600 bg-slate-100',
+  // Monochrome labels — type differentiation is text, not a rainbow.
+  agile_sprint: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  software_release: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  product_launch: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  research: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  csv: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  sop: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  deviation: 'text-red-700 bg-red-50 dark:text-red-300 dark:bg-red-500/15',
+  capa: 'text-amber-800 bg-amber-50 dark:text-amber-300 dark:bg-amber-500/15',
+  deviation_capa: 'text-red-700 bg-red-50 dark:text-red-300 dark:bg-red-500/15',
+  change_control: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  software_change: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  audit: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  validation: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  data_integrity: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  pharmacovigilance: 'text-zinc-700 bg-zinc-100 dark:text-zinc-200 dark:bg-white/10',
+  generic: 'text-zinc-600 bg-zinc-100 dark:text-zinc-300 dark:bg-white/10',
 };
 
 // ── Tag primitives ────────────────────────────────────────────────────────────
@@ -115,11 +114,11 @@ export const ROLE_LABEL: Record<string, string> = {
   employee: 'Individual Contributor',
 };
 const ROLE_BADGE_CLASS: Record<string, string> = {
-  admin: 'bg-amber-50 text-amber-800 border-amber-200',
-  pm: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  lead: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  contributor: 'bg-blue-50 text-blue-700 border-blue-200',
-  employee: 'bg-blue-50 text-blue-700 border-blue-200',
+  admin: 'bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-black dark:border-white',
+  pm: 'bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-white/10 dark:text-zinc-100 dark:border-white/15',
+  lead: 'bg-zinc-100 text-zinc-800 border-zinc-200 dark:bg-white/10 dark:text-zinc-100 dark:border-white/15',
+  contributor: 'bg-zinc-50 text-zinc-600 border-zinc-200 dark:bg-white/5 dark:text-zinc-300 dark:border-white/10',
+  employee: 'bg-zinc-50 text-zinc-600 border-zinc-200 dark:bg-white/5 dark:text-zinc-300 dark:border-white/10',
 };
 export function roleLabel(role?: string | null): string {
   return ROLE_LABEL[role || 'contributor'] ?? 'Individual Contributor';
@@ -175,17 +174,17 @@ export function ProgressBar({ value, className = '' }: { value: number; classNam
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div
-      className={`relative w-full bg-slate-100 dark:bg-white/10 rounded-full h-1 overflow-hidden ${className}`}
+      className={`relative w-full bg-zinc-200 dark:bg-white/10 h-0.5 overflow-hidden ${className}`}
+      style={{ borderRadius: 1 }}
     >
       <div
-        className="progress-bar-fill h-1 rounded-full"
-        // Spring-like easing so the fill glides into place rather than a flat
-        // linear crawl — reads as "progress made", not a loading bar.
-        style={{ width: `${pct}%`, transition: 'width 900ms cubic-bezier(0.22, 1, 0.36, 1)' }}
-      >
-        {/* Travelling sheen — active whenever the bar has any fill. */}
-        {pct > 0 && <span aria-hidden className="progress-bar-sheen" />}
-      </div>
+        className="progress-bar-fill h-0.5"
+        style={{
+          width: `${pct}%`,
+          transition: 'width 400ms ease',
+          borderRadius: 1,
+        }}
+      />
     </div>
   );
 }
@@ -277,16 +276,16 @@ export function isOverdue(due?: string | Date | null, status?: string | null): b
 // ── Avatar ────────────────────────────────────────────────────────────────────
 // Each palette entry is a [lighter, darker] gradient pair for a soft 3-D feel.
 const AVATAR_GRADIENTS: Array<[string, string]> = [
-  ['#1E88E5', '#1565C0'], // brand blue
-  ['#5E35B1', '#311B92'], // deep purple
-  ['#00897B', '#00695C'], // teal
-  ['#EF6C00', '#E65100'], // orange
-  ['#43A047', '#2E7D32'], // forest
-  ['#C62828', '#B71C1C'], // red
-  ['#039BE5', '#0277BD'], // light blue
-  ['#7B1FA2', '#4A148C'], // purple
-  ['#6D4C41', '#4E342E'], // warm brown
-  ['#546E7A', '#37474F'], // blue grey
+  ['#18181b', '#000000'],
+  ['#27272a', '#09090b'],
+  ['#3f3f46', '#18181b'],
+  ['#52525b', '#27272a'],
+  ['#0a0a0a', '#000000'],
+  ['#1c1917', '#0c0a09'],
+  ['#292524', '#1c1917'],
+  ['#171717', '#0a0a0a'],
+  ['#262626', '#171717'],
+  ['#404040', '#262626'],
 ];
 
 /**
@@ -298,16 +297,16 @@ const AVATAR_GRADIENTS: Array<[string, string]> = [
  */
 export const AVATAR_PRESETS: Array<{ bg: string; font: number }> = [
   // Sans on rich solids — the safe, professional defaults
-  { bg: '#1565C0', font: 0 }, // brand blue + system sans
-  { bg: '#2E7D32', font: 0 }, // brand green + system sans
+  { bg: '#18181b', font: 0 }, // ink
+  { bg: '#27272a', font: 0 }, // zinc
   { bg: '#7B1FA2', font: 1 }, // royal purple + Helvetica heavy
   { bg: '#C62828', font: 1 }, // crimson + Helvetica heavy
   { bg: '#00897B', font: 3 }, // teal + Avenir
   { bg: '#EF6C00', font: 3 }, // amber + Avenir
   // Display weights for confident strokes
   { bg: '#0F172A', font: 5 }, // ink + Futura
-  { bg: '#1976D2', font: 5 }, // brand blue + Futura
-  { bg: '#0D47A1', font: 4 }, // navy + Impact
+  { bg: '#3f3f46', font: 5 }, // zinc + Futura
+  { bg: '#09090b', font: 4 }, // pure ink + Impact
   { bg: '#365314', font: 4 }, // olive + Impact
   // Serifs on lighter pastels — soft and editorial
   { bg: '#FED7AA', font: 6 }, // peach + Georgia

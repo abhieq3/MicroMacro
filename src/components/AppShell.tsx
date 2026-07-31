@@ -425,72 +425,75 @@ export default function AppShell({
   // My Day because they're the same kind of space: yours alone, for thinking
   // and capturing before work becomes tracked records. (The three record
   // surfaces — Dashboard/Projects/Teams — are the shared org view above.)
+  // Monochrome nav — no rainbow icon tiles. Active = white ink on black.
+  const ink = dark ? '#fafafa' : '#09090b';
+  const inkMuted = dark ? '#71717a' : '#71717a';
+  const inkBg = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+  const inkBgActive = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+
   const whiteboardItem: NavItem = {
     href: '/whiteboard',
     label: 'Whiteboard',
     icon: Presentation,
-    iconColor: '#0E7490',
-    iconBg: '#E0F7FA',
+    iconColor: ink,
+    iconBg: inkBg,
   };
   const leadNav: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
-    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
-    { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
+    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
+    { href: '/teams', label: 'Teams', icon: Users, iconColor: ink, iconBg: inkBg },
   ];
   const adminExtra: NavItem[] = [
     {
       href: '/admin',
       label: 'Console',
       icon: ShieldCheck,
-      iconColor: '#B45309',
-      iconBg: '#FEF3C7',
+      iconColor: ink,
+      iconBg: inkBg,
       adminOnly: true,
     },
     {
       href: '/people',
       label: 'People',
       icon: UsersRound,
-      iconColor: '#00897B',
-      iconBg: '#E0F2F1',
+      iconColor: ink,
+      iconBg: inkBg,
       adminOnly: true,
     },
     {
       href: '/audit',
       label: 'Logs',
       icon: ScrollText,
-      iconColor: '#6366F1',
-      iconBg: '#EEF2FF',
+      iconColor: ink,
+      iconBg: inkBg,
       adminOnly: true,
     },
   ];
-  // The master-admin item is only added when the signed-in user actually holds
-  // that role. In the current single-tenant deploy no one does, so the link
-  // never appears — the route itself also redirects non-master-admins.
   const masterAdminExtra: NavItem[] = isMasterAdmin
     ? [
         {
           href: '/master-admin',
           label: 'Platform',
           icon: Globe,
-          iconColor: '#9333EA',
-          iconBg: '#F3E8FF',
+          iconColor: ink,
+          iconBg: inkBg,
           adminOnly: true,
         },
       ]
     : [];
 
   const contributorNav: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
-    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
-    { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
+    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
+    { href: '/teams', label: 'Teams', icon: Users, iconColor: ink, iconBg: inkBg },
   ];
 
   const myDayItem: NavItem = {
     href: '/my-day',
     label: 'My Day',
     icon: NotebookPen,
-    iconColor: '#1565C0',
-    iconBg: '#EFF6FF',
+    iconColor: ink,
+    iconBg: inkBg,
   };
 
   const nav = isAdmin
@@ -518,20 +521,21 @@ export default function AppShell({
   const AccountMenu = accountMenuOpen ? (
     <div
       ref={accountMenuRef}
-      className="absolute left-3 bottom-[72px] z-30 w-[270px] rounded-2xl border p-2 shadow-2xl"
+      className="absolute left-3 bottom-[72px] z-30 w-[270px] border p-1.5"
       style={{
-        background: dark ? '#2b2b29' : '#ffffff',
-        borderColor: dark ? 'rgba(255,255,255,0.10)' : '#dbe3ef',
-        boxShadow: dark ? '0 18px 44px rgba(0,0,0,0.45)' : '0 18px 44px rgba(15,23,42,0.16)',
+        background: dark ? '#0a0a0a' : '#ffffff',
+        borderColor: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+        borderRadius: 6,
+        boxShadow: dark ? '0 16px 48px rgba(0,0,0,0.8)' : '0 16px 40px rgba(0,0,0,0.12)',
       }}
     >
       <div
-        className="px-2.5 py-2.5 flex items-center gap-3 border-b mb-1.5"
-        style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }}
+        className="px-2.5 py-2.5 flex items-center gap-3 border-b mb-1"
+        style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}
       >
         <Avatar
           name={user.name}
-          size={38}
+          size={36}
           letter={user.avatarLetter}
           bg={user.avatarBg}
           font={user.avatarFont}
@@ -539,10 +543,10 @@ export default function AppShell({
           ring
         />
         <div className="min-w-0">
-          <div className={`text-sm font-black truncate ${dark ? 'text-white' : 'text-slate-900'}`}>
+          <div className={`text-sm font-bold truncate tracking-tight ${dark ? 'text-white' : 'text-zinc-900'}`}>
             {user.name}
           </div>
-          <div className={`text-[11px] truncate ${dark ? 'text-white/45' : 'text-slate-400'}`}>
+          <div className={`text-[11px] truncate ${dark ? 'text-white/40' : 'text-zinc-400'}`}>
             {user.username ? `@${user.username}` : roleText}
           </div>
         </div>
@@ -554,13 +558,14 @@ export default function AppShell({
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
+            className={`flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium transition-colors ${
               dark
-                ? 'text-white/70 hover:text-white hover:bg-white/5'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'text-white/70 hover:text-white hover:bg-white/[0.06]'
+                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
             }`}
+            style={{ borderRadius: 4 }}
           >
-            <Icon size={16} className={dark ? 'text-white/40' : 'text-slate-400'} />
+            <Icon size={15} className={dark ? 'text-white/35' : 'text-zinc-400'} />
             <span>{item.label}</span>
           </Link>
         );
@@ -568,20 +573,21 @@ export default function AppShell({
 
       <PwaInstallMenuItem dark={dark} onDone={() => setAccountMenuOpen(false)} />
 
-      <div className="my-1.5 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }} />
+      <div className="my-1 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
       <button
         type="button"
         onClick={() => {
           toggleDark();
           setAccountMenuOpen(false);
         }}
-        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
+        className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium transition-colors ${
           dark
-            ? 'text-white/70 hover:text-white hover:bg-white/5'
-            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            ? 'text-white/70 hover:text-white hover:bg-white/[0.06]'
+            : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
         }`}
+        style={{ borderRadius: 4 }}
       >
-        {dark ? <Sun size={16} className="text-amber-300" /> : <Moon size={16} className="text-slate-400" />}
+        {dark ? <Sun size={15} className="text-white/50" /> : <Moon size={15} className="text-zinc-400" />}
         <span>{dark ? 'Light mode' : 'Dark mode'}</span>
       </button>
       <button
@@ -590,11 +596,12 @@ export default function AppShell({
           setAccountMenuOpen(false);
           setConfirmLogout(true);
         }}
-        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
-          dark ? 'text-red-300/75 hover:text-red-300 hover:bg-red-400/10' : 'text-red-600 hover:bg-red-50'
+        className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium transition-colors ${
+          dark ? 'text-red-400/80 hover:text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
         }`}
+        style={{ borderRadius: 4 }}
       >
-        <LogOut size={16} />
+        <LogOut size={15} />
         <span>Sign out</span>
       </button>
     </div>
@@ -625,11 +632,11 @@ export default function AppShell({
           className={`flex items-center min-w-0 w-full ${showCollapsed ? 'justify-center' : 'gap-2.5 pl-[18px] pr-4'}`}
         >
           <span className="shrink-0">
-            <PragatiMark size={30} />
+            <PragatiMark size={28} flat />
           </span>
           {!showCollapsed && (
             <span
-              className={`brand-wordmark text-[21px] whitespace-nowrap ${dark ? 'text-white' : 'brand-wordmark-gradient'}`}
+              className={`brand-wordmark text-[20px] whitespace-nowrap tracking-tighter ${dark ? 'text-white' : 'text-black'}`}
             >
               Pragati
             </span>
@@ -707,40 +714,43 @@ export default function AppShell({
                   prefetch
                   title={showCollapsed ? n.label : undefined}
                   data-tour={`nav-${n.label.toLowerCase().replace(/\s+/g, '-')}`}
-                  className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                  className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 text-[13px] font-medium transition-colors duration-100 ${
                     active
-                      ? 'text-brand-700 dark:text-[#faf9f5]'
-                      : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
+                      ? dark
+                        ? 'text-white'
+                        : 'text-black'
+                      : dark
+                        ? 'text-white/50 hover:text-white/90 hover:bg-white/[0.04]'
+                        : 'text-zinc-500 hover:text-zinc-900 hover:bg-black/[0.04]'
                   }`}
-                  style={
-                    active
-                      ? showCollapsed
-                        ? {
-                            background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                          }
-                        : {
-                            background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                            borderLeft: `3px solid ${n.iconColor}`,
-                            paddingLeft: '9px',
-                          }
-                      : {}
-                  }
+                  style={{
+                    borderRadius: 4,
+                    ...(active
+                      ? {
+                          background: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                          ...(showCollapsed
+                            ? {}
+                            : {
+                                borderLeft: dark
+                                  ? '2px solid #ffffff'
+                                  : '2px solid #000000',
+                                paddingLeft: 10,
+                              }),
+                        }
+                      : {}),
+                  }}
                 >
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                    className="w-7 h-7 flex items-center justify-center shrink-0"
                     style={{
-                      background: active
-                        ? dark
-                          ? `${n.iconColor}30`
-                          : n.iconBg
-                        : dark
-                          ? `${n.iconColor}18`
-                          : `${n.iconColor}14`,
+                      borderRadius: 4,
+                      background: active ? (dark ? inkBgActive : inkBgActive) : 'transparent',
                     }}
                   >
                     <Icon
-                      size={14}
-                      style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }}
+                      size={15}
+                      strokeWidth={active ? 2.25 : 1.75}
+                      style={{ color: active ? ink : inkMuted }}
                     />
                   </div>
                   {!showCollapsed && <span className="flex-1 truncate">{n.label}</span>}
@@ -771,40 +781,41 @@ export default function AppShell({
                 prefetch
                 title={showCollapsed ? n.label : undefined}
                 data-tour={`nav-${n.label.toLowerCase().replace(/\s+/g, '-')}`}
-                className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 text-[13px] font-medium transition-colors duration-100 ${
                   active
-                    ? 'text-brand-700 dark:text-[#faf9f5]'
-                    : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
+                    ? dark
+                      ? 'text-white'
+                      : 'text-black'
+                    : dark
+                      ? 'text-white/50 hover:text-white/90 hover:bg-white/[0.04]'
+                      : 'text-zinc-500 hover:text-zinc-900 hover:bg-black/[0.04]'
                 }`}
-                style={
-                  active
-                    ? showCollapsed
-                      ? {
-                          background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                        }
-                      : {
-                          background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
-                          borderLeft: `3px solid ${n.iconColor}`,
-                          paddingLeft: '9px',
-                        }
-                    : {}
-                }
+                style={{
+                  borderRadius: 4,
+                  ...(active
+                    ? {
+                        background: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        ...(showCollapsed
+                          ? {}
+                          : {
+                              borderLeft: dark ? '2px solid #ffffff' : '2px solid #000000',
+                              paddingLeft: 10,
+                            }),
+                      }
+                    : {}),
+                }}
               >
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                  className="w-7 h-7 flex items-center justify-center shrink-0"
                   style={{
-                    background: active
-                      ? dark
-                        ? `${n.iconColor}30`
-                        : n.iconBg
-                      : dark
-                        ? `${n.iconColor}18`
-                        : `${n.iconColor}14`,
+                    borderRadius: 4,
+                    background: active ? inkBgActive : 'transparent',
                   }}
                 >
                   <Icon
-                    size={14}
-                    style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }}
+                    size={15}
+                    strokeWidth={active ? 2.25 : 1.75}
+                    style={{ color: active ? ink : inkMuted }}
                   />
                 </div>
                 {!showCollapsed && <span className="flex-1 truncate">{n.label}</span>}
@@ -960,13 +971,13 @@ export default function AppShell({
         `}
             style={{
               width: showCollapsed ? 68 : sidebarWidth,
-              background: dark ? '#262624' : '#ffffff',
-              borderRight: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e8edf4',
+              background: dark ? '#000000' : '#ffffff',
+              borderRight: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
               boxShadow:
                 collapsed && !open && sidebarHovered
                   ? dark
-                    ? '4px 0 24px rgba(0,0,0,0.5)'
-                    : '4px 0 24px rgba(15,23,42,0.18)'
+                    ? '4px 0 32px rgba(0,0,0,0.85)'
+                    : '4px 0 24px rgba(0,0,0,0.12)'
                   : undefined,
             }}
             onMouseEnter={() => {
@@ -994,8 +1005,8 @@ export default function AppShell({
                   aria-hidden="true"
                 >
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-[3px] transition-all duration-150 rounded-full opacity-0 group-hover/drag:opacity-100"
-                    style={{ background: '#3b82f6', margin: '8px 0' }}
+                    className="absolute right-0 top-0 bottom-0 w-[2px] transition-all duration-100 opacity-0 group-hover/drag:opacity-100"
+                    style={{ background: dark ? '#ffffff' : '#000000', margin: '8px 0' }}
                   />
                 </div>
                 <div
@@ -1005,8 +1016,8 @@ export default function AppShell({
                   aria-hidden="true"
                 >
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-[3px] transition-all duration-150 rounded-full opacity-0 group-hover/drag2:opacity-100"
-                    style={{ background: '#3b82f6', margin: '8px 0' }}
+                    className="absolute right-0 top-0 bottom-0 w-[2px] transition-all duration-100 opacity-0 group-hover/drag2:opacity-100"
+                    style={{ background: dark ? '#ffffff' : '#000000', margin: '8px 0' }}
                   />
                 </div>
               </>
@@ -1016,12 +1027,13 @@ export default function AppShell({
             z-[25] sits above the drag handle (z-20) so hovering the button
             never activates the resize cursor behind it. */}
             <button
-              className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-[25] w-5 h-10 items-center justify-center rounded-full transition-colors cursor-pointer"
+              className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-[25] w-5 h-8 items-center justify-center transition-colors cursor-pointer"
               style={{
-                background: dark ? '#30302e' : '#ffffff',
-                border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #dde3ec',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                color: dark ? 'rgba(255,255,255,0.35)' : '#94a3b8',
+                background: dark ? '#0a0a0a' : '#ffffff',
+                border: dark ? '1px solid rgba(255,255,255,0.14)' : '1px solid rgba(0,0,0,0.14)',
+                borderRadius: 3,
+                boxShadow: 'none',
+                color: dark ? 'rgba(255,255,255,0.4)' : '#71717a',
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -1042,18 +1054,15 @@ export default function AppShell({
             <div
               className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14"
               style={{
-                background: dark ? 'rgba(38,38,36,0.92)' : 'rgba(255,255,255,0.92)',
-                backdropFilter: 'saturate(180%) blur(12px)',
-                WebkitBackdropFilter: 'saturate(180%) blur(12px)',
-                borderBottom: dark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e8edf4',
-                boxShadow: dark ? '0 2px 16px rgba(0,0,0,0.45)' : '0 2px 12px rgba(15,23,42,0.07)',
+                background: dark ? 'rgba(0,0,0,0.92)' : 'rgba(255,255,255,0.94)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderBottom: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
               }}
             >
               <Link href="/" className="flex items-center gap-2.5">
-                <PragatiMark size={26} />
-                <span
-                  className={`brand-wordmark text-[17px] ${dark ? 'text-white' : 'brand-wordmark-gradient'}`}
-                >
+                <PragatiMark size={26} flat />
+                <span className={`brand-wordmark text-[17px] ${dark ? 'text-white' : 'text-black'}`}>
                   Pragati
                 </span>
               </Link>
@@ -1082,20 +1091,9 @@ export default function AppShell({
             {/* Page content — on mobile, pad the bottom so content isn't hidden
             behind the bottom tab bar (approx 64px + safe-area). */}
             <main className="flex-1 min-h-0 overflow-y-auto relative">
-              {pathname === '/' && (
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute top-0 left-0 right-0 h-[200px]"
-                  style={{
-                    zIndex: 0,
-                    background:
-                      'linear-gradient(180deg, rgba(21,101,192,0.09) 0%, rgba(21,101,192,0.04) 50%, transparent 100%)',
-                  }}
-                />
-              )}
               <div
                 key={pathname}
-                className="page-enter max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden"
+                className="page-enter max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-6 pb-24 lg:pb-7 relative overflow-x-hidden"
               >
                 {children}
               </div>
@@ -1107,11 +1105,10 @@ export default function AppShell({
             <nav
               className="lg:hidden fixed bottom-0 inset-x-0 z-40 mobile-bottom-nav"
               style={{
-                background: dark ? 'rgba(38,38,36,0.97)' : 'rgba(255,255,255,0.97)',
-                borderTop: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e8edf4',
-                boxShadow: dark ? '0 -4px 20px rgba(0,0,0,0.5)' : '0 -4px 20px rgba(15,23,42,0.08)',
-                backdropFilter: 'saturate(180%) blur(12px)',
-                WebkitBackdropFilter: 'saturate(180%) blur(12px)',
+                background: dark ? 'rgba(0,0,0,0.96)' : 'rgba(255,255,255,0.96)',
+                borderTop: dark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
                 paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
               }}
               aria-label="Main navigation"
@@ -1129,8 +1126,8 @@ export default function AppShell({
                     href: user.username ? `/${user.username}` : '/settings',
                     label: 'Profile',
                     icon: UserCircle,
-                    iconColor: '#C2185B',
-                    iconBg: '#FCE4EC',
+                    iconColor: ink,
+                    iconBg: inkBg,
                   } as NavItem,
                 ].map((n) => {
                   const Icon = n.icon;
@@ -1142,31 +1139,24 @@ export default function AppShell({
                       href={n.href}
                       prefetch
                       data-mobile-tour={tourKey}
-                      className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors min-w-[52px]"
-                      style={
-                        active
-                          ? {
-                              background: dark ? 'rgba(255,255,255,0.06)' : `${n.iconColor}12`,
-                            }
-                          : {}
-                      }
+                      className="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors min-w-[52px]"
+                      style={{
+                        borderRadius: 4,
+                        ...(active
+                          ? { background: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }
+                          : {}),
+                      }}
                     >
                       <div className="relative w-6 h-6 flex items-center justify-center">
                         <Icon
                           size={active ? 20 : 18}
-                          style={{ color: active ? n.iconColor : dark ? 'rgba(255,255,255,0.4)' : '#94a3b8' }}
+                          strokeWidth={active ? 2.25 : 1.75}
+                          style={{ color: active ? ink : dark ? 'rgba(255,255,255,0.4)' : '#a1a1aa' }}
                         />
-                        {n.adminOnly && (
-                          <span
-                            className="absolute top-0 right-0 w-2 h-2 rounded-full bg-amber-400"
-                            style={{ boxShadow: `0 0 0 2px ${dark ? '#262624' : '#ffffff'}` }}
-                            title="Admin"
-                          />
-                        )}
                       </div>
                       <span
-                        className="text-[9px] font-semibold truncate max-w-full"
-                        style={{ color: active ? n.iconColor : dark ? 'rgba(255,255,255,0.35)' : '#94a3b8' }}
+                        className="text-[9px] font-semibold truncate max-w-full tracking-wide uppercase"
+                        style={{ color: active ? ink : dark ? 'rgba(255,255,255,0.35)' : '#a1a1aa' }}
                       >
                         {n.label}
                       </span>
@@ -1183,29 +1173,27 @@ export default function AppShell({
           {mobileMenuOpen && (
             <div className="lg:hidden fixed inset-0 z-[55]" onClick={() => setMobileMenuOpen(false)}>
               <div
-                className="absolute inset-x-0 bottom-0 rounded-t-3xl shadow-2xl p-6 space-y-1"
+                className="absolute inset-x-0 bottom-0 p-5 space-y-0.5"
                 style={{
-                  background: dark ? '#262624' : '#ffffff',
-                  border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #dbe3ef',
-                  boxShadow: dark ? '0 -20px 60px rgba(0,0,0,0.6)' : '0 -20px 60px rgba(15,23,42,0.15)',
+                  background: dark ? '#0a0a0a' : '#ffffff',
+                  borderTop: dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
+                  borderRadius: '10px 10px 0 0',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Drag handle indicator */}
-                <div className="flex justify-center mb-4">
+                <div className="flex justify-center mb-3">
                   <div
-                    className="w-10 h-1 rounded-full"
-                    style={{ background: dark ? 'rgba(255,255,255,0.15)' : '#e2e8f0' }}
+                    className="w-8 h-0.5"
+                    style={{ background: dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)' }}
                   />
                 </div>
-                {/* User identity */}
                 <div
                   className="flex items-center gap-3 pb-4 mb-2 border-b"
-                  style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }}
+                  style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}
                 >
                   <Avatar
                     name={user.name}
-                    size={44}
+                    size={40}
                     letter={user.avatarLetter}
                     bg={user.avatarBg}
                     font={user.avatarFont}
@@ -1213,10 +1201,10 @@ export default function AppShell({
                     ring
                   />
                   <div>
-                    <div className={`text-sm font-black ${dark ? 'text-white' : 'text-slate-900'}`}>
+                    <div className={`text-sm font-bold tracking-tight ${dark ? 'text-white' : 'text-zinc-900'}`}>
                       {user.name}
                     </div>
-                    <div className={`text-[11px] ${dark ? 'text-white/45' : 'text-slate-400'}`}>
+                    <div className={`text-[11px] ${dark ? 'text-white/40' : 'text-zinc-400'}`}>
                       {user.username ? `@${user.username}` : roleText}
                     </div>
                   </div>
@@ -1224,28 +1212,25 @@ export default function AppShell({
                 <Link
                   href="/settings"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
+                  className={`flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
+                  style={{ borderRadius: 4 }}
                 >
-                  <UserCircle size={18} className="text-slate-400" /> Profile &amp; settings
+                  <UserCircle size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Profile &amp; settings
                 </Link>
-                {/* Whiteboard doesn't fit the 5-tab bottom bar, so the sheet is
-                its mobile entry point — the canvas itself is touch-native. */}
                 {WHITEBOARD_ENABLED && (
                   <Link
                     href="/whiteboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
+                    style={{ borderRadius: 4 }}
                   >
-                    <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
+                    <Presentation size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Whiteboard
                   </Link>
                 )}
-                {/* Admin-only links — these never fit in the 4-tab bottom nav, so
-                this is the only mobile entry point for Logs (and Platform for
-                master-admins). */}
                 {isAdmin && [...adminExtra, ...masterAdminExtra].length > 0 && (
                   <>
                     <div
-                      className={`px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest ${dark ? 'text-amber-400/70' : 'text-amber-600/80'}`}
+                      className={`px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] ${dark ? 'text-white/35' : 'text-zinc-400'}`}
                     >
                       Admin
                     </div>
@@ -1334,7 +1319,7 @@ export default function AppShell({
               <div
                 className="w-[300px] rounded-2xl p-6 flex flex-col items-center gap-4 text-center shadow-2xl"
                 style={{
-                  background: dark ? '#262624' : '#ffffff',
+                  background: dark ? '#0a0a0a' : '#ffffff',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1388,7 +1373,7 @@ export default function AppShell({
               <div
                 className="w-[340px] rounded-2xl p-5 shadow-2xl"
                 style={{
-                  background: dark ? '#262624' : '#ffffff',
+                  background: dark ? '#0a0a0a' : '#ffffff',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1464,7 +1449,7 @@ export default function AppShell({
               <div
                 className="w-[320px] rounded-2xl p-6 flex flex-col gap-4 text-center shadow-2xl"
                 style={{
-                  background: dark ? '#262624' : '#ffffff',
+                  background: dark ? '#0a0a0a' : '#ffffff',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
               >

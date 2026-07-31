@@ -300,38 +300,40 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] bg-black/70"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
-        className="w-[560px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden"
+        aria-label="Search"
+        className="w-[560px] max-w-[90vw] overflow-hidden"
         style={{
-          background: dark ? '#262624' : '#ffffff',
-          border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
+          background: dark ? '#0a0a0a' : '#ffffff',
+          border: dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
+          borderRadius: 6,
+          boxShadow: dark ? '0 24px 64px rgba(0,0,0,0.75)' : '0 16px 48px rgba(0,0,0,0.12)',
         }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={mode === 'compose' ? onComposeKeyDown : onSearchKeyDown}
       >
         <div
           className="flex items-center gap-2.5 px-4 border-b"
-          style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }}
+          style={{ borderColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
         >
           {mode === 'compose' ? (
-            <Plus size={16} className={dark ? 'text-white/35' : 'text-slate-400'} />
+            <Plus size={16} className={dark ? 'text-white/35' : 'text-zinc-400'} />
           ) : (
-            <Search size={16} className={dark ? 'text-white/35' : 'text-slate-400'} />
+            <Search size={16} className={dark ? 'text-white/35' : 'text-zinc-400'} />
           )}
           <input
             ref={inputRef}
             value={mode === 'compose' ? composeText : query}
             onChange={(e) => (mode === 'compose' ? setComposeText(e.target.value) : setQuery(e.target.value))}
-            placeholder={mode === 'compose' ? 'Buy stamps tomorrow !!' : 'Search pages, projects, teams…'}
+            placeholder={mode === 'compose' ? 'Task title…' : 'Search…'}
             disabled={creating}
             className={`flex-1 h-12 bg-transparent outline-none text-sm ${
-              dark ? 'text-white/90 placeholder:text-white/30' : 'text-slate-800 placeholder:text-slate-400'
+              dark ? 'text-white/90 placeholder:text-white/30' : 'text-zinc-900 placeholder:text-zinc-400'
             }`}
           />
         </div>
