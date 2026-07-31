@@ -4,8 +4,76 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { BirdsEyeLoader } from '@/components/BirdsEyeLoader';
+import { BUILTIN_QUOTES, dailyQuoteOffset, readingMs } from '@/lib/quotes';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { AVATAR_FONTS, avatarFg } from '@/components/ui';
+
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v12';
+
+function unseenQuoteIndices(count: number): number[] {
+  const all = Array.from({ length: count }, (_, i) => i);
+  try {
+    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
+    const valid = new Set(seen.filter((n) => Number.isInteger(n) && n >= 0 && n < count));
+    const unseen = all.filter((i) => !valid.has(i));
+    if (unseen.length > 0) return unseen;
+    localStorage.removeItem(QUOTES_SEEN_KEY);
+    return all;
+  } catch {
+    return all;
+  }
+}
+
+function markQuoteSeen(i: number) {
+  try {
+    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
+    if (!seen.includes(i)) localStorage.setItem(QUOTES_SEEN_KEY, JSON.stringify([...seen, i]));
+  } catch {
+    /* private mode */
+  }
+}
+
+function pickUnseen(count: number, exclude?: number): number {
+  if (count <= 0) return 0;
+  const unseen = unseenQuoteIndices(count).filter((x) => x !== exclude);
+  const pool =
+    unseen.length > 0 ? unseen : Array.from({ length: count }, (_, x) => x).filter((x) => x !== exclude);
+  if (pool.length === 0) return exclude ?? 0;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function RotatingQuote() {
+  const [i, setI] = useState(() => dailyQuoteOffset(BUILTIN_QUOTES.length));
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const first = pickUnseen(BUILTIN_QUOTES.length);
+    markQuoteSeen(first);
+    setI(first);
+  }, []);
+  useEffect(() => {
+    if (BUILTIN_QUOTES.length < 2) return;
+    const dwell = readingMs(BUILTIN_QUOTES[i % BUILTIN_QUOTES.length]?.text || '');
+    const t = setTimeout(() => {
+      setShow(false);
+      const next = pickUnseen(BUILTIN_QUOTES.length, i);
+      markQuoteSeen(next);
+      setTimeout(() => {
+        setI(next);
+        setShow(true);
+      }, 350);
+    }, dwell);
+    return () => clearTimeout(t);
+  }, [i]);
+  const q = BUILTIN_QUOTES[i % BUILTIN_QUOTES.length];
+  return (
+    <div
+      style={{ fontSize: 13, transition: 'opacity 0.35s ease', opacity: show ? 1 : 0, minHeight: 40 }}
+      className="text-[#71767b] max-w-[320px] mx-auto leading-snug text-center"
+    >
+      “{q.text}”
+    </div>
+  );
+}
 
 function getInitials(name: string) {
   if (!name) return '?';
@@ -66,13 +134,6 @@ function StrengthMeter({ password }: { password: string }) {
 
 export default function LoginPage() {
   const router = useRouter();
-  // Product is dark. Login is always black; pin the session theme so the
-  // app shell does not flash light after sign-in.
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-    document.cookie = 'pragati_theme=dark; path=/; max-age=31536000; SameSite=Lax';
-    document.cookie = 'theme=; path=/; max-age=0; SameSite=Lax';
-  }, []);
 
   const [mode, setMode] = useState<'login' | 'setup' | 'unlock'>('login');
   const [email, setEmail] = useState('');
@@ -331,20 +392,18 @@ export default function LoginPage() {
             </div>
 
             <div className="text-center pb-2 fade-up-3">
-              <p className="text-[13px] text-[#71767b] font-normal">
-                Sign in to continue
-              </p>
+              <RotatingQuote />
             </div>
           </div>
         </div>
 
         {/* ════ RIGHT — Form panel ═══════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative bg-black lg:bg-black">
+        <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative bg-white dark:bg-black">
           <div className="w-full max-w-[340px] fade-up relative">
             <div className="flex flex-col items-center mb-10 lg:hidden">
               <PragatiMark size={48} />
-              <div className="brand-wordmark text-[1.75rem] text-white mt-4">Pragati</div>
-              <div className="text-xs text-white/40 mt-1 tracking-wide">The whole board</div>
+              <div className="brand-wordmark text-[1.75rem] text-[#0f1419] dark:text-white mt-4">Pragati</div>
+              <div className="text-xs text-[#71767b] mt-1 tracking-wide">Team work, fully visible</div>
             </div>
 
             <div className="p-0">
@@ -411,13 +470,13 @@ export default function LoginPage() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1.5 fade-up-1">
+                    <p className="text-[10px] font-bold text-[#71767b] uppercase tracking-[0.2em] mb-1.5 fade-up-1">
                       Welcome back
                     </p>
-                    <h2 className="font-display text-[26px] font-black text-white tracking-tight leading-none fade-up-1">
+                    <h2 className="font-display text-[26px] font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight leading-none fade-up-1">
                       {deviceName || 'You'}
                     </h2>
-                    <p className="text-[13px] text-white/40 mt-2 leading-snug fade-up-2">
+                    <p className="text-[13px] text-[#71767b] mt-2 leading-snug fade-up-2">
                       Enter your PIN
                     </p>
                   </div>
@@ -522,7 +581,7 @@ export default function LoginPage() {
                     <button
                       onClick={usePasswordInstead}
                       type="button"
-                      className="w-full py-2.5 text-sm font-semibold text-white/60 hover:text-white border border-white/15 hover:border-white/30 hover:bg-white/[0.04] transition-colors"
+                      className="w-full py-2.5 text-sm font-semibold text-[#536471] dark:text-white/60 hover:text-[#0f1419] dark:hover:text-white border border-[#eff3f4] dark:border-[#2f3336] hover:bg-[rgba(15,20,25,0.03)] dark:hover:bg-white/[0.04] transition-colors"
                       style={{ borderRadius: 12 }}
                     >
                       Use password / switch account
@@ -534,10 +593,10 @@ export default function LoginPage() {
               {/* Heading */}
               {mode !== 'unlock' && (
                 <div className="mb-8 form-swap" key={mode + '-h'}>
-                  <h2 className="text-2xl font-black text-white tracking-tight">
+                  <h2 className="text-2xl font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
                     {mode === 'login' ? 'Sign in' : 'Set up workspace'}
                   </h2>
-                  <p className="text-sm text-white/40 mt-1.5 leading-snug">
+                  <p className="text-sm text-[#71767b] mt-1.5 leading-snug">
                     {mode === 'login' ? 'Enter credentials to continue.' : 'Create the first lead account.'}
                   </p>
                 </div>
@@ -548,7 +607,7 @@ export default function LoginPage() {
                   {mode === 'setup' && (
                     <>
                       <div>
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
+                        <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
                           Full name
                         </label>
                         <input
@@ -560,7 +619,7 @@ export default function LoginPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
+                        <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
                           Job title <span className="normal-case font-normal text-white/25">(optional)</span>
                         </label>
                         <input
@@ -574,7 +633,7 @@ export default function LoginPage() {
                   )}
 
                   <div>
-                    <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
+                    <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
                       {mode === 'login' ? 'Username' : 'Email'}
                     </label>
                     <input
@@ -591,7 +650,7 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
+                    <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
                       Password
                     </label>
                     <div className="relative">
@@ -609,7 +668,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/70 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#71767b] hover:text-[#0f1419] dark:hover:text-white transition-colors"
                         tabIndex={-1}
                         aria-label={showPw ? 'Hide password' : 'Show password'}
                       >
