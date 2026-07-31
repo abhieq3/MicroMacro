@@ -78,20 +78,28 @@ export function notifyCalendarChange() {
 
 export function SidebarCalendar({ dark }: { dark: boolean }) {
   const router = useRouter();
-  const today = useMemo(() => new Date(), []);
-  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  // Fresh "now" each render for day labels; cursor is month navigation state.
+  const [now] = useState(() => new Date());
+  const [cursor, setCursor] = useState(() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), 1);
+  });
   const [tasks, setTasks] = useState<CalTask[]>([]);
   const [hover, setHover] = useState<{ key: string; x: number; y: number; placeLeft: boolean } | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Always visible when the sidebar is expanded. Due dates are core to the
-  // product — hiding them behind a disclosure was friction without payoff.
+  // Always snap back to the real current month on mount (schedule-first).
+  useEffect(() => {
+    const n = new Date();
+    setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
+  }, []);
 
   // Touch-swipe tracking for month navigation.
   const touchStartY = useRef<number | null>(null);
 
+  const today = now;
   const isCurrentMonth =
-    cursor.getMonth() === today.getMonth() && cursor.getFullYear() === today.getFullYear();
+    cursor.getMonth() === new Date().getMonth() && cursor.getFullYear() === new Date().getFullYear();
 
   // Build a grid of exactly the days in the current month, with leading blank
   // cells to align to the correct day-of-week. No trailing overflow.
@@ -202,7 +210,10 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
 
   const prevMonth = useCallback(() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1)), []);
   const nextMonth = useCallback(() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1)), []);
-  const goToday = useCallback(() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1)), [today]);
+  const goToday = useCallback(() => {
+    const n = new Date();
+    setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
+  }, []);
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartY.current = e.touches[0].clientY;
@@ -222,6 +233,16 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
   const monthYear = cursor.getFullYear();
   const hoverList = hover ? byDay.get(hover.key) || [] : [];
 
+  // Overdue count this visible month (schedule pressure signal).
+  const overdueInView = useMemo(() => {
+    let n = 0;
+    for (const t of tasks) {
+      if (t.status === 'done') continue;
+      if (dayKey(new Date(t.due)) < todayKey) n++;
+    }
+    return n;
+  }, [tasks, todayKey]);
+
   return (
     <div
       className="mt-2 pt-2.5 border-t select-none"
@@ -229,6 +250,14 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+      <div className="flex items-center justify-between px-1 mb-1">
+        <span className={`text-[11px] font-bold tracking-wide ${dark ? 'text-[#e7e9ea]' : 'text-slate-800'}`}>
+          Schedule
+        </span>
+        {overdueInView > 0 && (
+          <span className="text-[10px] font-bold text-[#f4212e] tabular-nums">{overdueInView} late</span>
+        )}
+      </div>
       {/* Month header — always open */}
       <div className="flex items-center justify-between px-1 mb-1.5">
             <button
@@ -244,12 +273,15 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
               className={`flex items-baseline gap-1 text-[11px] tracking-tight transition-colors ${
                 isCurrentMonth ? 'cursor-default' : 'hover:text-[#1d9bf0] cursor-pointer'
               }`}
-              title={isCurrentMonth ? undefined : 'Back to this month'}
+              title={isCurrentMonth ? undefined : 'Jump to this month'}
             >
               <span className={`font-bold ${dark ? 'text-[#e7e9ea]' : 'text-slate-700'}`}>{monthName}</span>
               <span className={`font-semibold ${dark ? 'text-[#71767b]' : 'text-slate-400'}`}>
                 {monthYear}
               </span>
+              {!isCurrentMonth && (
+                <span className="text-[10px] font-bold text-[#1d9bf0] ml-1">Today</span>
+              )}
             </button>
 
             <button

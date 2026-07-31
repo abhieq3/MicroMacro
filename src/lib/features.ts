@@ -26,11 +26,10 @@ function envOff(name: string): boolean {
 export const FOCUS_MODE = envOn('NEXT_PUBLIC_FOCUS_MODE');
 
 /**
- * Private whiteboard (personal sketch only — not team records).
- * On by default; off in focus mode or NEXT_PUBLIC_WHITEBOARD_ENABLED=0.
+ * Whiteboard removed from product nav. Kept off unless explicitly enabled
+ * for emergency access (NEXT_PUBLIC_WHITEBOARD_ENABLED=1).
  */
-export const WHITEBOARD_ENABLED =
-  !FOCUS_MODE && !envOff('NEXT_PUBLIC_WHITEBOARD_ENABLED');
+export const WHITEBOARD_ENABLED = envOn('NEXT_PUBLIC_WHITEBOARD_ENABLED') && !FOCUS_MODE;
 
 /**
  * Team workbench modules (tickets, CSV activity / QMS sheets). On by default;

@@ -10,7 +10,6 @@ import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
-import { WHITEBOARD_ENABLED } from '@/lib/features';
 import { PwaProvider } from './PwaProvider';
 import { PwaInstallMenuItem } from './PwaInstall';
 import { NavigationProgress } from './NavigationProgress';
@@ -59,7 +58,6 @@ import {
   UsersRound,
   ShieldCheck,
   NotebookPen,
-  Presentation,
   LogOut,
   Menu,
   X,
@@ -227,7 +225,6 @@ export default function AppShell({
       '/teams',
       '/my-day',
       '/settings',
-      '/whiteboard',
       '/people',
       '/audit',
       '/admin',
@@ -341,7 +338,7 @@ export default function AppShell({
   }, [router]);
 
   // ── Global keyboard shortcuts ───────────────────────────────────────────────
-  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, G→W: Whiteboard,
+  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day,
   // ?: shortcuts modal
   // Skipped when focus is on a text input / textarea / contenteditable.
   useEffect(() => {
@@ -390,9 +387,6 @@ export default function AppShell({
           T: '/teams',
           m: '/my-day',
           M: '/my-day',
-          ...(WHITEBOARD_ENABLED
-            ? { w: '/whiteboard', W: '/whiteboard' }
-            : {}),
         };
         if (dest[e.key]) {
           e.preventDefault();
@@ -421,26 +415,13 @@ export default function AppShell({
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
   // user management (create/reset/unlock/delete/promote accounts) is an
   // admin-only surface, appended via adminExtra below.
-  // My Day and Whiteboard are NOT in the main nav list — they render pinned
-  // just above the user footer as the viewer's *personal* surfaces, kept
-  // together and always reachable without scrolling. Whiteboard sits beside
-  // My Day because they're the same kind of space: yours alone, for thinking
-  // and capturing before work becomes tracked records. (The three record
-  // surfaces — Dashboard/Projects/Teams — are the shared org view above.)
+  // My Day is pinned above the footer as a personal surface. Shared org
+  // views (Dashboard / Projects / Teams) stay in the main list above.
   // Monochrome nav — no rainbow icon tiles. Active = white ink on black.
   const ink = dark ? '#fafafa' : '#09090b';
   const inkMuted = dark ? '#71717a' : '#71717a';
   const inkBg = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
   const inkBgActive = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
-
-  // Personal tool only — not shared team tracking. Sits with My Day.
-  const whiteboardItem: NavItem = {
-    href: '/whiteboard',
-    label: 'Whiteboard',
-    icon: Presentation,
-    iconColor: ink,
-    iconBg: inkBg,
-  };
   const leadNav: NavItem[] = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
@@ -743,12 +724,12 @@ export default function AppShell({
         {/* Month calendar with due-date dots — always open when expanded. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* Personal tools: My Day (+ private Whiteboard when enabled). */}
+        {/* Personal: My Day */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
           style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}
         >
-          {[myDayItem, ...(WHITEBOARD_ENABLED ? [whiteboardItem] : [])].map((n) => {
+          {[myDayItem].map((n) => {
             const Icon = n.icon;
             const active = isActive(n.href);
             return (
@@ -1168,16 +1149,6 @@ export default function AppShell({
                 >
                   <UserCircle size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Profile &amp; settings
                 </Link>
-                {WHITEBOARD_ENABLED && (
-                  <Link
-                    href="/whiteboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                    style={{ borderRadius: 4 }}
-                  >
-                    <Presentation size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Whiteboard
-                  </Link>
-                )}
                 {isAdmin && [...adminExtra, ...masterAdminExtra].length > 0 && (
                   <>
                     <div
@@ -1341,9 +1312,6 @@ export default function AppShell({
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
                     { keys: ['G', 'M'], label: 'My Day' },
-                    ...(WHITEBOARD_ENABLED
-                      ? [{ keys: ['G', 'W'], label: 'Whiteboard' }]
-                      : []),
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (

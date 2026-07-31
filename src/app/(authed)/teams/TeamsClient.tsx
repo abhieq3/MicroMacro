@@ -64,15 +64,15 @@ const FUNCTION_LABEL: Record<string, string> = {
 };
 
 const FUNCTION_TONE: Record<string, { bg: string; text: string; border: string }> = {
-  rtb: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  ctb: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  general: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-200' },
-  csv_validation: { bg: 'bg-brand-50', text: 'text-brand-700', border: 'border-brand-200' },
-  data_integrity: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
-  pharmacovigilance: { bg: 'bg-pink-50', text: 'text-pink-700', border: 'border-pink-200' },
-  lab_informatics: { bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
-  audit: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  training: { bg: 'bg-forest-50', text: 'text-forest-700', border: 'border-forest-200' },
+  rtb: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
+  ctb: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
+  general: { bg: 'bg-[#16181c]', text: 'text-[#71767b]', border: 'border-[#2f3336]' },
+  csv_validation: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
+  data_integrity: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
+  pharmacovigilance: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
+  lab_informatics: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
+  audit: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
+  training: { bg: 'bg-[#16181c]', text: 'text-[#e7e9ea]', border: 'border-[#2f3336]' },
 };
 
 export default function TeamsClient({
@@ -108,13 +108,13 @@ export default function TeamsClient({
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap pt-1">
         <div>
-          <h1 className="page-title">Teams</h1>
-          <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
-            Cross-functional groups — people, projects, and shared accountability.
+          <h1 className="text-[20px] font-bold tracking-tight text-[#0f1419] dark:text-[#e7e9ea]">Teams</h1>
+          <p className="text-[13px] text-[#536471] dark:text-[#71767b] mt-0.5">
+            People and projects, grouped for ownership.
           </p>
         </div>
         {canManage && (
-          <button className="btn-primary flex items-center gap-1.5" onClick={() => setCreating(true)}>
+          <button className="btn-primary flex items-center gap-1.5 text-[14px] py-2 px-4" onClick={() => setCreating(true)}>
             <Plus size={14} /> New team
           </button>
         )}
@@ -122,15 +122,15 @@ export default function TeamsClient({
 
       {/* Cards grid */}
       {filtered.length === 0 ? (
-        <div className="card p-12 text-center">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-4">
-            <UsersIcon size={22} className="text-blue-400" />
+        <div className="border border-[#eff3f4] dark:border-[#2f3336] p-10 text-center" style={{ borderRadius: 16 }}>
+          <div className="w-12 h-12 mx-auto flex items-center justify-center mb-4 border border-[#2f3336]" style={{ borderRadius: 9999 }}>
+            <UsersIcon size={22} className="text-[#71767b]" />
           </div>
-          <div className="text-sm font-bold text-slate-700 dark:text-white/80 mb-1">No teams yet</div>
-          <div className="text-xs text-slate-400 dark:text-white/35 mb-4">
+          <div className="text-[15px] font-bold text-[#0f1419] dark:text-[#e7e9ea] mb-1">No teams yet</div>
+          <div className="text-[13px] text-[#536471] dark:text-[#71767b] mb-4">
             {canManage
-              ? 'Group people around a shared mission — then attach projects to it.'
-              : 'Your workspace admin or team lead creates teams; you will see yours here.'}
+              ? 'Create a team, add people, attach projects.'
+              : 'Your lead creates teams; you will see yours here.'}
           </div>
           {teams.length === 0 && canManage && (
             <button className="btn-primary text-sm gap-2 inline-flex" onClick={() => setCreating(true)}>
@@ -299,9 +299,9 @@ function TeamCard({
         </span>
         <Link
           href={`/teams/${team.id}`}
-          className="group/cta inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+          className="group/cta inline-flex items-center gap-1 text-[12px] font-semibold text-[#1d9bf0] dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
         >
-          Open team
+          Open
           <ArrowRight size={12} className="transition-transform group-hover/cta:translate-x-0.5" />
         </Link>
       </div>
