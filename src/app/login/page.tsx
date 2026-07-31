@@ -499,7 +499,7 @@ export default function LoginPage() {
                               : shake
                                 ? '#f4212e'
                                 : pin.length === i
-                                  ? '#1d9bf0'
+                                  ? 'var(--mars)'
                                   : pin.length > i
                                     ? '#536471'
                                     : '#2f3336'
@@ -513,7 +513,7 @@ export default function LoginPage() {
                                 : '#000000',
                           boxShadow:
                             !unlocked && !shake && pin.length === i
-                              ? '0 0 0 1px #1d9bf0'
+                              ? '0 0 0 1px var(--mars)'
                               : 'none',
                         }}
                       >

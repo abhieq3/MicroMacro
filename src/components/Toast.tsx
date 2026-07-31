@@ -63,7 +63,7 @@ const THEME: Record<
     icon: Info,
     bg: '#ffffff',
     border: '#eff3f4',
-    iconColor: '#1d9bf0',
+    iconColor: 'var(--mars)',
     titleColor: '#0f1419',
     darkBg: '#16181c',
     darkBorder: '#2f3336',

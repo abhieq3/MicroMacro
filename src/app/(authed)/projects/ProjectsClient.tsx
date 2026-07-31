@@ -71,7 +71,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
 
   const STATUS_COLORS: Record<string, { dot: string; label: string }> = {
     planning: { dot: '#71767b', label: 'Planning' },
-    in_progress: { dot: '#1d9bf0', label: 'In progress' },
+    in_progress: { dot: 'var(--mars)', label: 'In progress' },
     on_hold: { dot: '#ffd400', label: 'On hold' },
     completed: { dot: '#00ba7c', label: 'Completed' },
     cancelled: { dot: '#f4212e', label: 'Cancelled' },

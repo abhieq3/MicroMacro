@@ -5,7 +5,7 @@ import { ReactNode, useEffect, useRef, useState } from 'react';
 // ── Status dots ───────────────────────────────────────────────────────────────
 const STATUS_DOT: Record<string, string> = {
   todo: '#71767b',
-  in_progress: '#1d9bf0',
+  in_progress: 'var(--mars)',
   review: '#ffd400',
   blocked: '#f4212e',
   done: '#00ba7c',
@@ -29,7 +29,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export const STATUS_COLORS: Record<string, string> = {
   todo: 'bg-[#eff3f4] text-[#536471] dark:bg-[#16181c] dark:text-[#71767b]',
-  in_progress: 'bg-[#1d9bf0]/15 text-[#1d9bf0] dark:bg-[#1d9bf0]/15 dark:text-[#1d9bf0]',
+  in_progress: 'bg-[var(--mars)]/15 text-[var(--mars)] dark:bg-[var(--mars)]/15 dark:text-[var(--mars)]',
   review: 'bg-[#ffd400]/15 text-[#b38600] dark:bg-[#ffd400]/12 dark:text-[#ffd400]',
   blocked: 'bg-[#f4212e]/12 text-[#f4212e] dark:bg-[#f4212e]/15 dark:text-[#f4212e]',
   done: 'bg-[#00ba7c]/12 text-[#00ba7c] dark:bg-[#00ba7c]/15 dark:text-[#00ba7c]',
@@ -41,14 +41,14 @@ export const STATUS_COLORS: Record<string, string> = {
 
 export const PRIORITY_COLORS: Record<string, string> = {
   low: 'bg-[#eff3f4] text-[#536471] dark:bg-[#16181c] dark:text-[#71767b]',
-  medium: 'bg-[#1d9bf0]/12 text-[#1d9bf0] dark:bg-[#1d9bf0]/15 dark:text-[#1d9bf0]',
+  medium: 'bg-[var(--mars)]/12 text-[var(--mars)] dark:bg-[var(--mars)]/15 dark:text-[var(--mars)]',
   high: 'bg-[#ffd400]/15 text-[#b38600] dark:bg-[#ffd400]/12 dark:text-[#ffd400]',
   critical: 'bg-[#f4212e]/12 text-[#f4212e] dark:bg-[#f4212e]/15 dark:text-[#f4212e]',
 };
 
 const PRIORITY_DOT: Record<string, string> = {
   low: '#71767b',
-  medium: '#1d9bf0',
+  medium: 'var(--mars)',
   high: '#ffd400',
   critical: '#f4212e',
 };
@@ -174,8 +174,8 @@ export function ProgressBar({ value, className = '' }: { value: number; classNam
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   return (
     <div
-      className={`relative w-full bg-[#eff3f4] dark:bg-[#2f3336] h-1 overflow-hidden ${className}`}
-      style={{ borderRadius: 9999 }}
+      className={`relative w-full h-1 overflow-hidden ${className}`}
+      style={{ borderRadius: 9999, background: 'var(--border-card)' }}
     >
       <div
         className="progress-bar-fill h-1"
@@ -183,7 +183,7 @@ export function ProgressBar({ value, className = '' }: { value: number; classNam
           width: `${pct}%`,
           transition: 'width 400ms ease',
           borderRadius: 9999,
-          background: '#1d9bf0',
+          background: 'var(--mars)',
         }}
       />
     </div>

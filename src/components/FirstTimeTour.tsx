@@ -171,7 +171,7 @@ export function FirstTimeTour({
         {/* Progress bar */}
         <div className="h-1 w-full bg-[#16181c]">
           <div
-            className="h-full bg-[#1d9bf0] transition-all duration-200"
+            className="h-full bg-[var(--mars)] transition-all duration-200"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -255,7 +255,7 @@ export function FirstTimeTour({
               <button
                 type="button"
                 onClick={next}
-                className="w-full py-2.5 text-[15px] font-bold text-[#1d9bf0] hover:underline"
+                className="w-full py-2.5 text-[15px] font-bold text-[var(--mars)] hover:underline"
               >
                 Next tip
               </button>
@@ -263,7 +263,7 @@ export function FirstTimeTour({
               <button
                 type="button"
                 onClick={() => void finish()}
-                className="w-full py-2.5 text-[15px] font-bold text-[#1d9bf0] hover:underline"
+                className="w-full py-2.5 text-[15px] font-bold text-[var(--mars)] hover:underline"
               >
                 Got it
               </button>

@@ -443,7 +443,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               </h2>
               <Link
                 href="/projects"
-                className="text-[13px] font-normal text-[#1d9bf0] hover:underline shrink-0"
+                className="text-[13px] font-normal text-[var(--mars)] hover:underline shrink-0"
               >
                 All
               </Link>
@@ -788,9 +788,9 @@ function ContributorWelcome({ name }: { name: string }) {
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   return (
     <div className="mb-4 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl" style={{ borderRadius: 16 }}>
-      <div className="h-1 bg-[#1d9bf0]" />
+      <div className="h-1 bg-[var(--mars)]" />
       <div className="p-5">
-        <p className="text-[13px] font-bold text-[#1d9bf0]">Getting started</p>
+        <p className="text-[13px] font-bold text-[var(--mars)]">Getting started</p>
         <h2 className="mt-1 text-[20px] font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
           Hi {first}
         </h2>
@@ -799,15 +799,15 @@ function ContributorWelcome({ name }: { name: string }) {
         </p>
         <ul className="mt-4 space-y-2 text-[14px] text-[#0f1419] dark:text-[#e7e9ea]">
           <li className="flex gap-2">
-            <span className="text-[#1d9bf0] font-bold">1.</span>
+            <span className="text-[var(--mars)] font-bold">1.</span>
             Check Dashboard daily for assigned tasks
           </li>
           <li className="flex gap-2">
-            <span className="text-[#1d9bf0] font-bold">2.</span>
+            <span className="text-[var(--mars)] font-bold">2.</span>
             Use My Day for private notes and personal tasks
           </li>
           <li className="flex gap-2">
-            <span className="text-[#1d9bf0] font-bold">3.</span>
+            <span className="text-[var(--mars)] font-bold">3.</span>
             Open a task → update status → mark done
           </li>
         </ul>
@@ -815,7 +815,7 @@ function ContributorWelcome({ name }: { name: string }) {
           <Link href="/my-day" className="btn-primary px-5 py-2.5 text-[14px]">
             Open My Day <ArrowRight size={15} />
           </Link>
-          <Link href="/projects" className="text-[14px] font-bold text-[#1d9bf0] hover:underline">
+          <Link href="/projects" className="text-[14px] font-bold text-[var(--mars)] hover:underline">
             Browse projects
           </Link>
         </div>
@@ -854,9 +854,9 @@ function FirstRunGuide({ hasTeam, isAdmin }: { hasTeam: boolean; isAdmin?: boole
 
   return (
     <div className="mb-4 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl" style={{ borderRadius: 16 }}>
-      <div className="h-1 bg-[#1d9bf0]" />
+      <div className="h-1 bg-[var(--mars)]" />
       <div className="p-5">
-        <p className="text-[13px] font-bold text-[#1d9bf0]">Setup · 3 steps</p>
+        <p className="text-[13px] font-bold text-[var(--mars)]">Setup · 3 steps</p>
         <div className="mt-3 flex items-center gap-2 flex-wrap">
           {steps.map((s, i) => (
             <div key={s.label} className="flex items-center gap-2">
@@ -920,7 +920,7 @@ function ProjectsColumn({
         </div>
         <Link
           href="/projects"
-          className="text-[13px] font-normal text-[#1d9bf0] hover:underline shrink-0 whitespace-nowrap transition-colors"
+          className="text-[13px] font-normal text-[var(--mars)] hover:underline shrink-0 whitespace-nowrap transition-colors"
         >
           All projects →
         </Link>
@@ -977,7 +977,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
         </span>
         <Link
           href={`/projects/${projectId}`}
-          className="text-[12px] font-bold text-[#1d9bf0] hover:underline"
+          className="text-[12px] font-bold text-[var(--mars)] hover:underline"
         >
           Board
         </Link>
@@ -1042,7 +1042,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
                 <span
                   className="shrink-0 w-1.5 h-1.5 rounded-full"
                   style={{
-                    background: isDone ? '#71767b' : overdue || isBlocked ? '#f4212e' : '#1d9bf0',
+                    background: isDone ? '#71767b' : overdue || isBlocked ? '#f4212e' : 'var(--mars)',
                   }}
                   title={dotTitle}
                 />
@@ -1178,7 +1178,7 @@ function ProjectRow({
           {tasks.length === 0 ? (
             <div className="py-6 pl-7 text-[13px] text-[#71767b]">
               No tasks yet.{' '}
-              <Link href={`/projects/${project.id}`} className="text-[#1d9bf0] hover:underline font-semibold">
+              <Link href={`/projects/${project.id}`} className="text-[var(--mars)] hover:underline font-semibold">
                 Open project
               </Link>
             </div>
