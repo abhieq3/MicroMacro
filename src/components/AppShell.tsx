@@ -433,6 +433,7 @@ export default function AppShell({
   const inkBg = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
   const inkBgActive = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
 
+  // Personal tool only — not shared team tracking. Sits with My Day.
   const whiteboardItem: NavItem = {
     href: '/whiteboard',
     label: 'Whiteboard',
@@ -739,13 +740,10 @@ export default function AppShell({
           })}
         </div>
 
-        {/* Sidebar calendar — compact month view with due-date dots. Hidden on
-            the collapsed icon rail; sits just above the personal surfaces so
-            those stay pinned closest to the footer. */}
+        {/* Month calendar with due-date dots — always open when expanded. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* Personal surfaces — My Day (+ Whiteboard when enabled), pinned just
-            above the footer. Both are "yours alone": capture and thinking. */}
+        {/* Personal tools: My Day (+ private Whiteboard when enabled). */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
           style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}

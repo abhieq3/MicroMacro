@@ -1,14 +1,13 @@
 /**
- * Feature flags — judgment over surface area (see docs/PRODUCT_PRINCIPLES.md).
+ * Feature flags.
  *
- * Mission: open Pragati and act on the highest-leverage work. Secondary
- * workbench tools are real, but they dilute attention when everything is on.
+ * Mission: track team work — projects, tasks, due dates, ownership.
  *
  *   NEXT_PUBLIC_FOCUS_MODE=1
- *     Strip secondary surfaces: Dashboard · Projects · Teams · My Day · admin.
+ *     Core only: Dashboard · Projects · Teams · My Day · admin.
  *
- * Per-surface (when focus mode is off; scratchpad stays opt-in):
- *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0
+ * Optional surfaces:
+ *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0  — hide private sketch board
  *   NEXT_PUBLIC_WORKBENCH_MODULES=0
  *   NEXT_PUBLIC_SCRATCHPAD_ENABLED=1
  */
@@ -27,8 +26,8 @@ function envOff(name: string): boolean {
 export const FOCUS_MODE = envOn('NEXT_PUBLIC_FOCUS_MODE');
 
 /**
- * Full-page whiteboard (personal thinking canvas). On by default; off in
- * focus mode or when explicitly disabled.
+ * Private whiteboard (personal sketch only — not team records).
+ * On by default; off in focus mode or NEXT_PUBLIC_WHITEBOARD_ENABLED=0.
  */
 export const WHITEBOARD_ENABLED =
   !FOCUS_MODE && !envOff('NEXT_PUBLIC_WHITEBOARD_ENABLED');
