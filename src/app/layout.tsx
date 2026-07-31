@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: 'Pragati',
     template: '%s · Pragati',
   },
-  description: 'Everyone sees the whole board. Project intelligence without the noise.',
+  description: 'Team work, fully visible. Track projects and tasks across your organization.',
   robots: { index: false, follow: false },
   manifest: '/manifest.webmanifest',
   applicationName: 'Pragati',
@@ -23,8 +23,16 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  // Explicit icons so the tab mark is never missing (Next file icons + PNGs).
   icons: {
+    icon: [
+      { url: '/icons/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icons/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
     apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    shortcut: ['/icons/favicon-32.png'],
   },
 };
 
