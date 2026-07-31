@@ -149,7 +149,7 @@ export function DatePicker({
         createPortal(
           <div
             ref={popRef}
-            className="fixed rounded-2xl fade-in-soft datepicker-pop bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/10 overflow-hidden"
+            className="fixed rounded-2xl fade-in-soft datepicker-pop bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-[#2f3336] overflow-hidden"
             style={{
               top: coords.top,
               left: coords.left,

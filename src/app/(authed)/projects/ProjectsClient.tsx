@@ -105,7 +105,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
 
       {/* Tabs — archiving isn't in use yet, so the Archived bin is hidden. */}
       <div
-        className="flex gap-1 border-b border-slate-100 dark:border-white/[0.06]"
+        className="flex gap-1 border-b border-slate-100 dark:border-[#2f3336]"
         role="tablist"
         aria-label="Project filters"
       >
@@ -321,7 +321,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                   </div>
 
                   {/* Footer — exceptions and open work, not % theater. */}
-                  <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
+                  <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-[#2f3336] flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-[11px] min-w-0">
                       {p.tasksOverdue > 0 ? (
                         <span className="text-[10.5px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full shrink-0">
@@ -391,7 +391,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                 setLc('');
                 setStatus('');
               }}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#2f3336] text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
             >
               <X size={14} /> Clear filters
             </button>

@@ -168,7 +168,7 @@ export function Select({
             ref={popRef}
             role="listbox"
             tabIndex={-1}
-            className="popover-in fixed z-[9999] rounded-xl border border-slate-200/80 bg-white dark:bg-[#262624] dark:border-white/10 shadow-xl overflow-hidden p-1 datepicker-pop origin-top"
+            className="popover-in fixed z-[9999] rounded-xl border border-slate-200/80 bg-white dark:bg-[#262624] dark:border-[#2f3336] shadow-xl overflow-hidden p-1 datepicker-pop origin-top"
             style={{
               top: coords.top,
               left: coords.left,

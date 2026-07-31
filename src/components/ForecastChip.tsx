@@ -43,7 +43,7 @@ const TONE: Record<string, { ring: string; bg: string; text: string }> = {
     text: 'text-red-700 dark:text-red-400',
   },
   neutral: {
-    ring: 'border-slate-200 dark:border-white/10',
+    ring: 'border-slate-200 dark:border-[#2f3336]',
     bg: 'bg-slate-50 dark:bg-white/[0.04]',
     text: 'text-slate-600 dark:text-white/70',
   },

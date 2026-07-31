@@ -297,13 +297,11 @@ export default function LoginPage() {
 
       <div className="min-h-screen flex bg-black">
         {/* ════ LEFT — pure black brand panel ════════════════════════════ */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col relative overflow-hidden bg-black border-r border-white/10">
+        <div className="hidden lg:flex lg:w-1/2 flex-col relative overflow-hidden bg-black border-r border-[#2f3336]">
           <div
             className="absolute inset-0 pointer-events-none opacity-40"
             style={{
-              backgroundImage:
-                'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
-              backgroundSize: '48px 48px',
+              backgroundImage: 'none',
             }}
           />
 
@@ -325,7 +323,7 @@ export default function LoginPage() {
               </div>
 
               <p
-                className="fade-up-2 text-center text-white/35 mt-6 leading-relaxed mx-auto tracking-wide"
+                className="fade-up-2 text-center text-[#71767b] mt-6 leading-relaxed mx-auto tracking-wide"
                 style={{ fontSize: 13, maxWidth: 280 }}
               >
                 Work visible to the whole team.
@@ -333,7 +331,7 @@ export default function LoginPage() {
             </div>
 
             <div className="text-center pb-2 fade-up-3">
-              <p className="text-[11px] text-white/25 tracking-[0.16em] uppercase font-semibold">
+              <p className="text-[13px] text-[#71767b] font-normal">
                 Sign in to continue
               </p>
             </div>
@@ -354,7 +352,7 @@ export default function LoginPage() {
               {notice && (
                 <div
                   className="mb-5 border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-2.5 fade-in-soft"
-                  style={{ borderRadius: 4 }}
+                  style={{ borderRadius: 12 }}
                 >
                   <span className="text-red-400 font-bold shrink-0 mt-0.5 text-sm">!</span>
                   <div className="text-sm text-red-200 leading-snug">{notice}</div>
@@ -364,7 +362,7 @@ export default function LoginPage() {
               {dbDown && (
                 <div
                   className="mb-5 border border-amber-500/30 bg-amber-500/10 px-4 py-3 fade-in-soft"
-                  style={{ borderRadius: 4 }}
+                  style={{ borderRadius: 12 }}
                 >
                   <div className="text-sm text-amber-200 leading-snug">
                     <strong>Can’t reach the database.</strong> Sign-in won’t work until it’s back.
@@ -435,17 +433,17 @@ export default function LoginPage() {
                         key={i}
                         className="w-[52px] h-[58px] flex items-center justify-center transition-all duration-150"
                         style={{
-                          borderRadius: 4,
+                          borderRadius: 12,
                           border: `1px solid ${
                             unlocked
-                              ? '#22c55e'
+                              ? '#00ba7c'
                               : shake
-                                ? '#ef4444'
+                                ? '#f4212e'
                                 : pin.length === i
-                                  ? '#ffffff'
+                                  ? '#1d9bf0'
                                   : pin.length > i
-                                    ? 'rgba(255,255,255,0.35)'
-                                    : 'rgba(255,255,255,0.14)'
+                                    ? '#536471'
+                                    : '#2f3336'
                           }`,
                           background: unlocked
                             ? 'rgba(34,197,94,0.1)'
@@ -453,10 +451,10 @@ export default function LoginPage() {
                               ? 'rgba(239,68,68,0.1)'
                               : pin.length > i
                                 ? 'rgba(255,255,255,0.08)'
-                                : '#0a0a0a',
+                                : '#000000',
                           boxShadow:
                             !unlocked && !shake && pin.length === i
-                              ? '0 0 0 2px rgba(255,255,255,0.12)'
+                              ? '0 0 0 1px #1d9bf0'
                               : 'none',
                         }}
                       >
@@ -525,7 +523,7 @@ export default function LoginPage() {
                       onClick={usePasswordInstead}
                       type="button"
                       className="w-full py-2.5 text-sm font-semibold text-white/60 hover:text-white border border-white/15 hover:border-white/30 hover:bg-white/[0.04] transition-colors"
-                      style={{ borderRadius: 4 }}
+                      style={{ borderRadius: 12 }}
                     >
                       Use password / switch account
                     </button>
@@ -626,7 +624,7 @@ export default function LoginPage() {
                       role="alert"
                       aria-live="assertive"
                       className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft"
-                      style={{ borderRadius: 4 }}
+                      style={{ borderRadius: 12 }}
                     >
                       <span aria-hidden="true" className="font-bold leading-none mt-0.5">
                         !
@@ -686,7 +684,7 @@ export default function LoginPage() {
                       {showForgot && (
                         <div
                           className="mt-3 border border-white/10 bg-white/[0.04] px-4 py-3 text-left fade-in-soft"
-                          style={{ borderRadius: 4 }}
+                          style={{ borderRadius: 12 }}
                         >
                           <p className="text-[12px] text-white/55 leading-snug">
                             Contact your administrator to reset your password.

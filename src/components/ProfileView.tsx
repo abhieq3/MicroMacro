@@ -146,7 +146,7 @@ export default function ProfileView({
               target="_blank"
               rel="noopener noreferrer"
               title={m.href}
-              className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-white/75 transition hover:-translate-y-px hover:border-slate-300 hover:shadow-sm"
+              className="group inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-[#2f3336] bg-white dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-white/75 transition hover:-translate-y-px hover:border-slate-300 hover:shadow-sm"
             >
               <span style={{ color: m.color }} className="shrink-0">
                 <Icon size={14} />
@@ -158,7 +158,7 @@ export default function ProfileView({
 
         <button
           onClick={copyLink}
-          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-white/75 transition hover:bg-slate-100 dark:hover:bg-white/[0.08] hover:border-slate-300"
+          className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-[#2f3336] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-white/75 transition hover:bg-slate-100 dark:hover:bg-white/[0.08] hover:border-slate-300"
           title="Copy a link to this profile"
         >
           {copied ? <Check size={14} className="text-green-600" /> : <LinkIcon size={14} />}

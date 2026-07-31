@@ -149,7 +149,7 @@ export default function AuditClient({
 
   return (
     <div className="max-w-5xl space-y-5 pb-12">
-      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-white/[0.06]">
+      <div className="pb-5 mb-1 border-b border-slate-100 dark:border-[#2f3336]">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-3">
             <div className="mt-0.5 page-icon-box bg-blue-50 dark:bg-blue-500/10 shrink-0">

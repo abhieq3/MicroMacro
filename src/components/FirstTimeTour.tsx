@@ -96,51 +96,52 @@ export function FirstTimeTour({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+      style={{ background: 'rgba(91, 112, 131, 0.4)' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="first-login-title"
     >
       <div
-        className="w-full max-w-[380px] border border-white/12 bg-black overflow-hidden relative"
-        style={{ borderRadius: 6 }}
+        className="w-full max-w-[380px] border border-[#2f3336] bg-black overflow-hidden relative"
+        style={{ borderRadius: 16 }}
       >
-        <div className="px-5 pt-5 pb-4 border-b border-white/10 flex items-center gap-2.5">
+        <div className="px-5 pt-5 pb-4 border-b border-[#2f3336] flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => void dismiss()}
-            className="absolute top-3 right-3 p-1.5 text-white/35 hover:text-white/80"
+            className="absolute top-3 right-3 p-1.5 text-[#71767b] hover:text-[#e7e9ea] hover:bg-[rgba(231,233,234,0.1)]"
             aria-label="Close"
-            style={{ borderRadius: 4 }}
+            style={{ borderRadius: 9999 }}
           >
-            <X size={15} />
+            <X size={18} />
           </button>
           <PragatiMark size={28} flat />
-          <span className="brand-wordmark text-[17px] text-white">Pragati</span>
+          <span className="brand-wordmark text-[17px] text-[#e7e9ea]">Pragati</span>
         </div>
 
         <div className="px-5 py-5">
           <h2
             id="first-login-title"
-            className="text-lg font-bold text-white tracking-tight"
+            className="text-[20px] font-bold text-[#e7e9ea] tracking-tight"
           >
             {hint.headline}
           </h2>
-          <p className="mt-2 text-[13px] text-white/45 leading-relaxed">{hint.body}</p>
+          <p className="mt-2 text-[15px] text-[#71767b] leading-relaxed">{hint.body}</p>
 
           <div className="mt-6 flex flex-col gap-2">
             <button
               type="button"
               onClick={() => void dismiss(hint.ctaHref)}
-              className="btn-primary w-full justify-center py-2.5 text-[13px]"
+              className="btn-primary w-full justify-center py-3 text-[15px]"
             >
               {hint.ctaLabel}
-              <ArrowRight size={14} />
+              <ArrowRight size={16} />
             </button>
             <button
               type="button"
               onClick={() => void dismiss()}
-              className="w-full py-2 text-[12px] font-medium text-white/35 hover:text-white/70 transition-colors"
+              className="w-full py-2.5 text-[15px] font-bold text-[#1d9bf0] hover:underline transition-colors"
             >
               Skip
             </button>

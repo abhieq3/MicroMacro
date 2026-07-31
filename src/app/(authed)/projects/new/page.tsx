@@ -1159,7 +1159,7 @@ export default function NewProjectPage() {
                                 className={`text-left px-3 py-2 rounded-lg text-xs transition-all border ${
                                   active
                                     ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300'
-                                    : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
+                                    : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-[#2f3336] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
                                 }`}
                               >
                                 <div className="flex items-center gap-1.5">
@@ -1219,7 +1219,7 @@ export default function NewProjectPage() {
                             className={`text-left px-3 py-2 rounded-lg text-xs transition-all border ${
                               active
                                 ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300'
-                                : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
+                                : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-[#2f3336] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
                             }`}
                           >
                             <div className="flex items-center gap-1.5">
@@ -1262,7 +1262,7 @@ export default function NewProjectPage() {
                             className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all border ${
                               active
                                 ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-300'
-                                : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
+                                : 'bg-white dark:bg-white/[0.04] border-slate-200 dark:border-[#2f3336] text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/20'
                             }`}
                           >
                             <div className="flex items-center gap-1.5 pr-9">

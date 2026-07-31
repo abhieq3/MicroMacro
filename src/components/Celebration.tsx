@@ -38,19 +38,19 @@ export function Celebration({
       aria-live="polite"
     >
       <div
-        className="flex items-start gap-3 border border-white/12 bg-black px-4 py-3 cursor-pointer"
-        style={{ borderRadius: 6 }}
+        className="flex items-start gap-3 border border-[#2f3336] bg-[#16181c] px-4 py-3 cursor-pointer"
+        style={{ borderRadius: 16, boxShadow: '0 0 15px rgba(255,255,255,0.06)' }}
       >
         <span
-          className="mt-0.5 grid h-6 w-6 place-items-center text-black bg-white shrink-0"
-          style={{ borderRadius: 3 }}
+          className="mt-0.5 grid h-7 w-7 place-items-center text-white bg-[#00ba7c] shrink-0"
+          style={{ borderRadius: 9999 }}
         >
           <Check size={14} strokeWidth={2.5} />
         </span>
         <div className="min-w-0">
-          <div className="text-[13px] font-semibold text-white leading-snug">{title}</div>
+          <div className="text-[15px] font-bold text-[#e7e9ea] leading-snug">{title}</div>
           {subtitle && (
-            <div className="text-[12px] text-white/45 mt-0.5 leading-snug">{subtitle}</div>
+            <div className="text-[13px] text-[#71767b] mt-0.5 leading-snug">{subtitle}</div>
           )}
         </div>
       </div>

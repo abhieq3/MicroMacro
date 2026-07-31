@@ -300,26 +300,28 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] bg-black/70"
+      className="fixed inset-0 z-[90] flex items-start justify-center pt-[8vh]"
+      style={{ background: 'rgba(91, 112, 131, 0.4)' }}
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Search"
-        className="w-[560px] max-w-[90vw] overflow-hidden"
+        className="w-[600px] max-w-[90vw] overflow-hidden"
         style={{
-          background: dark ? '#0a0a0a' : '#ffffff',
-          border: dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
-          borderRadius: 6,
-          boxShadow: dark ? '0 24px 64px rgba(0,0,0,0.75)' : '0 16px 48px rgba(0,0,0,0.12)',
+          background: dark ? '#000000' : '#ffffff',
+          border: dark ? '1px solid #2f3336' : '1px solid #eff3f4',
+          borderRadius: 16,
+          boxShadow: dark ? '0 0 24px rgba(255,255,255,0.08)' : '0 0 24px rgba(0,0,0,0.12)',
+          animation: 'paletteIn 0.15s ease both',
         }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={mode === 'compose' ? onComposeKeyDown : onSearchKeyDown}
       >
         <div
-          className="flex items-center gap-2.5 px-4 border-b"
-          style={{ borderColor: dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+          className="flex items-center gap-3 px-4 border-b"
+          style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}
         >
           {mode === 'compose' ? (
             <Plus size={16} className={dark ? 'text-white/35' : 'text-zinc-400'} />

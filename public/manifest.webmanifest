@@ -1,7 +1,7 @@
 {
   "name": "Pragati",
   "short_name": "Pragati",
-  "description": "Team work, fully visible.",
+  "description": "Work visible to the whole team.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

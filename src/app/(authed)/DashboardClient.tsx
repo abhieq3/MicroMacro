@@ -340,9 +340,9 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       {/* ── Greeting ────────────────────────────────────────────────────── */}
       <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[1.75rem] sm:text-[1.9rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
+          <h1 className="text-[20px] sm:text-[20px] font-bold tracking-tight leading-tight text-[#0f1419] dark:text-[#e7e9ea]">
             <span suppressHydrationWarning>
-              {greeting()}, <span className="text-zinc-900 dark:text-white">{firstName}.</span>
+              {greeting()}, {firstName}
             </span>
           </h1>
         </div>
@@ -371,20 +371,19 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
           {doThisFirst && (
             <Link
               href={`/tasks/${doThisFirst.id}`}
-              className="mb-4 flex items-start gap-3 border border-zinc-200/90 dark:border-white/[0.1] bg-white dark:bg-[#0a0a0a] px-4 py-3.5 hover:border-zinc-400 dark:hover:border-white/25 transition-colors"
-              style={{ borderRadius: 6, boxShadow: 'none' }}
+              className="mb-0 flex items-start gap-3 border-y border-[#eff3f4] dark:border-[#2f3336] bg-transparent px-4 py-3.5 hover:bg-[rgba(15,20,25,0.03)] dark:hover:bg-[rgba(231,233,234,0.03)] transition-colors"
             >
               <div className="min-w-0 flex-1">
                 <div
                   className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
                     overdueTasks.some((t) => t.id === doThisFirst.id)
-                      ? 'text-red-600 dark:text-red-400'
-                      : 'text-zinc-900 dark:text-white'
+                      ? 'text-red-600 dark:text-[#f4212e]'
+                      : 'text-[#0f1419] dark:text-[#e7e9ea]'
                   }`}
                 >
                   Priority
                 </div>
-                <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
+                <div className="text-sm font-bold text-[#0f1419] dark:text-[#e7e9ea] leading-snug truncate">
                   {doThisFirst.title}
                 </div>
                 <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 truncate">
@@ -436,7 +435,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
             <div className="flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <FolderKanban size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
-                <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
+                <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-[#536471] dark:text-[#71767b] truncate">
                   Your team’s projects
                 </h2>
                 <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
@@ -445,7 +444,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               </div>
               <Link
                 href="/projects"
-                className="text-xs font-semibold text-zinc-800 hover:text-black dark:text-white dark:hover:text-white/75 shrink-0 whitespace-nowrap transition-colors"
+                className="text-[13px] font-normal text-[#1d9bf0] hover:underline shrink-0 whitespace-nowrap transition-colors"
               >
                 All projects →
               </Link>
@@ -453,7 +452,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
             <div className="flex items-center justify-between gap-2 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
-                <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
+                <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-[#536471] dark:text-[#71767b] truncate">
                   Due
                 </h2>
               </div>
@@ -519,12 +518,12 @@ function FullScreenOverlay({
         onClick={onClose}
       >
         <div
-          className="bg-white dark:bg-[#262624] rounded-2xl w-full max-w-4xl my-2 shadow-2xl dark:border dark:border-white/[0.08]"
+          className="bg-white dark:bg-[#262624] rounded-2xl w-full max-w-4xl my-2 shadow-2xl dark:border dark:border-[#2f3336]"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07] sticky top-0 bg-white dark:bg-[#262624] rounded-t-2xl z-10">
+          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-[#2f3336] sticky top-0 bg-white dark:bg-[#262624] rounded-t-2xl z-10">
             {icon}
-            <h3 className="text-sm font-bold text-slate-800 dark:text-white/85">{title}</h3>
+            <h3 className="text-sm font-bold text-[#0f1419] dark:text-[#e7e9ea]">{title}</h3>
             <button
               onClick={onClose}
               title="Close"
@@ -586,7 +585,7 @@ function PanelHeader({
       }`}
     >
       <span className="text-slate-400 dark:text-white/30 shrink-0 inline-flex">{icon}</span>
-      <h3 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40">
+      <h3 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-[#536471] dark:text-[#71767b]">
         {title}
       </h3>
       {count != null && (
@@ -622,7 +621,7 @@ function SummaryChip({
 }) {
   const styles = {
     blue: 'bg-zinc-100 dark:bg-white/10 text-zinc-800 dark:text-white',
-    red: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+    red: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-[#f4212e]',
     slate: 'bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-white/55',
     green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   }[accent];
@@ -718,7 +717,7 @@ function SummaryTaskPopup({
     <FullScreenOverlay title={title} icon={icon} onClose={onClose}>
       <div className="px-5 pb-5">
         <div
-          className={`mb-3 border px-3 py-2.5 ${tone === 'red' ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300' : 'border-zinc-200 dark:border-white/12 bg-zinc-50 dark:bg-white/[0.04] text-zinc-700 dark:text-white/70'}`}
+          className={`mb-3 border px-3 py-2.5 ${tone === 'red' ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300' : 'border-zinc-200 dark:border-[#2f3336] bg-zinc-50 dark:bg-white/[0.04] text-zinc-700 dark:text-white/70'}`}
         >
           <div className="text-xs font-bold">
             {sorted.length} task{sorted.length === 1 ? '' : 's'}
@@ -728,7 +727,7 @@ function SummaryTaskPopup({
         {sorted.length === 0 ? (
           <div className="py-12 text-center text-sm text-slate-400">Nothing to list here.</div>
         ) : (
-          <ul className="divide-y divide-slate-100 dark:divide-white/[0.06] rounded-xl border border-slate-100 dark:border-white/[0.07] overflow-hidden">
+          <ul className="divide-y divide-slate-100 dark:divide-white/[0.06] rounded-xl border border-slate-100 dark:border-[#2f3336] overflow-hidden">
             {sorted.map((t) => {
               const due = t.ccTcd || t.dueDate;
               const dueIn = daysUntil(due);
@@ -797,7 +796,7 @@ function ContributorWelcome({ name }: { name: string }) {
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   return (
     <div
-      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#0a0a0a] overflow-hidden max-w-xl"
+      className="mb-6 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl"
       style={{ boxShadow: 'none' }}
     >
       <div
@@ -808,10 +807,10 @@ function ContributorWelcome({ name }: { name: string }) {
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 dark:text-white/30">
           No work yet
         </p>
-        <h2 className="mt-1 text-base font-bold text-zinc-900 dark:text-white tracking-tight">
+        <h2 className="mt-1 text-base font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
           {first}
         </h2>
-        <p className="mt-1.5 text-[13px] text-zinc-500 dark:text-white/40 leading-relaxed">
+        <p className="mt-1.5 text-[13px] text-[#536471] dark:text-[#71767b] leading-relaxed">
           Nothing assigned. New work shows here.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -824,7 +823,7 @@ function ContributorWelcome({ name }: { name: string }) {
           </Link>
           <Link
             href="/projects"
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-zinc-500 hover:text-zinc-900 dark:text-white/40 dark:hover:text-white"
+            className="inline-flex items-center gap-1 text-[12px] font-semibold text-zinc-500 hover:text-[#0f1419] dark:text-[#e7e9ea]/40 dark:hover:text-white"
           >
             Projects
           </Link>
@@ -858,7 +857,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
 
   return (
     <div
-      className="mb-6 rounded-2xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-[#0a0a0a] overflow-hidden max-w-xl"
+      className="mb-6 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl"
       style={{ boxShadow: 'none' }}
     >
       <div
@@ -896,10 +895,10 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
             </div>
           ))}
         </div>
-        <h2 className="mt-4 text-base font-black text-slate-800 dark:text-white/85 tracking-tight">
+        <h2 className="mt-4 text-base font-black text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
           {next.title}
         </h2>
-        <p className="mt-1.5 text-[13px] text-slate-500 dark:text-white/40 leading-relaxed">
+        <p className="mt-1.5 text-[13px] text-[#536471] dark:text-[#71767b] leading-relaxed">
           {next.body}
         </p>
         <Link
@@ -934,7 +933,7 @@ function ProjectsColumn({
       >
         <div className="flex items-center gap-2 min-w-0">
           <FolderKanban size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
-          <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
+          <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-[#536471] dark:text-[#71767b] truncate">
             Your team’s projects
           </h2>
           <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
@@ -943,7 +942,7 @@ function ProjectsColumn({
         </div>
         <Link
           href="/projects"
-          className="text-xs font-semibold text-zinc-800 hover:text-black dark:text-white dark:hover:text-white/75 shrink-0 whitespace-nowrap transition-colors"
+          className="text-[13px] font-normal text-[#1d9bf0] hover:underline shrink-0 whitespace-nowrap transition-colors"
         >
           All projects →
         </Link>
@@ -951,7 +950,7 @@ function ProjectsColumn({
 
       {projects.length === 0 ? (
         <div
-          className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] text-center py-12 px-6"
+          className="bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] text-center py-12 px-6"
           style={{ boxShadow: 'none' }}
         >
           <FolderKanban size={26} className="mx-auto text-slate-300 dark:text-white/20 mb-3" />
@@ -999,7 +998,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
   return (
     <div className="bg-slate-50/60 dark:bg-black/[0.12]">
       {/* Header bar — distinguishes the task panel from the project card header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200/60 dark:border-white/[0.07]">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200/60 dark:border-[#2f3336]">
         <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-white/35">
           Tasks · target date order
         </span>
@@ -1009,7 +1008,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           </span>
           <Link
             href={`/projects/${projectId}`}
-            className="text-[9.5px] font-bold text-zinc-900 dark:text-white hover:text-black dark:hover:text-white/75 transition-colors"
+            className="text-[9.5px] font-bold text-[#0f1419] dark:text-[#e7e9ea] hover:underline text-[#1d9bf0] dark:text-[#1d9bf0] transition-colors"
           >
             Board →
           </Link>
@@ -1037,7 +1036,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           const stateMeta = ((): { label: string; fg: string; bg: string } | null => {
             if (isDone) return { label: 'Done', fg: '#059669', bg: 'rgba(16,185,129,0.12)' };
             if (t.status === 'in_progress')
-              return { label: 'In progress', fg: '#fafafa', bg: 'rgba(255,255,255,0.1)' };
+              return { label: 'In progress', fg: '#fafafa', bg: '#2f3336' };
             if (t.status === 'review')
               return { label: 'In review', fg: '#7c3aed', bg: 'rgba(124,58,237,0.12)' };
             if (t.status === 'todo' || !t.status)
@@ -1061,7 +1060,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           const dateTone = isDone
             ? 'text-slate-300 dark:text-white/20'
             : overdue
-              ? 'text-red-600 dark:text-red-400 font-bold'
+              ? 'text-red-600 dark:text-[#f4212e] font-bold'
               : dueIn !== null && dueIn <= 3
                 ? 'text-amber-700 dark:text-amber-400 font-bold'
                 : 'text-slate-400 dark:text-white/28';
@@ -1100,7 +1099,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
                       className={`flex-1 min-w-0 text-[13px] font-semibold line-clamp-1 leading-snug ${
                         isDone
                           ? 'line-through decoration-slate-300/60 dark:decoration-white/20 text-slate-400 dark:text-white/35'
-                          : 'text-slate-800 dark:text-white/85 group-hover:text-black dark:group-hover:text-white'
+                          : 'text-[#0f1419] dark:text-[#e7e9ea] group-hover:text-black dark:group-hover:text-white'
                       }`}
                     >
                       {t.title}
@@ -1116,12 +1115,12 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
                     )}
 
                     {overdue && (
-                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md">
+                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-[#f4212e] bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md">
                         Overdue
                       </span>
                     )}
                     {isBlocked && !overdue && (
-                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md">
+                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-[#f4212e] bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md">
                         Blocked
                       </span>
                     )}
@@ -1158,13 +1157,13 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
       </ul>
 
       {sorted.length > 20 && (
-        <div className="border-t border-slate-100 dark:border-white/[0.06]">
+        <div className="border-t border-slate-100 dark:border-[#2f3336]">
           <Link
             href={`/projects/${projectId}`}
             className="group flex items-center justify-between gap-3 px-5 py-2.5 text-[10.5px] hover:bg-white dark:hover:bg-white/[0.04] transition-colors"
           >
             <span className="text-slate-400 dark:text-white/28">Showing 20 of {sorted.length} tasks</span>
-            <span className="text-zinc-900 dark:text-white font-semibold group-hover:translate-x-0.5 transition-transform">
+            <span className="text-[#0f1419] dark:text-[#e7e9ea] font-semibold group-hover:translate-x-0.5 transition-transform">
               Open project board →
             </span>
           </Link>
@@ -1212,7 +1211,7 @@ function ProjectRow({
 
   return (
     <article
-      className="min-w-0 bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden transition-all"
+      className="min-w-0 bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] overflow-hidden transition-all"
       style={{ boxShadow: 'none' }}
     >
       {/* Collapsed-state header — two readable rows, never a 5-piece chip strip.
@@ -1238,7 +1237,7 @@ function ProjectRow({
           <Link
             href={`/projects/${project.id}`}
             onClick={(e) => e.stopPropagation()}
-            className="block text-[15px] font-bold text-slate-800 dark:text-white/85 hover:text-black dark:hover:text-white line-clamp-2 sm:truncate leading-snug"
+            className="block text-[15px] font-bold text-[#0f1419] dark:text-[#e7e9ea] hover:text-black dark:hover:text-white line-clamp-2 sm:truncate leading-snug"
           >
             {project.name}
           </Link>
@@ -1274,7 +1273,7 @@ function ProjectRow({
               <span
                 className={`inline-flex items-center gap-1 text-[10.5px] font-semibold px-1.5 py-0.5 rounded ${
                   dueUrgent
-                    ? 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10'
+                    ? 'text-red-700 dark:text-[#f4212e] bg-red-50 dark:bg-red-500/10'
                     : 'text-slate-600 dark:text-white/50 bg-slate-50 dark:bg-white/[0.04]'
                 }`}
               >
@@ -1282,7 +1281,7 @@ function ProjectRow({
               </span>
             )}
             {project.overdueCount > 0 && (
-              <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
+              <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-red-700 dark:text-[#f4212e] bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded">
                 {project.overdueCount} overdue
               </span>
             )}
@@ -1306,7 +1305,7 @@ function ProjectRow({
 
       {/* Tasks panel — slightly sunken look separates it from the project header */}
       {open && (
-        <div className="border-t-2 border-slate-100 dark:border-white/[0.08] fade-in-soft">
+        <div className="border-t-2 border-slate-100 dark:border-[#2f3336] fade-in-soft">
           {tasks.length === 0 ? (
             <div className="py-10 text-center bg-slate-50/60 dark:bg-black/[0.12]">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white dark:bg-white/[0.06] shadow-sm mb-2">
@@ -1317,7 +1316,7 @@ function ProjectRow({
               </div>
               <Link
                 href={`/projects/${project.id}`}
-                className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-zinc-900 dark:text-white hover:text-black dark:hover:text-white/75"
+                className="inline-flex items-center gap-1 mt-2 text-[11px] font-bold text-[#0f1419] dark:text-[#e7e9ea] hover:underline text-[#1d9bf0] dark:text-[#1d9bf0]"
               >
                 Open the project board →
               </Link>
@@ -1413,7 +1412,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
 
   return (
     <section
-      className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+      className="bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] overflow-hidden"
       style={{ boxShadow: 'none' }}
     >
       <PanelHeader
@@ -1424,7 +1423,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
         countSuffix=" open"
         trailing={
           myOverdue > 0 ? (
-            <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold text-red-600 dark:text-[#f4212e] bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full">
               {myOverdue} overdue
             </span>
           ) : null
@@ -1464,7 +1463,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
                       {t.title}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
-                      <span className="font-mono font-bold text-slate-500 dark:text-white/40">
+                      <span className="font-mono font-bold text-[#536471] dark:text-[#71767b]">
                         {t.projectCode}
                       </span>
                       {due && (
@@ -1495,7 +1494,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
           {myTasks.length > 15 && (
             <li className="px-4 py-2.5 text-[10px] text-slate-400 dark:text-white/30">
               +{myTasks.length - 15} more —{' '}
-              <Link href="/my-day" className="text-zinc-900 dark:text-white font-bold">
+              <Link href="/my-day" className="text-[#0f1419] dark:text-[#e7e9ea] font-bold">
                 view in My Day →
               </Link>
             </li>
@@ -1593,7 +1592,7 @@ function UpNextPanel({
         >
           <div className="flex items-center gap-2 min-w-0">
             <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
-            <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
+            <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-[#536471] dark:text-[#71767b] truncate">
               Due
             </h2>
             <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
@@ -1611,7 +1610,7 @@ function UpNextPanel({
         </div>
       )}
       <div
-        className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+        className="bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] overflow-hidden"
         style={{ boxShadow: 'none' }}
       >
         <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100vh - 220px)' : '60vh' }}>
@@ -1801,7 +1800,7 @@ function ActionGroup({
                     </div>
                     <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
                       {t.projectCode && (
-                        <span className="font-mono font-bold text-slate-500 dark:text-white/40">
+                        <span className="font-mono font-bold text-[#536471] dark:text-[#71767b]">
                           {t.projectCode}
                         </span>
                       )}
@@ -1864,7 +1863,7 @@ function ContributorsPanel({
   if (people.length === 0) {
     return (
       <section
-        className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+        className="bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] overflow-hidden"
         style={{ boxShadow: 'none' }}
       >
         <PanelHeader
@@ -1883,7 +1882,7 @@ function ContributorsPanel({
 
   return (
     <section
-      className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+      className="bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] overflow-hidden"
       style={{ boxShadow: 'none' }}
     >
       <PanelHeader
@@ -1942,7 +1941,7 @@ function MyFocusPanel({ tasks, projects, myId }: { tasks: TeamTask[]; projects: 
 
   return (
     <section
-      className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+      className="bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] overflow-hidden"
       style={{ boxShadow: 'none' }}
     >
       <div
@@ -2040,14 +2039,14 @@ function ContributorRow({
             <div className="text-[10px] text-slate-400 dark:text-white/30 truncate">
               {person.openTasks} open
               {person.overdueCount > 0 && (
-                <span className="text-red-600 dark:text-red-400 font-semibold ml-1.5">
+                <span className="text-red-600 dark:text-[#f4212e] font-semibold ml-1.5">
                   · {person.overdueCount} overdue
                 </span>
               )}
             </div>
           </div>
           {person.overdueCount > 0 && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-[#f4212e]">
               Overdue
             </span>
           )}
@@ -2067,7 +2066,7 @@ function ContributorRow({
               No open assignments.
             </div>
           ) : (
-            <ul className="mx-3 mb-2 divide-y divide-slate-100 dark:divide-white/[0.05] rounded-xl border border-slate-100 dark:border-white/[0.06] overflow-hidden bg-white dark:bg-white/[0.02]">
+            <ul className="mx-3 mb-2 divide-y divide-slate-100 dark:divide-white/[0.05] rounded-xl border border-slate-100 dark:border-[#2f3336] overflow-hidden bg-white dark:bg-white/[0.02]">
               {sorted.slice(0, 5).map((t) => {
                 const due = t.ccTcd || t.dueDate;
                 const dueIn = daysUntil(due);
@@ -2096,7 +2095,7 @@ function ContributorRow({
                           {t.title}
                         </div>
                         <div className="text-[10px] text-slate-400 dark:text-white/30 mt-0.5 flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono font-bold text-slate-500 dark:text-white/40">
+                          <span className="font-mono font-bold text-[#536471] dark:text-[#71767b]">
                             {t.projectCode}
                           </span>
                           <span

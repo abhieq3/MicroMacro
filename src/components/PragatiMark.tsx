@@ -1,11 +1,6 @@
-/** Pragati brand mark — first principles.
- *
- *  Black tile. Two white rising chevrons. No gradient, no gloss, no glow.
- *  Reads as progress / forward motion. Identical in every context.
- */
+/** Pragati mark — X-era: black tile, white chevrons, no gloss. */
 export function PragatiMark({
   size = 96,
-  /** when true, drops outer depth (inline / sidebar) */
   flat = false,
   className = '',
 }: {
@@ -13,7 +8,8 @@ export function PragatiMark({
   flat?: boolean;
   className?: string;
 }) {
-  const r = Math.max(3, Math.round(size * 0.12));
+  // Slightly rounded square — closer to X app icon softness than a pill.
+  const r = Math.max(4, Math.round(size * 0.22));
 
   return (
     <div
@@ -24,11 +20,12 @@ export function PragatiMark({
         width: size,
         height: size,
         borderRadius: r,
-        background: '#000000',
-        border: flat ? '1px solid rgba(255,255,255,0.12)' : '1px solid #000000',
-        boxShadow: flat ? 'none' : 'none',
+        background: '#e7e9ea',
+        border: 'none',
+        boxShadow: 'none',
       }}
     >
+      {/* Invert: dark chevrons on light tile (reads on pure black chrome like the X logo) */}
       <svg
         width={size * 0.56}
         height={size * 0.56}
@@ -38,8 +35,8 @@ export function PragatiMark({
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        <path d="M14 40 L32 22 L50 40" stroke="#ffffff" strokeWidth="6.5" />
-        <path d="M18 52 L32 38 L46 52" stroke="#ffffff" strokeWidth="5" opacity="0.55" />
+        <path d="M14 40 L32 22 L50 40" stroke="#000000" strokeWidth="7" />
+        <path d="M18 52 L32 38 L46 52" stroke="#000000" strokeWidth="5.5" opacity="0.55" />
       </svg>
     </div>
   );
