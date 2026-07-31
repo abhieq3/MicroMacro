@@ -175,7 +175,7 @@ const STATUS_FILL: Record<string, string> = {
 };
 const STATUS_STROKE: Record<string, string> = {
   todo: '#94a3b8',
-  in_progress: '#3b82f6',
+  in_progress: '#0f1419',
   review: '#f59e0b',
   blocked: '#ef4444',
   done: '#22c55e',
@@ -1845,7 +1845,7 @@ export function BirdsEyeView({
               title={brushOn ? 'Exit brush — back to pan/drag' : 'Brush — draw notes & arrows on the canvas'}
               className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-colors ${
                 brushOn
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-[#0f1419] dark:bg-[#e7e9ea] text-white hover:opacity-90'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
               }`}
             >
@@ -1881,10 +1881,10 @@ export function BirdsEyeView({
             {/* Export group — same view, three takeaways: a vector SVG, a crisp
                 2× PNG, or the image straight onto the clipboard to paste into a
                 deck or chat. */}
-            <div className="inline-flex items-center rounded-lg bg-blue-600 overflow-hidden shadow-sm">
+            <div className="inline-flex items-center rounded-lg bg-[#0f1419] dark:bg-[#e7e9ea] overflow-hidden shadow-sm">
               <button
                 onClick={exportSvg}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 text-white hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 text-white hover:opacity-90 transition-colors"
                 title="Download this view as a vector SVG"
               >
                 <Download size={13} />
@@ -1893,7 +1893,7 @@ export function BirdsEyeView({
               <span className="w-px h-4 bg-white/25" />
               <button
                 onClick={exportPng}
-                className="text-[11px] font-bold px-2.5 py-1.5 text-white hover:bg-blue-700 transition-colors"
+                className="text-[11px] font-bold px-2.5 py-1.5 text-white hover:opacity-90 transition-colors"
                 title="Download this view as a high-resolution PNG"
               >
                 PNG
@@ -1901,7 +1901,7 @@ export function BirdsEyeView({
               <span className="w-px h-4 bg-white/25" />
               <button
                 onClick={copyPng}
-                className="inline-flex items-center px-2 py-1.5 text-white hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center px-2 py-1.5 text-white hover:opacity-90 transition-colors"
                 title="Copy the image to your clipboard"
                 aria-label="Copy image to clipboard"
               >
@@ -2690,7 +2690,7 @@ function BirdsEyeTaskEditor({
           <button
             onClick={save}
             disabled={saving}
-            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-[#0f1419] dark:bg-[#e7e9ea] text-white hover:opacity-90 disabled:opacity-50"
           >
             <Check size={12} /> {saving ? 'Saving…' : 'Save'}
           </button>
@@ -2856,7 +2856,7 @@ function BirdsEyeNewTaskEditor({
           <button
             onClick={save}
             disabled={saving || !title.trim()}
-            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-[#0f1419] dark:bg-[#e7e9ea] text-white hover:opacity-90 disabled:opacity-50"
           >
             <Plus size={12} /> {saving ? 'Adding…' : 'Add task'}
           </button>

@@ -367,7 +367,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
 
       {loaded && projects.length === 0 && (
         <div className="card p-12 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12  bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
             {q || team || lc || status ? (
               <Search size={22} className="text-blue-400" />
             ) : (

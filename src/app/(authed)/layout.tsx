@@ -38,7 +38,7 @@ export default async function AuthedLayout({ children }: { children: React.React
   // Dark-first. New cookie; only explicit light opts out.
   // Legacy `theme=light` is ignored so redesign sessions open black.
   const themeCookie = cookies().get('pragati_theme')?.value;
-  const initialDark = themeCookie !== 'light';
+  const initialDark = themeCookie === 'dark';
 
   // Persisted sidebar width — clamped server-side so an invalid cookie can't
   // produce a broken layout. Falls back to 220 if the cookie is absent.

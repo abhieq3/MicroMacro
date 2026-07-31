@@ -204,11 +204,12 @@ type ActionFilter = 'week' | 'nextWeek' | 'month' | 'untilDate';
  * resolved it), de-duplicate by name, and map projects + tasks 1:1.
  */
 function buildBirdsEyeDataFromDash(dash: DashResp): BirdsEyeData {
-  // Build a synthetic team id from name. Lead-dashboard doesn't return team
-  // ids on projects, so we group by name — that's fine for visualisation.
+  // Exclude system/recurring holder projects from the map.
+  const projects = dash.projects.filter((p) => !p.isSystem);
+  const projectIds = new Set(projects.map((p) => p.id));
   const teamIdByName = new Map<string, string>();
   const teams: { id: string; name: string; ownerName?: string | null }[] = [];
-  for (const p of dash.projects) {
+  for (const p of projects) {
     const name = (p.teamName || '').trim();
     if (!name) continue;
     if (!teamIdByName.has(name)) {
@@ -217,12 +218,13 @@ function buildBirdsEyeDataFromDash(dash: DashResp): BirdsEyeData {
       teams.push({ id, name });
     }
   }
+  const tasks = dash.teamTasks.filter((t) => projectIds.has(t.projectId));
   return {
     rootLabel: `${dash.user.name}'s workspace`,
-    rootSubLabel: `${dash.teamCount} team${dash.teamCount === 1 ? '' : 's'} · ${dash.projects.length} project${dash.projects.length === 1 ? '' : 's'} · ${dash.teamTasks.length} task${dash.teamTasks.length === 1 ? '' : 's'}`,
+    rootSubLabel: `${dash.teamCount} team${dash.teamCount === 1 ? '' : 's'} · ${projects.length} project${projects.length === 1 ? '' : 's'} · ${tasks.length} task${tasks.length === 1 ? '' : 's'}`,
     scope: 'workspace',
     teams,
-    projects: dash.projects.map((p) => ({
+    projects: projects.map((p) => ({
       id: p.id,
       code: p.code,
       name: p.name,
@@ -233,7 +235,7 @@ function buildBirdsEyeDataFromDash(dash: DashResp): BirdsEyeData {
       dueDate: p.dueDate ?? null,
       ownerName: p.ownerName ?? null,
     })),
-    tasks: dash.teamTasks.map((t) => ({
+    tasks: tasks.map((t) => ({
       id: t.id,
       title: t.title,
       projectId: t.projectId,
@@ -285,10 +287,14 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
     [dash, isLead, myId],
   );
 
+  // Real delivery projects only — system/recurring holders stay on Teams,
+  // not the home board (they are plumbing, not work to "manage" daily).
   const ongoingProjects = useMemo(
     () =>
       dash.projects.filter(
-        (p) => p.status === 'in_progress' || p.status === 'planning' || p.status === 'on_hold',
+        (p) =>
+          !p.isSystem &&
+          (p.status === 'in_progress' || p.status === 'planning' || p.status === 'on_hold'),
       ),
     [dash],
   );
@@ -1196,16 +1202,11 @@ function ProjectRow({
   const dueUrgent = dueIn !== null && (dueIn < 0 || dueIn === 0);
 
   return (
-    <article
-      className="min-w-0 bg-white dark:bg-[#262624] border border-[#eff3f4] dark:border-[#2f3336] overflow-hidden transition-all"
-      style={{ boxShadow: 'none' }}
-    >
-      {/* Collapsed-state header — two readable rows, never a 5-piece chip strip.
-          Row 1: title + identity badges (code, lifecycle, health). Row 2: the
-          essential metrics — progress, tasks-done, due, owner. */}
+    <article className="min-w-0 border-b border-[#eff3f4] dark:border-[#2f3336] overflow-hidden">
+      {/* Flat feed row — no floating card box. */}
       <header
         onClick={() => setOpen((o) => !o)}
-        className="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-slate-50/60 dark:hover:bg-white/[0.03] transition-colors select-none"
+        className="px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-[rgba(15,20,25,0.03)] dark:hover:bg-[rgba(231,233,234,0.03)] transition-colors select-none"
       >
         <span className="p-1 text-emerald-500 dark:text-emerald-400 rounded-full shrink-0 inline-flex" aria-hidden>
           <ChevronDown
