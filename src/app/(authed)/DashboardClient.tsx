@@ -14,7 +14,7 @@ import {
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { UserAvatar } from '@/components/AvatarRegistry';
-import { useIsLead } from '@/components/CurrentUserContext';
+import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import dynamic from 'next/dynamic';
 import {
   AlertTriangle,
@@ -252,6 +252,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   const dash = initialData;
   const router = useRouter();
   const isLead = useIsLead();
+  const isAdmin = useIsAdmin();
   // Realtime: the dashboard is server-rendered, so re-running the server
   // component (router.refresh) is the cheapest way to pull fresh rollups when
   // the tab regains focus, on a gentle interval, and on app-wide change events.
@@ -362,7 +363,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       )}
 
       {isFirstRun ? (
-        <FirstRunGuide hasTeam={dash.people.length > 0} />
+        <FirstRunGuide hasTeam={dash.people.length > 0 || dash.teamCount > 0} isAdmin={isAdmin} />
       ) : (
         <>
           {isNewContributor && <ContributorWelcome name={dash.user.name} />}
@@ -790,42 +791,40 @@ function SummaryTaskPopup({
   );
 }
 
-/* ── Contributor welcome ──────────────────────────────────────────────────
-   Empty board on day one. One next action, premium calm. */
+/* ── Contributor welcome — day-one empty board ──────────────────────────── */
 function ContributorWelcome({ name }: { name: string }) {
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   return (
-    <div
-      className="mb-6 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl"
-      style={{ boxShadow: 'none' }}
-    >
-      <div
-        className="h-1"
-        style={{ background: '#ffffff' }}
-      />
+    <div className="mb-4 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl" style={{ borderRadius: 16 }}>
+      <div className="h-1 bg-[#1d9bf0]" />
       <div className="p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 dark:text-white/30">
-          No work yet
-        </p>
-        <h2 className="mt-1 text-base font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
-          {first}
+        <p className="text-[13px] font-bold text-[#1d9bf0]">Getting started</p>
+        <h2 className="mt-1 text-[20px] font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
+          Hi {first}
         </h2>
-        <p className="mt-1.5 text-[13px] text-[#536471] dark:text-[#71767b] leading-relaxed">
-          Nothing assigned. New work shows here.
+        <p className="mt-2 text-[15px] text-[#536471] dark:text-[#71767b] leading-relaxed">
+          Nothing assigned yet. When your lead adds work, it shows here under Priority and Due.
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Link
-            href="/my-day"
-            className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-all"
-            style={{ background: '#000000', border: '1px solid rgba(255,255,255,0.12)' }}
-          >
-            Open My Day <ArrowRight size={13} />
+        <ul className="mt-4 space-y-2 text-[14px] text-[#0f1419] dark:text-[#e7e9ea]">
+          <li className="flex gap-2">
+            <span className="text-[#1d9bf0] font-bold">1.</span>
+            Check Dashboard daily for assigned tasks
+          </li>
+          <li className="flex gap-2">
+            <span className="text-[#1d9bf0] font-bold">2.</span>
+            Use My Day for private notes and personal tasks
+          </li>
+          <li className="flex gap-2">
+            <span className="text-[#1d9bf0] font-bold">3.</span>
+            Open a task → update status → mark done
+          </li>
+        </ul>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <Link href="/my-day" className="btn-primary px-5 py-2.5 text-[14px]">
+            Open My Day <ArrowRight size={15} />
           </Link>
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-zinc-500 hover:text-[#0f1419] dark:text-[#e7e9ea]/40 dark:hover:text-white"
-          >
-            Projects
+          <Link href="/projects" className="text-[14px] font-bold text-[#1d9bf0] hover:underline">
+            Browse projects
           </Link>
         </div>
       </div>
@@ -833,80 +832,67 @@ function ContributorWelcome({ name }: { name: string }) {
   );
 }
 
-/* ── First-run guide ──────────────────────────────────────────────────────
-   Lead/admin empty workspace. Soft path + one CTA (not a three-button syllabus). */
-function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
+/* ── First-run guide — lead/admin empty workspace ───────────────────────── */
+function FirstRunGuide({ hasTeam, isAdmin }: { hasTeam: boolean; isAdmin?: boolean }) {
   const steps = [
     { label: 'Team', done: hasTeam },
-    { label: 'Project', done: false },
+    { label: isAdmin ? 'People' : 'Project', done: false },
     { label: 'First task', done: false },
   ];
-  const next = hasTeam
+  const next = !hasTeam
     ? {
-        href: '/projects/new',
-        title: 'Create your first project',
-        body: 'Pick a type, assign a team, add a task.',
-        cta: 'New project',
-      }
-    : {
         href: '/teams',
-        title: 'Create a team',
-        body: 'Name the team. Projects and people attach to it.',
+        title: 'Create your first team',
+        body: 'A team owns projects and people. Everything else hangs off it.',
         cta: 'Create a team',
-      };
+      }
+    : isAdmin
+      ? {
+          href: '/people',
+          title: 'Invite your team',
+          body: 'Add people so work can be assigned. Then create a project.',
+          cta: 'Open People',
+        }
+      : {
+          href: '/projects/new',
+          title: 'Create your first project',
+          body: 'Pick a type, put it on a team, add one task with an owner.',
+          cta: 'New project',
+        };
 
   return (
-    <div
-      className="mb-6 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl"
-      style={{ boxShadow: 'none' }}
-    >
-      <div
-        className="h-1"
-        style={{ background: '#ffffff' }}
-      />
+    <div className="mb-4 border border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black overflow-hidden max-w-xl" style={{ borderRadius: 16 }}>
+      <div className="h-1 bg-[#1d9bf0]" />
       <div className="p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 dark:text-white/30">
-          Setup
-        </p>
+        <p className="text-[13px] font-bold text-[#1d9bf0]">Setup · 3 steps</p>
         <div className="mt-3 flex items-center gap-2 flex-wrap">
           {steps.map((s, i) => (
             <div key={s.label} className="flex items-center gap-2">
               <span
-                className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-1 rounded-full ${
+                className={`inline-flex items-center gap-1.5 text-[12px] font-bold px-2.5 py-1 ${
                   s.done
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                    ? 'bg-[#00ba7c]/15 text-[#00ba7c]'
                     : i === (hasTeam ? 1 : 0)
-                      ? 'bg-zinc-900 text-white dark:bg-white dark:text-black'
-                      : 'bg-slate-50 text-slate-400 dark:bg-white/[0.04] dark:text-white/30'
+                      ? 'bg-[#e7e9ea] text-black dark:bg-[#e7e9ea] dark:text-black'
+                      : 'border border-[#2f3336] text-[#71767b]'
                 }`}
+                style={{ borderRadius: 9999 }}
               >
-                {s.done ? (
-                  <CheckCircle2 size={12} />
-                ) : (
-                  <span className="w-4 h-4 rounded-full grid place-items-center text-[10px] border border-current/30">
-                    {i + 1}
-                  </span>
-                )}
+                {s.done ? <CheckCircle2 size={12} /> : <span className="tabular-nums">{i + 1}</span>}
                 {s.label}
               </span>
-              {i < steps.length - 1 && (
-                <span className="text-slate-200 dark:text-white/15 text-xs">→</span>
-              )}
+              {i < steps.length - 1 && <span className="text-[#2f3336] text-xs">→</span>}
             </div>
           ))}
         </div>
-        <h2 className="mt-4 text-base font-black text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
+        <h2 className="mt-4 text-[20px] font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
           {next.title}
         </h2>
-        <p className="mt-1.5 text-[13px] text-[#536471] dark:text-[#71767b] leading-relaxed">
+        <p className="mt-2 text-[15px] text-[#536471] dark:text-[#71767b] leading-relaxed">
           {next.body}
         </p>
-        <Link
-          href={next.href}
-          className="mt-4 inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-all"
-          style={{ background: '#000000', border: '1px solid rgba(255,255,255,0.12)' }}
-        >
-          {next.cta} <ArrowRight size={13} />
+        <Link href={next.href} className="mt-5 btn-primary inline-flex px-5 py-2.5 text-[14px]">
+          {next.cta} <ArrowRight size={15} />
         </Link>
       </div>
     </div>
