@@ -1,13 +1,13 @@
 {
   "name": "Pragati",
   "short_name": "Pragati",
-  "description": "A bird's-eye view of your projects — focused project intelligence for teams.",
+  "description": "Team work, fully visible.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0f172a",
-  "theme_color": "#1565C0",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "lang": "en",
   "categories": ["productivity", "business"],
   "icons": [

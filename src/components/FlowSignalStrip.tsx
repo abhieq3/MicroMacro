@@ -69,10 +69,10 @@ function dotColorFor(item: FlowSignalItem, mode: FlowSignalPayload['mode']): str
   if (item.reasonCodes.includes('help') || item.reasonCodes.includes('decision')) return '#dc2626';
   if (item.reasonCodes.includes('blocked')) return '#dc2626';
   // Confirmed waiting state — restrained slate-blue.
-  if (item.reasonCodes.includes('confirmed')) return '#1565C0';
+  if (item.reasonCodes.includes('confirmed')) return '#fafafa';
   // Inferred check (Phase 4+) — subtle amber.
   if (mode === 'check_needed') return '#d97706';
-  return '#1565C0';
+  return '#a1a1aa';
 }
 
 interface StripProps {

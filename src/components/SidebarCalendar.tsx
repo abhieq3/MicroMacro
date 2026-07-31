@@ -358,7 +358,8 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                         ? {
                             width: 26,
                             height: 26,
-                            background: 'linear-gradient(135deg,#0d47a1 0%,#1565C0 45%,#1e88e5 100%)',
+                            background: '#ffffff',
+                            color: '#000000',
                             boxShadow: '0 2px 8px rgba(21,101,192,0.45)',
                           }
                         : { width: 24, height: 24 }

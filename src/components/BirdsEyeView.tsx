@@ -1095,7 +1095,7 @@ export function BirdsEyeView({
       return [];
     }
   });
-  const [brushColor, setBrushColor] = useState('#1565C0');
+  const [brushColor, setBrushColor] = useState('#fafafa');
   const liveStroke = useRef<BrushStroke | null>(null);
   const [, forceLive] = useState(0); // re-render trigger for live stroke painting
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1734,16 +1734,16 @@ export function BirdsEyeView({
       >
         {/* Header — full-width band above the canvas. Title block left, controls
             right; both wrap independently so neither is clipped on a phone. */}
-        <div className="shrink-0 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between px-5 py-3.5 border-b border-slate-200 bg-white">
+        <div className="shrink-0 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between px-5 py-3 border-b border-zinc-200 dark:border-white/10 bg-white dark:bg-black">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
-              Bird&apos;s-eye view
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 dark:text-white/35">
+              Map
             </div>
-            <div className="text-base sm:text-lg font-black text-slate-900 leading-tight break-words">
+            <div className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white tracking-tight leading-tight break-words">
               {data.rootLabel}
             </div>
             {data.rootSubLabel && (
-              <div className="text-[11px] text-slate-500 truncate">{data.rootSubLabel}</div>
+              <div className="text-[11px] text-zinc-500 dark:text-white/40 truncate">{data.rootSubLabel}</div>
             )}
           </div>
           <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:shrink-0">
@@ -1763,7 +1763,8 @@ export function BirdsEyeView({
                 }}
                 placeholder="Find  ( / )"
                 aria-label="Find a team, project or task on the canvas"
-                className="w-[124px] sm:w-[150px] pl-8 pr-7 py-1.5 text-[12px] rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
+                className="w-[124px] sm:w-[150px] pl-8 pr-7 py-1.5 text-[12px] border border-zinc-200 dark:border-white/15 bg-zinc-50 dark:bg-white/5 focus:bg-white dark:focus:bg-black focus:border-zinc-400 dark:focus:border-white/40 focus:outline-none transition"
+                style={{ borderRadius: 4 }}
               />
               {query && (
                 <button
@@ -1791,11 +1792,12 @@ export function BirdsEyeView({
                   ? 'Expand all projects to show individual tasks'
                   : 'Collapse each project to a task-count summary'
               }
-              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-colors ${
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 transition-colors ${
                 collapseTasks
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  ? 'bg-black text-white dark:bg-white dark:text-black'
+                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/15'
               }`}
+              style={{ borderRadius: 4 }}
             >
               <Layers size={13} /> {collapseTasks ? 'Expand tasks' : 'Group tasks'}
             </button>
@@ -1852,7 +1854,7 @@ export function BirdsEyeView({
             {brushOn && (
               <>
                 <div className="flex items-center gap-0.5 mx-0.5">
-                  {['#1565C0', '#22c55e', '#f59e0b', '#ef4444', '#0f172a'].map((c) => (
+                  {['#fafafa', '#22c55e', '#eab308', '#ef4444', '#71717a'].map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -1951,9 +1953,9 @@ export function BirdsEyeView({
                     {/* Match the app's 3-stop brand gradient so the workspace
                         root reads as the same identity as the sidebar wordmark. */}
                     <linearGradient id="beRootGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#1565C0" />
+                      <stop offset="0%" stopColor="#fafafa" />
                       <stop offset="50%" stopColor="#1976D2" />
-                      <stop offset="100%" stopColor="#2E7D32" />
+                      <stop offset="100%" stopColor="#a1a1aa" />
                     </linearGradient>
                     {/* Soft drop shadow lifts every card off the dotted canvas
                         so the tree reads with depth instead of as flat stickers. */}
@@ -2103,7 +2105,7 @@ export function BirdsEyeView({
                                 y1={collapseCy}
                                 x2={collapseCx + 4}
                                 y2={collapseCy}
-                                stroke="#1565C0"
+                                stroke="#fafafa"
                                 strokeWidth={1.6}
                                 strokeLinecap="round"
                               />
@@ -2112,7 +2114,7 @@ export function BirdsEyeView({
                                 y1={collapseCy - 4}
                                 x2={collapseCx}
                                 y2={collapseCy + 4}
-                                stroke="#1565C0"
+                                stroke="#fafafa"
                                 strokeWidth={1.6}
                                 strokeLinecap="round"
                               />
@@ -2148,7 +2150,7 @@ export function BirdsEyeView({
                           style={{ cursor: 'pointer' }}
                         >
                           <title>Add a task under this {n.kind}</title>
-                          <circle cx={n.x + n.width - 11} cy={n.y + n.height - 11} r={8.5} fill="#1565C0" />
+                          <circle cx={n.x + n.width - 11} cy={n.y + n.height - 11} r={8.5} fill="#fafafa" />
                           <line
                             x1={n.x + n.width - 15}
                             y1={n.y + n.height - 11}
@@ -2264,7 +2266,7 @@ export function BirdsEyeView({
           const mmW = Math.max(60, Math.round(width * scale));
           const mmH = Math.max(44, Math.round(height * scale));
           const MM_KIND_FILL: Record<string, string> = {
-            root: '#1565C0',
+            root: '#fafafa',
             team: '#a5b4fc',
             phase: '#cbd5e1',
             count: '#e2e8f0',
@@ -2328,7 +2330,7 @@ export function BirdsEyeView({
                   width={viewportBox.cw / zoom}
                   height={viewportBox.ch / zoom}
                   fill="rgba(21,101,192,0.08)"
-                  stroke="#1565C0"
+                  stroke="#fafafa"
                   strokeWidth={Math.max(2, 2 / scale / 2)}
                   rx={8}
                 />

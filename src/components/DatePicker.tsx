@@ -167,7 +167,7 @@ export function DatePicker({
               inset, so it was visibly overflowing on both edges). */}
             <div
               className="h-1"
-              style={{ background: 'linear-gradient(90deg, #0D47A1 0%, #1565C0 45%, #2E7D32 100%)' }}
+              style={{ background: '#000000' }}
             />
             <div className="p-3">
               <CalendarGrid
@@ -303,7 +303,7 @@ function CalendarGrid({
               onClick={() => !disabled && onPick(day)}
               style={
                 isSel
-                  ? { background: 'linear-gradient(135deg, #1565C0 0%, #1976D2 50%, #2E7D32 100%)' }
+                  ? { background: '#000000', color: '#ffffff' }
                   : undefined
               }
               className={cls}

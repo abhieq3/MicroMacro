@@ -5,23 +5,16 @@ import { createPortal } from 'react-dom';
 import { Check } from 'lucide-react';
 import { hapticSuccess } from '@/lib/haptics';
 
-/**
- * Quiet milestone acknowledgement.
- *
- * Naval: status is a zero-sum game; wealth/output is positive-sum. Confetti and
- * fanfare train people for status hits. A short, dismissible notice is enough —
- * the work is the reward.
- */
-
+/** Short bottom-right ack. No confetti. */
 export function Celebration({
   title,
   subtitle,
   onDone,
-  duration = 2400,
+  duration = 2000,
 }: {
   title: string;
   subtitle?: string;
-  /** @deprecated ignored — no emoji theater */
+  /** @deprecated ignored */
   emoji?: string;
   onDone?: () => void;
   duration?: number;
@@ -45,16 +38,19 @@ export function Celebration({
       aria-live="polite"
     >
       <div
-        className="flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#262624] px-4 py-3 shadow-lg cursor-pointer"
-        style={{ animation: 'fade-in-soft-2 0.2s ease-out both' }}
+        className="flex items-start gap-3 border border-white/12 bg-black px-4 py-3 cursor-pointer"
+        style={{ borderRadius: 6 }}
       >
-        <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shrink-0">
-          <Check size={15} strokeWidth={2.5} />
+        <span
+          className="mt-0.5 grid h-6 w-6 place-items-center text-black bg-white shrink-0"
+          style={{ borderRadius: 3 }}
+        >
+          <Check size={14} strokeWidth={2.5} />
         </span>
         <div className="min-w-0">
-          <div className="text-[13px] font-bold text-slate-800 dark:text-white/90 leading-snug">{title}</div>
+          <div className="text-[13px] font-semibold text-white leading-snug">{title}</div>
           {subtitle && (
-            <div className="text-[12px] text-slate-500 dark:text-white/45 mt-0.5 leading-snug">{subtitle}</div>
+            <div className="text-[12px] text-white/45 mt-0.5 leading-snug">{subtitle}</div>
           )}
         </div>
       </div>

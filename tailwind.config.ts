@@ -6,50 +6,52 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Alembic Digital blue — matches the logo "Alembic" & "DIGITAL" text
+        // Monochrome brand — pure ink. No corporate blue/green.
         brand: {
-          50: '#E3F2FD',
-          100: '#BBDEFB',
-          200: '#90CAF9',
-          300: '#64B5F6',
-          400: '#42A5F5',
-          500: '#1E88E5', // chevron bright blue
-          600: '#1565C0', // core Alembic blue (logo text)
-          700: '#1152A8',
-          800: '#0D47A1', // dark navy
-          900: '#0A3480', // sidebar deep navy
+          50: '#fafafa',
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
+          500: '#71717a',
+          600: '#3f3f46',
+          700: '#18181b',
+          800: '#09090b',
+          900: '#000000',
         },
-        // Alembic progress green — matches the green chevron & "Touching Lives" text
+        // Status green only — not a second brand identity
         forest: {
-          50: '#E8F5E9',
-          100: '#C8E6C9',
-          200: '#A5D6A7',
-          300: '#81C784',
-          400: '#66BB6A',
-          500: '#43A047', // core Alembic green
-          600: '#388E3C',
-          700: '#2E7D32',
-          800: '#1B5E20',
-          900: '#1A4A1F',
+          50: '#f0fdf4',
+          100: '#dcfce7',
+          200: '#bbf7d0',
+          300: '#86efac',
+          400: '#4ade80',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+          800: '#166534',
+          900: '#14532d',
         },
       },
       backgroundImage: {
-        'alembic-gradient': 'linear-gradient(135deg, #0A3480 0%, #1565C0 60%, #1E88E5 100%)',
-        'progress-gradient': 'linear-gradient(90deg, #1565C0, #43A047)',
-        'chevron-gradient': 'linear-gradient(135deg, #1565C0 0%, #0D47A1 100%)',
+        'alembic-gradient': 'none',
+        'progress-gradient': 'linear-gradient(90deg, #000000, #18181b)',
+        'chevron-gradient': 'none',
       },
       boxShadow: {
-        brand: '0 4px 14px 0 rgba(21, 101, 192, 0.25)',
-        forest: '0 4px 14px 0 rgba(67, 160, 71, 0.20)',
-        card: '0 1px 3px 0 rgba(13, 71, 161, 0.08), 0 1px 2px -1px rgba(13,71,161,0.04)',
+        brand: 'none',
+        forest: 'none',
+        card: 'none',
       },
-      // Dialog widths. Every modal in the app uses one of these two tokens —
-      // they MUST exist here: an undefined max-w-* class emits nothing, and a
-      // `w-full` dialog then silently stretches to the whole viewport (the
-      // "giant horizontal dialog" bug).
+      borderRadius: {
+        lg: '4px',
+        xl: '6px',
+        '2xl': '8px',
+        '3xl': '10px',
+      },
       maxWidth: {
-        modal: '34rem', // 544px — forms with explanatory copy (sign-offs)
-        'modal-sm': '27rem', // 432px — confirmations and single-field prompts
+        modal: '34rem',
+        'modal-sm': '27rem',
       },
     },
   },

@@ -34,39 +34,39 @@ const THEME: Record<
 > = {
   success: {
     icon: CheckCircle2,
-    bg: '#f0fdf4',
-    border: '#bbf7d0',
+    bg: '#fafafa',
+    border: 'rgba(0,0,0,0.12)',
     iconColor: '#16a34a',
-    titleColor: '#15803d',
-    darkBg: '#0f2318',
-    darkBorder: '#166534',
+    titleColor: '#09090b',
+    darkBg: '#0a0a0a',
+    darkBorder: 'rgba(255,255,255,0.12)',
   },
   error: {
     icon: XCircle,
-    bg: '#fef2f2',
-    border: '#fecaca',
+    bg: '#fafafa',
+    border: 'rgba(0,0,0,0.12)',
     iconColor: '#dc2626',
-    titleColor: '#b91c1c',
-    darkBg: '#2d0a0a',
-    darkBorder: '#7f1d1d',
+    titleColor: '#09090b',
+    darkBg: '#0a0a0a',
+    darkBorder: 'rgba(255,255,255,0.12)',
   },
   warning: {
     icon: AlertTriangle,
-    bg: '#fffbeb',
-    border: '#fde68a',
-    iconColor: '#d97706',
-    titleColor: '#b45309',
-    darkBg: '#2d1b00',
-    darkBorder: '#78350f',
+    bg: '#fafafa',
+    border: 'rgba(0,0,0,0.12)',
+    iconColor: '#ca8a04',
+    titleColor: '#09090b',
+    darkBg: '#0a0a0a',
+    darkBorder: 'rgba(255,255,255,0.12)',
   },
   info: {
     icon: Info,
-    bg: '#eff6ff',
-    border: '#bfdbfe',
-    iconColor: '#2563eb',
-    titleColor: '#1d4ed8',
-    darkBg: '#0c1a35',
-    darkBorder: '#1e3a5f',
+    bg: '#fafafa',
+    border: 'rgba(0,0,0,0.12)',
+    iconColor: '#71717a',
+    titleColor: '#09090b',
+    darkBg: '#0a0a0a',
+    darkBorder: 'rgba(255,255,255,0.12)',
   },
 };
 
@@ -93,25 +93,32 @@ function ToastEl({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string)
     <div
       role="alert"
       onClick={dismiss}
-      className="pointer-events-auto relative overflow-hidden cursor-pointer flex items-start gap-3 px-4 py-3.5 rounded-2xl max-w-[320px] w-full select-none"
+      className="pointer-events-auto relative overflow-hidden cursor-pointer flex items-start gap-3 px-4 py-3 max-w-[320px] w-full select-none"
       style={{
         background: isDark ? t.darkBg : t.bg,
         border: `1px solid ${isDark ? t.darkBorder : t.border}`,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.14), 0 2px 6px rgba(0,0,0,0.08)',
-        transform: visible && !leaving ? 'translateX(0) scale(1)' : 'translateX(24px) scale(0.94)',
+        borderRadius: 6,
+        boxShadow: isDark ? '0 12px 40px rgba(0,0,0,0.65)' : '0 8px 24px rgba(0,0,0,0.08)',
+        transform: visible && !leaving ? 'translateX(0)' : 'translateX(12px)',
         opacity: visible && !leaving ? 1 : 0,
         transition: leaving
-          ? 'transform 0.22s ease-in, opacity 0.22s ease-in'
-          : 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s ease-out',
+          ? 'transform 0.15s ease-in, opacity 0.15s ease-in'
+          : 'transform 0.15s ease-out, opacity 0.15s ease-out',
       }}
     >
-      <Icon size={16} style={{ color: t.iconColor, marginTop: 1, flexShrink: 0 }} />
+      <Icon size={15} style={{ color: t.iconColor, marginTop: 2, flexShrink: 0 }} />
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold leading-tight" style={{ color: t.titleColor }}>
+        <div
+          className="text-sm font-semibold leading-tight"
+          style={{ color: isDark ? '#fafafa' : t.titleColor }}
+        >
           {item.title}
         </div>
         {item.description && (
-          <div className="text-xs mt-0.5 leading-snug" style={{ color: t.iconColor, opacity: 0.7 }}>
+          <div
+            className="text-xs mt-0.5 leading-snug"
+            style={{ color: isDark ? 'rgba(255,255,255,0.45)' : '#71717a' }}
+          >
             {item.description}
           </div>
         )}

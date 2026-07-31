@@ -4,8 +4,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { BirdsEyeLoader } from '@/components/BirdsEyeLoader';
-import { BUILTIN_QUOTES, dailyQuoteOffset, readingMs } from '@/lib/quotes';
-import { ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { AVATAR_FONTS, avatarFg } from '@/components/ui';
 
 function getInitials(name: string) {
@@ -17,109 +16,6 @@ function getInitials(name: string) {
     .join('')
     .slice(0, 2)
     .toUpperCase();
-}
-
-/* Rotating, unattributed wisdom — Naval Ravikant only.
-   Curated to what Pragati is for: focus, judgment, leverage, shipping,
-   long-term games, and cutting the unessential. No name is ever shown —
-   only the line. Never repeats on a device until the whole library has been
-   shown (see unseenQuoteIndices / pickUnseen). See src/lib/quotes.ts. */
-
-// Bumped when the library is re-curated (the ledger is positional, so a fresh
-// key avoids old indices pre-marking different lines).
-// v11 = Naval Ravikant only — large set for focus / leverage / judgment / ship.
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v11';
-
-/** Indices not yet shown on this device; resets only once the whole set is
- *  exhausted. Takes the library size so a re-curation of the list stays in
- *  bounds. */
-function unseenQuoteIndices(count: number): number[] {
-  const all = Array.from({ length: count }, (_, i) => i);
-  try {
-    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
-    const valid = new Set(seen.filter((n) => Number.isInteger(n) && n >= 0 && n < count));
-    const unseen = all.filter((i) => !valid.has(i));
-    if (unseen.length > 0) return unseen;
-    localStorage.removeItem(QUOTES_SEEN_KEY);
-    return all;
-  } catch {
-    return all;
-  }
-}
-
-function markQuoteSeen(i: number) {
-  try {
-    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
-    if (!seen.includes(i)) localStorage.setItem(QUOTES_SEEN_KEY, JSON.stringify([...seen, i]));
-  } catch {
-    /* private mode — quotes simply rotate without the ledger */
-  }
-}
-
-/** A random index this device hasn't shown yet (never `exclude`). Only once
- *  every quote has been shown does the ledger reset and a fresh full pass
- *  begin — the single point at which any line can recur, and never two in a
- *  row. So no quote repeats until all the others have had their turn. */
-function pickUnseen(count: number, exclude?: number): number {
-  if (count <= 0) return 0;
-  const unseen = unseenQuoteIndices(count).filter((x) => x !== exclude);
-  const pool =
-    unseen.length > 0 ? unseen : Array.from({ length: count }, (_, x) => x).filter((x) => x !== exclude);
-  if (pool.length === 0) return exclude ?? 0;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-
-function RotatingQuote() {
-  // Deterministic seed only so server and first client render match (no
-  // localStorage on the server); the mount effect immediately advances off it
-  // to a genuinely-unseen line, so revisiting the page never re-opens on the
-  // same quote.
-  const [i, setI] = useState(() => dailyQuoteOffset(BUILTIN_QUOTES.length));
-  const [show, setShow] = useState(true);
-
-  // First real pick: leave the deterministic seed for an unseen line and record
-  // it. This is what kills the "same quote every visit" repeat — the old code
-  // re-seeded to the daily offset on every load and never marked it seen.
-  useEffect(() => {
-    const first = pickUnseen(BUILTIN_QUOTES.length);
-    markQuoteSeen(first);
-    setI(first);
-  }, []);
-
-  // Self-scheduling rotation: each quote stays up for its own reading time
-  // (proportional to length), so a long line isn't cut off and a short one
-  // doesn't linger. Re-runs after every advance to size the next dwell.
-  useEffect(() => {
-    if (BUILTIN_QUOTES.length < 2) return;
-    const dwell = readingMs(BUILTIN_QUOTES[i % BUILTIN_QUOTES.length]?.text || '');
-    const t = setTimeout(() => {
-      setShow(false);
-      // Compute + record the next line outside the state updater (no side
-      // effects in a reducer): an unseen index, never the current one.
-      const next = pickUnseen(BUILTIN_QUOTES.length, i);
-      markQuoteSeen(next);
-      setTimeout(() => {
-        setI(next);
-        setShow(true);
-      }, 400);
-    }, dwell);
-    return () => clearTimeout(t);
-  }, [i]);
-
-  const q = BUILTIN_QUOTES[i % BUILTIN_QUOTES.length];
-  return (
-    <div
-      style={{
-        fontSize: 12,
-        transition: 'opacity 0.4s ease',
-        opacity: show ? 1 : 0,
-        minHeight: 30,
-      }}
-      className="text-white/40 tracking-wide max-w-[320px] mx-auto leading-snug"
-    >
-      <span style={{ fontStyle: 'italic' }}>“{q.text}”</span>
-    </div>
-  );
 }
 
 function StrengthMeter({ password }: { password: string }) {
@@ -142,7 +38,7 @@ function StrengthMeter({ password }: { password: string }) {
             <div
               key={i}
               className="h-1 flex-1 rounded-sm transition-all duration-300"
-              style={{ background: i <= score ? barColor : '#E2E8F0' }}
+              style={{ background: i <= score ? barColor : 'rgba(255,255,255,0.12)' }}
             />
           ))}
         </div>
@@ -158,7 +54,7 @@ function StrengthMeter({ password }: { password: string }) {
           <span
             key={c.label}
             style={{ fontSize: 10 }}
-            className={`transition-colors ${c.ok ? 'text-forest-600 font-medium' : 'text-slate-300'}`}
+            className={`transition-colors ${c.ok ? 'text-white/70 font-medium' : 'text-white/20'}`}
           >
             {c.ok ? '✓' : '·'} {c.label}
           </span>
@@ -347,271 +243,128 @@ export default function LoginPage() {
   return (
     <>
       <style>{`
-        @keyframes glow-pulse {
-          0%, 100% { opacity: 0.55; transform: scale(1); }
-          50%      { opacity: 0.85; transform: scale(1.08); }
-        }
-        @keyframes logo-float {
-          0%, 100% { transform: translateY(0px); }
-          50%      { transform: translateY(-8px); }
-        }
         @keyframes fade-up {
-          from { opacity: 0; transform: translateY(14px); }
+          from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes fade-in-soft {
-          from { opacity: 0; transform: translateY(4px); }
-          to   { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
-        @keyframes shimmer-line {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        /* Rising-chevron echo: a soft, expanding ring that breathes outward
-           from the logo's centre. Echoes the *meaning* of the chevrons
-           (forward / upward motion) rather than the previous two dots circling
-           the mark, which read as decorative noise. Two staggered rings keep
-           the motion sustained without being busy. */
-        @keyframes pulse-ring {
-          0%   { transform: scale(0.65); opacity: 0.55; }
-          70%  { opacity: 0.04; }
-          100% { transform: scale(1.55); opacity: 0; }
-        }
-        .logo-float    { animation: logo-float 5.5s ease-in-out infinite; }
-        .fade-up       { animation: fade-up 0.55s ease-out forwards; }
-        .fade-up-1     { animation: fade-up 0.55s 0.10s ease-out both; }
-        .fade-up-2     { animation: fade-up 0.55s 0.20s ease-out both; }
-        .fade-up-3     { animation: fade-up 0.55s 0.32s ease-out both; }
-        .fade-in-soft  { animation: fade-in-soft 0.35s ease-out both; }
-        .form-swap     { animation: fade-in-soft 0.32s ease-out both; }
-        .shimmer-line::after {
-          content: '';
-          position: absolute; inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
-          animation: shimmer-line 2.6s ease-in-out infinite;
-        }
-        .pulse-ring    { animation: pulse-ring 3.6s ease-out infinite; }
-        .pulse-ring-2  { animation: pulse-ring 3.6s 1.2s ease-out infinite; }
-        .pulse-ring-3  { animation: pulse-ring 3.6s 2.4s ease-out infinite; }
-        /* Returning-user orbit rings around the PIN avatar. */
-        @keyframes spin-cw  { to { transform: rotate(360deg); } }
-        @keyframes spin-ccw { to { transform: rotate(-360deg); } }
-        .pin-orbit-a { animation: spin-cw 22s linear infinite; }
-        .pin-orbit-b { animation: spin-ccw 16s linear infinite; }
-        /* Wrong-PIN feedback: one decisive horizontal shake of the box row —
-           the universal "nope" gesture — instead of only a red message below. */
+        .fade-up       { animation: fade-up 0.35s ease-out forwards; }
+        .fade-up-1     { animation: fade-up 0.35s 0.05s ease-out both; }
+        .fade-up-2     { animation: fade-up 0.35s 0.1s ease-out both; }
+        .fade-up-3     { animation: fade-up 0.35s 0.15s ease-out both; }
+        .fade-in-soft  { animation: fade-in-soft 0.2s ease-out both; }
+        .form-swap     { animation: fade-in-soft 0.18s ease-out both; }
         @keyframes pin-shake {
           0%, 100% { transform: translateX(0); }
-          20% { transform: translateX(-7px); }
-          40% { transform: translateX(6px); }
-          60% { transform: translateX(-4px); }
-          80% { transform: translateX(3px); }
+          20% { transform: translateX(-6px); }
+          40% { transform: translateX(5px); }
+          60% { transform: translateX(-3px); }
+          80% { transform: translateX(2px); }
         }
-        .pin-shake { animation: pin-shake 0.45s ease-in-out; }
-        /* Correct-PIN feedback: dots pop green before the welcome veil rises. */
+        .pin-shake { animation: pin-shake 0.4s ease-in-out; }
         @keyframes pin-pop {
           0% { transform: scale(1); }
-          45% { transform: scale(1.35); }
+          45% { transform: scale(1.25); }
           100% { transform: scale(1); }
         }
-        .pin-pop { animation: pin-pop 0.3s ease-out; }
-        /* Post-unlock welcome veil — fades up over everything and holds while
-           the dashboard loads behind it. */
+        .pin-pop { animation: pin-pop 0.25s ease-out; }
         @keyframes veil-in {
           from { opacity: 0; }
           to   { opacity: 1; }
         }
-        .veil-in { animation: veil-in 0.35s ease-out both; }
+        .veil-in { animation: veil-in 0.2s ease-out both; }
         @keyframes veil-bar {
           0%   { transform: translateX(-100%); }
           100% { transform: translateX(250%); }
         }
-        .veil-bar { animation: veil-bar 1.1s ease-in-out infinite; }
-        /* Aurora — three large, slow-drifting colour blobs behind the brand
-           panel. Gives the login a living, premium backdrop without the busy
-           orbiting dots. GPU-friendly (transform + opacity only). */
-        @keyframes aurora-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(8%, 6%) scale(1.15); } }
-        @keyframes aurora-2 { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-7%, -5%) scale(1); } }
-        @keyframes aurora-3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(5%, -8%) scale(1.2); } }
-        .aurora-1 { animation: aurora-1 16s ease-in-out infinite; }
-        .aurora-2 { animation: aurora-2 20s ease-in-out infinite; }
-        .aurora-3 { animation: aurora-3 24s ease-in-out infinite; }
+        .veil-bar { animation: veil-bar 0.9s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) {
-          .logo-float, .pulse-ring, .pulse-ring-2, .pulse-ring-3, .shimmer-line::after,
-          .pin-orbit-a, .pin-orbit-b, .aurora-1, .aurora-2, .aurora-3,
           .pin-shake, .pin-pop, .veil-bar { animation: none !important; }
           .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap, .veil-in { animation-duration: 0.01ms !important; }
         }
       `}</style>
 
-      <div className="min-h-screen flex">
-        {/* ════ LEFT — Pragati brand panel ═══════════════════════════════ */}
-        <div
-          className="hidden lg:flex lg:w-[54%] flex-col relative overflow-hidden"
-          style={{
-            background: 'linear-gradient(160deg, #050E1D 0%, #091828 40%, #0B1F3A 70%, #0C2347 100%)',
-          }}
-        >
-          {/* Aurora — three slow-drifting colour blobs give the panel a living,
-              premium backdrop. Blurred + blended so they read as soft light. */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div
-              className="absolute aurora-1"
-              style={{
-                top: '-10%',
-                left: '8%',
-                width: 560,
-                height: 560,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(30,136,229,0.40) 0%, transparent 60%)',
-                filter: 'blur(28px)',
-              }}
-            />
-            <div
-              className="absolute aurora-2"
-              style={{
-                top: '28%',
-                right: '-12%',
-                width: 480,
-                height: 480,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(46,125,50,0.32) 0%, transparent 62%)',
-                filter: 'blur(30px)',
-              }}
-            />
-            <div
-              className="absolute aurora-3"
-              style={{
-                bottom: '-16%',
-                left: '30%',
-                width: 520,
-                height: 520,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 64%)',
-                filter: 'blur(34px)',
-              }}
-            />
-          </div>
-
-          {/* Dot grid texture (above the aurora, very faint) */}
+      <div className="min-h-screen flex bg-black">
+        {/* ════ LEFT — pure black brand panel ════════════════════════════ */}
+        <div className="hidden lg:flex lg:w-1/2 flex-col relative overflow-hidden bg-black border-r border-white/10">
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0 pointer-events-none opacity-40"
             style={{
-              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
-              backgroundSize: '28px 28px',
+              backgroundImage:
+                'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
+              backgroundSize: '48px 48px',
             }}
           />
 
           <div className="relative flex flex-col flex-1 px-14 py-12">
             <div className="flex-1 flex flex-col justify-center">
-              {/* Pragati mark with three staggered, expanding rings —
-                  reads as outward / forward motion, the literal meaning of
-                  "pragati". Replaced the two orbiting dots that were
-                  reported as visually noisy and unrelated to the brand
-                  narrative. The rings stay behind the mark so they read
-                  as a soft halo, never crossing the logo itself. */}
               <div className="flex justify-center mb-10">
-                <div className="relative logo-float" style={{ width: 112, height: 112 }}>
-                  {/* Three staggered rings echo the rising-chevron motion. */}
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      aria-hidden
-                      className={i === 0 ? 'pulse-ring' : i === 1 ? 'pulse-ring-2' : 'pulse-ring-3'}
-                      style={{
-                        position: 'absolute',
-                        inset: -18,
-                        borderRadius: '32%',
-                        border: '1.5px solid rgba(66,165,245,0.45)',
-                        boxShadow: 'inset 0 0 18px rgba(66,165,245,0.12)',
-                        pointerEvents: 'none',
-                      }}
-                    />
-                  ))}
-                  <PragatiMark size={112} />
-                </div>
+                <PragatiMark size={88} />
               </div>
 
-              {/* Wordmark */}
               <h1
                 className="fade-up-1 brand-wordmark text-center text-white"
-                style={{ fontSize: 'clamp(62px, 6.2vw, 88px)' }}
+                style={{ fontSize: 'clamp(56px, 5.5vw, 80px)' }}
               >
                 Pragati
               </h1>
 
-              <div className="fade-up-2 flex justify-center mt-5">
-                <div
-                  className="relative h-0.5 w-20 rounded-full overflow-hidden shimmer-line"
-                  style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }}
-                />
+              <div className="fade-up-2 flex justify-center mt-6">
+                <div className="h-px w-12 bg-white/25" />
               </div>
 
               <p
-                className="fade-up-2 text-center text-white/55 mt-5 leading-relaxed mx-auto"
-                style={{ fontSize: 14, maxWidth: 320 }}
+                className="fade-up-2 text-center text-white/35 mt-6 leading-relaxed mx-auto tracking-wide"
+                style={{ fontSize: 13, maxWidth: 280 }}
               >
-                A bird's-eye view of every project,
-                <br />
-                every action, every contributor.
+                Work visible to the whole team.
               </p>
             </div>
 
             <div className="text-center pb-2 fade-up-3">
-              <RotatingQuote />
+              <p className="text-[11px] text-white/25 tracking-[0.16em] uppercase font-semibold">
+                Sign in to continue
+              </p>
             </div>
           </div>
         </div>
 
         {/* ════ RIGHT — Form panel ═══════════════════════════════════════ */}
-        <div
-          className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative
-          bg-white lg:bg-white"
-        >
-          {/* Mobile shimmer background — only visible on small screens where the
-              left brand panel is hidden */}
-          <div className="absolute inset-0 lg:hidden profile-hero-shimmer opacity-90" />
-          <div
-            className="absolute top-0 left-0 right-0 h-[3px]"
-            style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }}
-          />
-
+        <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative bg-black lg:bg-black">
           <div className="w-full max-w-[340px] fade-up relative">
-            {/* Mobile branding — floating card over the shimmer */}
-            <div className="flex flex-col items-center mb-8 lg:hidden">
-              <div
-                className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-1"
-                style={{ boxShadow: '0 8px 24px rgba(15,23,42,0.3)' }}
-              >
-                <PragatiMark size={44} />
-              </div>
-              <div className="brand-wordmark text-[2rem] text-white mt-3 drop-shadow">Pragati</div>
-              <div className="text-sm text-white/70 mt-1">The view from above</div>
+            <div className="flex flex-col items-center mb-10 lg:hidden">
+              <PragatiMark size={48} />
+              <div className="brand-wordmark text-[1.75rem] text-white mt-4">Pragati</div>
+              <div className="text-xs text-white/40 mt-1 tracking-wide">The whole board</div>
             </div>
 
-            {/* White card on mobile to contrast the shimmer; transparent on desktop */}
-            <div className="rounded-2xl bg-white p-6 shadow-2xl lg:p-0 lg:rounded-none lg:bg-transparent lg:shadow-none">
+            <div className="p-0">
               {/* Deactivated-account notice */}
               {notice && (
-                <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 fade-in-soft">
-                  <span className="text-red-500 font-bold shrink-0 mt-0.5 text-sm">!</span>
-                  <div className="text-sm text-red-800 leading-snug">{notice}</div>
+                <div
+                  className="mb-5 border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-2.5 fade-in-soft"
+                  style={{ borderRadius: 4 }}
+                >
+                  <span className="text-red-400 font-bold shrink-0 mt-0.5 text-sm">!</span>
+                  <div className="text-sm text-red-200 leading-snug">{notice}</div>
                 </div>
               )}
 
-              {/* Database unreachable — sign-in cannot succeed until it's back.
-                  For a fresh self-hosted deploy this is almost always Atlas
-                  Network Access or a mistyped MONGODB_URI. */}
               {dbDown && (
-                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 fade-in-soft">
-                  <div className="text-sm text-amber-800 leading-snug">
+                <div
+                  className="mb-5 border border-amber-500/30 bg-amber-500/10 px-4 py-3 fade-in-soft"
+                  style={{ borderRadius: 4 }}
+                >
+                  <div className="text-sm text-amber-200 leading-snug">
                     <strong>Can’t reach the database.</strong> Sign-in won’t work until it’s back.
                   </div>
-                  <div className="text-[12px] text-amber-700/90 leading-snug mt-1.5">
-                    Fresh deployment? Check <code className="font-mono">MONGODB_URI</code> and your Atlas{' '}
-                    <em>Network Access</em> (allow <code className="font-mono">0.0.0.0/0</code>), then
-                    redeploy. <code className="font-mono">/api/health</code> flips to{' '}
-                    <code className="font-mono">ok</code> when it's fixed.
+                  <div className="text-[12px] text-amber-200/70 leading-snug mt-1.5">
+                    Check <code className="font-mono">MONGODB_URI</code> and Atlas Network Access, then
+                    redeploy. <code className="font-mono">/api/health</code> →{' '}
+                    <code className="font-mono">ok</code> when fixed.
                   </div>
                 </div>
               )}
@@ -623,29 +376,12 @@ export default function LoginPage() {
                     avatar (the returning-user echo of the brand mark's orbit),
                     with a soft breathing halo, so re-entry feels alive. */}
                   <div className="flex flex-col items-center text-center mb-7">
-                    <div
-                      className="relative mb-5 grid place-items-center"
-                      style={{ width: 104, height: 104 }}
-                    >
-                      {/* Breathing brand halo */}
+                    <div className="relative mb-5 grid place-items-center">
                       <div
-                        aria-hidden
-                        className="absolute inset-0 rounded-full"
-                        style={{
-                          background: 'radial-gradient(circle, rgba(21,101,192,0.30) 0%, transparent 70%)',
-                          animation: 'glow-pulse 3.4s ease-in-out infinite',
-                        }}
-                      />
-                      {/* Crisp brand-gradient ring around a clean circular avatar —
-                          the returning-user echo of the brand mark, polished. */}
-                      <div
-                        className="relative rounded-full p-[3px]"
-                        style={{
-                          background: 'conic-gradient(from 210deg, #1565C0, #2E7D32, #1976D2, #1565C0)',
-                          boxShadow: '0 14px 34px -8px rgba(21,101,192,0.45)',
-                        }}
+                        className="relative rounded-full p-[1px]"
+                        style={{ background: 'rgba(255,255,255,0.2)' }}
                       >
-                        <div className="rounded-full p-[3px] bg-white">
+                        <div className="rounded-full p-[2px] bg-black">
                           {deviceAvatar.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -657,8 +393,7 @@ export default function LoginPage() {
                             <div
                               className="w-20 h-20 rounded-full flex items-center justify-center text-2xl select-none"
                               style={{
-                                background:
-                                  deviceAvatar.bg || 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)',
+                                background: deviceAvatar.bg || '#18181b',
                                 color: deviceAvatar.bg ? avatarFg(deviceAvatar.bg) : '#ffffff',
                                 fontFamily: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).family,
                                 fontWeight: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).weight,
@@ -670,17 +405,14 @@ export default function LoginPage() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.22em] mb-1.5 fade-up-1">
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-1.5 fade-up-1">
                       Welcome back
                     </p>
-                    {/* Name in the display face — matches the brand wordmark
-                      treatment so it reads as crafted, not default sans. */}
-                    <h2 className="font-display text-[26px] font-black text-slate-900 tracking-tight leading-none fade-up-1">
+                    <h2 className="font-display text-[26px] font-black text-white tracking-tight leading-none fade-up-1">
                       {deviceName || 'You'}
                     </h2>
-                    <p className="text-[13px] text-slate-400 mt-2 leading-snug fade-up-2 inline-flex items-center gap-1.5">
-                      <Sparkles size={12} className="text-blue-400" />
-                      Enter your Quick PIN to continue
+                    <p className="text-[13px] text-white/40 mt-2 leading-snug fade-up-2">
+                      Enter your PIN
                     </p>
                   </div>
 
@@ -693,36 +425,36 @@ export default function LoginPage() {
                     {[0, 1, 2, 3].map((i) => (
                       <div
                         key={i}
-                        className="w-[54px] h-[62px] rounded-2xl border-2 flex items-center justify-center transition-all duration-200"
+                        className="w-[52px] h-[58px] flex items-center justify-center transition-all duration-150"
                         style={{
-                          borderColor: unlocked
-                            ? '#16a34a'
-                            : shake
-                              ? '#ef4444'
-                              : pin.length === i
-                                ? '#1565C0'
-                                : pin.length > i
-                                  ? '#93c5fd'
-                                  : '#e2e8f0',
-                          background: unlocked
-                            ? '#f0fdf4'
-                            : shake
-                              ? '#fef2f2'
-                              : pin.length > i
-                                ? '#eff6ff'
+                          borderRadius: 4,
+                          border: `1px solid ${
+                            unlocked
+                              ? '#22c55e'
+                              : shake
+                                ? '#ef4444'
                                 : pin.length === i
-                                  ? '#f0f9ff'
-                                  : 'white',
+                                  ? '#ffffff'
+                                  : pin.length > i
+                                    ? 'rgba(255,255,255,0.35)'
+                                    : 'rgba(255,255,255,0.14)'
+                          }`,
+                          background: unlocked
+                            ? 'rgba(34,197,94,0.1)'
+                            : shake
+                              ? 'rgba(239,68,68,0.1)'
+                              : pin.length > i
+                                ? 'rgba(255,255,255,0.08)'
+                                : '#0a0a0a',
                           boxShadow:
                             !unlocked && !shake && pin.length === i
-                              ? '0 0 0 3px rgba(21,101,192,0.13)'
+                              ? '0 0 0 2px rgba(255,255,255,0.12)'
                               : 'none',
-                          transform: pin.length > i ? 'scale(1.04)' : 'scale(1)',
                         }}
                       >
                         {pin.length > i && (
                           <div
-                            className={`w-3 h-3 rounded-full ${unlocked ? 'bg-green-600 pin-pop' : 'bg-blue-600'}`}
+                            className={`w-2.5 h-2.5 rounded-full ${unlocked ? 'bg-green-500 pin-pop' : 'bg-white'}`}
                           />
                         )}
                       </div>
@@ -769,27 +501,23 @@ export default function LoginPage() {
 
                   {loading && !unlocked && (
                     <div className="mt-2 fade-in-soft">
-                      <BirdsEyeLoader
-                        size="sm"
-                        inline
-                        label="Unlocking your workspace…"
-                        sublabel="One moment — getting your bird's-eye view ready."
-                      />
+                      <BirdsEyeLoader size="sm" inline label="Signing in…" sublabel="" />
                     </div>
                   )}
 
                   <div className="mt-6 flex flex-col items-center gap-2">
                     <div className="flex items-center gap-2 w-full">
-                      <span className="h-px flex-1 bg-slate-200" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+                      <span className="h-px flex-1 bg-white/10" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30">
                         or
                       </span>
-                      <span className="h-px flex-1 bg-slate-200" />
+                      <span className="h-px flex-1 bg-white/10" />
                     </div>
                     <button
                       onClick={usePasswordInstead}
                       type="button"
-                      className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:text-blue-700 hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
+                      className="w-full py-2.5 text-sm font-semibold text-white/60 hover:text-white border border-white/15 hover:border-white/30 hover:bg-white/[0.04] transition-colors"
+                      style={{ borderRadius: 4 }}
                     >
                       Use password / switch account
                     </button>
@@ -799,14 +527,12 @@ export default function LoginPage() {
 
               {/* Heading */}
               {mode !== 'unlock' && (
-                <div className="mb-7 form-swap" key={mode + '-h'}>
-                  <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                <div className="mb-8 form-swap" key={mode + '-h'}>
+                  <h2 className="text-2xl font-black text-white tracking-tight">
                     {mode === 'login' ? 'Sign in' : 'Set up workspace'}
                   </h2>
-                  <p className="text-sm text-slate-400 mt-1 leading-snug">
-                    {mode === 'login'
-                      ? 'Welcome to Pragati — sign in to continue.'
-                      : 'Create the first lead account.'}
+                  <p className="text-sm text-white/40 mt-1.5 leading-snug">
+                    {mode === 'login' ? 'Enter credentials to continue.' : 'Create the first lead account.'}
                   </p>
                 </div>
               )}
@@ -816,7 +542,7 @@ export default function LoginPage() {
                   {mode === 'setup' && (
                     <>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
                           Full name
                         </label>
                         <input
@@ -828,8 +554,8 @@ export default function LoginPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                          Job title <span className="normal-case font-normal text-slate-300">(optional)</span>
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
+                          Job title <span className="normal-case font-normal text-white/25">(optional)</span>
                         </label>
                         <input
                           className="input"
@@ -842,7 +568,7 @@ export default function LoginPage() {
                   )}
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
                       {mode === 'login' ? 'Username' : 'Email'}
                     </label>
                     <input
@@ -859,7 +585,7 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    <label className="block text-[10px] font-bold text-white/40 uppercase tracking-[0.14em] mb-1.5">
                       Password
                     </label>
                     <div className="relative">
@@ -877,7 +603,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/35 hover:text-white/70 transition-colors"
                         tabIndex={-1}
                         aria-label={showPw ? 'Hide password' : 'Show password'}
                       >
@@ -891,7 +617,8 @@ export default function LoginPage() {
                     <div
                       role="alert"
                       aria-live="assertive"
-                      className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft"
+                      className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft"
+                      style={{ borderRadius: 4 }}
                     >
                       <span aria-hidden="true" className="font-bold leading-none mt-0.5">
                         !
@@ -905,12 +632,11 @@ export default function LoginPage() {
                     disabled={loading}
                     aria-busy={loading}
                     className="btn-primary w-full justify-center py-3 text-sm font-bold group mt-1"
-                    style={{ boxShadow: '0 4px 14px rgba(21,101,192,0.35)' }}
                   >
                     {loading ? (
                       <>
                         <span
-                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                          className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"
                           aria-hidden="true"
                         />
                         <span>{mode === 'login' ? 'Signing in…' : 'Creating workspace…'}</span>
@@ -918,11 +644,7 @@ export default function LoginPage() {
                     ) : (
                       <>
                         {mode === 'login' ? 'Sign in' : 'Create workspace'}
-                        <ArrowRight
-                          size={15}
-                          className="transition-transform group-hover:translate-x-0.5"
-                          aria-hidden="true"
-                        />
+                        <ArrowRight size={15} aria-hidden="true" />
                       </>
                     )}
                   </button>
@@ -930,16 +652,16 @@ export default function LoginPage() {
               )}
 
               {mode !== 'unlock' && (
-                <div className="mt-5 text-center">
+                <div className="mt-6 text-center">
                   {mode === 'setup' ? (
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-white/40">
                       Already have an account?{' '}
                       <button
                         onClick={() => {
                           setMode('login');
                           setErr('');
                         }}
-                        className="text-blue-600 font-semibold hover:underline"
+                        className="text-white font-semibold hover:underline"
                       >
                         Sign in
                       </button>
@@ -949,13 +671,16 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowForgot((v) => !v)}
-                        className="text-xs text-slate-400 hover:text-blue-600 underline underline-offset-2 transition-colors"
+                        className="text-xs text-white/35 hover:text-white/70 underline underline-offset-2 transition-colors"
                       >
                         Forgot your password?
                       </button>
                       {showForgot && (
-                        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-left fade-in-soft">
-                          <p className="text-[12px] text-blue-700 leading-snug">
+                        <div
+                          className="mt-3 border border-white/10 bg-white/[0.04] px-4 py-3 text-left fade-in-soft"
+                          style={{ borderRadius: 4 }}
+                        >
+                          <p className="text-[12px] text-white/55 leading-snug">
                             Contact your administrator to reset your password.
                           </p>
                         </div>
@@ -965,7 +690,6 @@ export default function LoginPage() {
                 </div>
               )}
             </div>
-            {/* end white card */}
           </div>
         </div>
       </div>
@@ -976,63 +700,16 @@ export default function LoginPage() {
           motion: dots pop green → veil rises → workspace appears. */}
       {unlocked && (
         <div
-          className="fixed inset-0 z-[80] veil-in flex flex-col items-center justify-center"
-          style={{
-            background: 'linear-gradient(160deg, #050E1D 0%, #091828 40%, #0B1F3A 70%, #0C2347 100%)',
-          }}
+          className="fixed inset-0 z-[80] veil-in flex flex-col items-center justify-center bg-black"
           aria-live="polite"
         >
-          <div className="relative mb-6 grid place-items-center" style={{ width: 96, height: 96 }}>
-            <div
-              aria-hidden
-              className="absolute inset-0 rounded-full"
-              style={{
-                background: 'radial-gradient(circle, rgba(66,165,245,0.36) 0%, transparent 70%)',
-                animation: 'glow-pulse 2.4s ease-in-out infinite',
-              }}
-            />
-            <div
-              className="relative rounded-full p-[3px]"
-              style={{
-                background: 'conic-gradient(from 210deg, #1769C8, #43A047, #1976D2, #1769C8)',
-                boxShadow: '0 16px 40px -8px rgba(21,101,192,0.55)',
-              }}
-            >
-              <div className="rounded-full p-[3px]" style={{ background: '#0B1F3A' }}>
-                {deviceAvatar.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={deviceAvatar.image}
-                    alt=""
-                    className="block w-[74px] h-[74px] rounded-full object-cover"
-                  />
-                ) : (
-                  <div
-                    className="w-[74px] h-[74px] rounded-full flex items-center justify-center text-xl select-none"
-                    style={{
-                      background: deviceAvatar.bg || 'linear-gradient(135deg, #1565C0 0%, #1a237e 100%)',
-                      color: deviceAvatar.bg ? avatarFg(deviceAvatar.bg) : '#ffffff',
-                      fontFamily: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).family,
-                      fontWeight: (AVATAR_FONTS[deviceAvatar.font] || AVATAR_FONTS[0]).weight,
-                    }}
-                  >
-                    {(deviceAvatar.letter || getInitials(deviceName)).slice(0, 2).toUpperCase()}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="font-display text-2xl font-black text-white tracking-tight fade-up-1">
+          <PragatiMark size={56} />
+          <div className="font-display text-2xl font-black text-white tracking-tight mt-8 fade-up-1">
             Welcome back{deviceName ? `, ${deviceName.split(/\s+/)[0]}` : ''}
           </div>
-          <div className="text-[13px] text-white/50 mt-2 fade-up-2">
-            Taking you to your bird&apos;s-eye view…
-          </div>
-          <div className="mt-7 w-44 h-1 rounded-full overflow-hidden bg-white/10 fade-up-3">
-            <div
-              className="h-full w-1/2 rounded-full veil-bar"
-              style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }}
-            />
+          <div className="text-[13px] text-white/40 mt-2 fade-up-2">Loading workspace…</div>
+          <div className="mt-8 w-36 h-px overflow-hidden bg-white/10 fade-up-3">
+            <div className="h-full w-1/2 veil-bar bg-white" />
           </div>
         </div>
       )}

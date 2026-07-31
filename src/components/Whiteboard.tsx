@@ -70,7 +70,7 @@ function textLineHeight(size: number): number {
 
 const COLORS: { value: string; label: string }[] = [
   { value: '#0f172a', label: 'Ink' },
-  { value: '#1565C0', label: 'Blue' },
+  { value: '#fafafa', label: 'White' },
   { value: '#22C55E', label: 'Green' },
   { value: '#F59E0B', label: 'Amber' },
   { value: '#EF4444', label: 'Red' },

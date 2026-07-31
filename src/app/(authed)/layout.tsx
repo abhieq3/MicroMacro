@@ -35,7 +35,8 @@ export default async function AuthedLayout({ children }: { children: React.React
   // correct theme on first paint. Eliminates the flash-of-light-content
   // that previously appeared on every navigation when the localStorage
   // useEffect kicked in after hydration.
-  const initialDark = cookies().get('theme')?.value === 'dark';
+  // Dark-first: only explicit light cookie opts out.
+  const initialDark = cookies().get('theme')?.value !== 'light';
 
   // Persisted sidebar width — clamped server-side so an invalid cookie can't
   // produce a broken layout. Falls back to 220 if the cookie is absent.

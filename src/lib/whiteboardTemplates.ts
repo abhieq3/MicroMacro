@@ -31,7 +31,7 @@ export interface BoardTemplate {
 const INK = '#0f172a';
 const MUTED = '#64748b';
 const GUIDE = '#94a3b8';
-const ACCENT = '#1565C0';
+const ACCENT = '#fafafa';
 
 /** size ~2.0 labels, ~2.5 body, ~2.8 emphasis — mapped to readable px in Whiteboard. */
 function t(x: number, y: number, text: string, opts?: { size?: number; color?: string }): BoardStroke {

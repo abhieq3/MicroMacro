@@ -1,16 +1,13 @@
 'use client';
 
 /**
- * First-login welcome — top-notch, Naval-simple.
- *
- * First-time users often land once. One calm card, one next action by role,
- * skip forever. Premium feel without multi-step homework.
+ * First login — one card, one action. No multi-step tour.
  */
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, X, Sparkles } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from './PragatiMark';
 
@@ -21,7 +18,6 @@ type RoleHint = {
   body: string;
   ctaLabel: string;
   ctaHref: string;
-  chips: string[];
 };
 
 function hintForRole(role: string): RoleHint {
@@ -30,28 +26,25 @@ function hintForRole(role: string): RoleHint {
 
   if (isAdmin) {
     return {
-      headline: 'You’re in.',
-      body: 'Start with a team. Invite people, open a project, assign work. Everything else can wait.',
+      headline: 'Start here',
+      body: 'Create a team. Then add people and a project.',
       ctaLabel: 'Create a team',
       ctaHref: '/teams',
-      chips: ['Teams', 'People', 'Projects'],
     };
   }
   if (isLead) {
     return {
-      headline: 'You’re in.',
-      body: 'Open a project and assign the next task. My Day is private planning — yours alone.',
-      ctaLabel: 'Go to projects',
+      headline: 'Start here',
+      body: 'Open a project and assign work. My Day is private to you.',
+      ctaLabel: 'Projects',
       ctaHref: '/projects',
-      chips: ['Projects', 'Dashboard', 'My Day'],
     };
   }
   return {
-    headline: 'You’re in.',
-    body: 'When your lead assigns work, it shows on the dashboard. Until then, plan in My Day.',
-    ctaLabel: 'Open My Day',
+    headline: 'Start here',
+    body: 'Assigned work shows on the dashboard. Use My Day to plan.',
+    ctaLabel: 'My Day',
     ctaHref: '/my-day',
-    chips: ['My Day', 'Dashboard', 'Projects'],
   };
 }
 
@@ -72,15 +65,14 @@ export function FirstTimeTour({
     if (alreadySeen) return;
     try {
       if (localStorage.getItem(STORAGE_KEY) === '1') return;
-      // Honor older tour keys so we never re-show after a prior dismiss.
       if (localStorage.getItem('pragati-tour-v6') === '1') {
         localStorage.setItem(STORAGE_KEY, '1');
         return;
       }
     } catch {
-      /* private mode — still show once this session */
+      /* private mode */
     }
-    const t = window.setTimeout(() => setOpen(true), 320);
+    const t = window.setTimeout(() => setOpen(true), 280);
     return () => window.clearTimeout(t);
   }, [alreadySeen]);
 
@@ -104,65 +96,37 @@ export function FirstTimeTour({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/45 backdrop-blur-[3px]"
+      className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/70"
       role="dialog"
       aria-modal="true"
       aria-labelledby="first-login-title"
     >
       <div
-        className="w-full max-w-[420px] rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#262624] shadow-2xl overflow-hidden relative"
-        style={{ animation: 'fade-in-soft-2 0.22s ease-out both' }}
+        className="w-full max-w-[380px] border border-white/12 bg-black overflow-hidden relative"
+        style={{ borderRadius: 6 }}
       >
-        {/* Soft brand header band */}
-        <div
-          className="px-6 pt-5 pb-4 border-b border-slate-100 dark:border-white/[0.06]"
-          style={{
-            background:
-              'linear-gradient(135deg, rgba(18,86,176,0.08) 0%, rgba(34,197,94,0.06) 100%)',
-          }}
-        >
+        <div className="px-5 pt-5 pb-4 border-b border-white/10 flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => void dismiss()}
-            className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white/70 hover:bg-white/60 dark:hover:bg-white/[0.06]"
-            aria-label="Skip"
+            className="absolute top-3 right-3 p-1.5 text-white/35 hover:text-white/80"
+            aria-label="Close"
+            style={{ borderRadius: 4 }}
           >
-            <X size={16} />
+            <X size={15} />
           </button>
-          <div className="flex items-center gap-2.5">
-            <PragatiMark size={30} />
-            <div>
-              <span className="brand-wordmark text-[18px] brand-wordmark-gradient dark:text-white block leading-none">
-                Pragati
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-white/35 mt-1 inline-flex items-center gap-1">
-                <Sparkles size={10} /> One thing first
-              </span>
-            </div>
-          </div>
+          <PragatiMark size={28} flat />
+          <span className="brand-wordmark text-[17px] text-white">Pragati</span>
         </div>
 
-        <div className="px-6 py-5">
+        <div className="px-5 py-5">
           <h2
             id="first-login-title"
-            className="text-xl font-black text-slate-900 dark:text-white/90 tracking-tight"
+            className="text-lg font-bold text-white tracking-tight"
           >
             {hint.headline}
           </h2>
-          <p className="mt-2 text-[13.5px] text-slate-500 dark:text-white/45 leading-relaxed">
-            {hint.body}
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {hint.chips.map((c) => (
-              <span
-                key={c}
-                className="text-[11px] font-semibold text-slate-500 dark:text-white/40 bg-slate-50 dark:bg-white/[0.05] border border-slate-100 dark:border-white/[0.06] px-2 py-0.5 rounded-full"
-              >
-                {c}
-              </span>
-            ))}
-          </div>
+          <p className="mt-2 text-[13px] text-white/45 leading-relaxed">{hint.body}</p>
 
           <div className="mt-6 flex flex-col gap-2">
             <button
@@ -171,14 +135,14 @@ export function FirstTimeTour({
               className="btn-primary w-full justify-center py-2.5 text-[13px]"
             >
               {hint.ctaLabel}
-              <ArrowRight size={15} />
+              <ArrowRight size={14} />
             </button>
             <button
               type="button"
               onClick={() => void dismiss()}
-              className="w-full py-2 text-[12px] font-semibold text-slate-500 hover:text-slate-700 dark:text-white/40 dark:hover:text-white/70 transition-colors"
+              className="w-full py-2 text-[12px] font-medium text-white/35 hover:text-white/70 transition-colors"
             >
-              Skip — I’ll explore
+              Skip
             </button>
           </div>
         </div>
