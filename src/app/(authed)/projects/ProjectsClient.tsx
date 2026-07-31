@@ -70,42 +70,41 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
   useLiveRefresh(load); // eslint-disable-line react-hooks/exhaustive-deps
 
   const STATUS_COLORS: Record<string, { dot: string; label: string }> = {
-    planning: { dot: '#94a3b8', label: 'Planning' },
-    in_progress: { dot: '#3b82f6', label: 'In progress' },
-    on_hold: { dot: '#f59e0b', label: 'On hold' },
-    completed: { dot: '#22c55e', label: 'Completed' },
-    cancelled: { dot: '#ef4444', label: 'Cancelled' },
+    planning: { dot: '#71767b', label: 'Planning' },
+    in_progress: { dot: '#1d9bf0', label: 'In progress' },
+    on_hold: { dot: '#ffd400', label: 'On hold' },
+    completed: { dot: '#00ba7c', label: 'Completed' },
+    cancelled: { dot: '#f4212e', label: 'Cancelled' },
   };
 
   const HEALTH_COLORS: Record<string, string> = {
-    good: '#22c55e',
-    at_risk: '#f59e0b',
-    critical: '#ef4444',
+    good: '#00ba7c',
+    at_risk: '#ffd400',
+    critical: '#f4212e',
   };
 
   return (
-    <div className="space-y-5 max-w-6xl">
+    <div className="space-y-4 max-w-6xl">
       {/* Header */}
-      <div className="flex items-start justify-between pt-1">
+      <div className="flex items-start justify-between pt-1 gap-3">
         <div>
-          <h1 className="page-title">Projects</h1>
-          <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
-            All quality projects across teams &amp; lifecycles.
+          <h1 className="text-[20px] font-bold tracking-tight text-[#0f1419] dark:text-[#e7e9ea]">
+            Projects
+          </h1>
+          <p className="text-[13px] text-[#536471] dark:text-[#71767b] mt-0.5">
+            Work with owners and dates. Overdue first.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {/* Single create flow for every user — the form on /projects/new
-              has the "Personal" toggle, so contributors and leads share the
-              same entry point. */}
-          <Link href="/projects/new" className="btn-primary gap-2">
+          <Link href="/projects/new" className="btn-primary gap-2 text-[14px] py-2 px-4">
             <Plus size={15} /> New project
           </Link>
         </div>
       </div>
 
-      {/* Tabs — archiving isn't in use yet, so the Archived bin is hidden. */}
+      {/* Tabs */}
       <div
-        className="flex gap-1 border-b border-slate-100 dark:border-[#2f3336]"
+        className="flex gap-1 border-b border-[#eff3f4] dark:border-[#2f3336]"
         role="tablist"
         aria-label="Project filters"
       >
@@ -120,7 +119,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
             }}
             className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
               tab === t
-                ? 'text-blue-700 dark:text-blue-400 border-b-2 border-blue-600 bg-blue-50/50 dark:bg-blue-500/10'
+                ? 'text-[#e7e9ea] dark:text-blue-400 border-b-2 border-[#e7e9ea] bg-blue-50/50 dark:bg-blue-500/10'
                 : 'text-slate-400 dark:text-white/35 hover:text-slate-600 dark:hover:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.04]'
             }`}
           >
@@ -296,7 +295,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                   </div>
 
                   {/* Project name */}
-                  <h3 className="font-bold text-[14.5px] text-slate-900 dark:text-white/90 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-snug mb-1">
+                  <h3 className="font-bold text-[14.5px] text-slate-900 dark:text-white/90 line-clamp-1 group-hover:text-[#e7e9ea] dark:group-hover:text-blue-400 transition-colors leading-snug mb-1">
                     {p.name}
                   </h3>
 

@@ -59,8 +59,8 @@ function stepsForRole(role: string): Step[] {
         ctaHref: '/projects',
       },
       {
-        title: 'Watch Priority and Due',
-        body: 'The dashboard surfaces overdue and next-up work for your team.',
+        title: 'Live in the schedule',
+        body: 'Dashboard Due list + sidebar calendar. Overdue first. Short list, hard dates.',
         ctaLabel: 'Dashboard',
         ctaHref: '/',
       },
@@ -76,16 +76,16 @@ function stepsForRole(role: string): Step[] {
       ctaHref: '/',
     },
     {
-      title: 'Plan your day',
-      body: 'My Day is private. Capture notes and personal tasks nobody else sees.',
-      ctaLabel: 'My Day',
-      ctaHref: '/my-day',
+      title: 'Watch the calendar',
+      body: 'Due dates show as dots on the sidebar calendar. Overdue is red. Click a day for the list.',
+      ctaLabel: 'Dashboard',
+      ctaHref: '/',
     },
     {
       title: 'Finish something',
-      body: 'Open a task, update status, mark done. That is the whole loop.',
-      ctaLabel: 'Dashboard',
-      ctaHref: '/',
+      body: 'Open a task, update status, mark done. Keep the loop short.',
+      ctaLabel: 'My Day',
+      ctaHref: '/my-day',
     },
   ];
 }
