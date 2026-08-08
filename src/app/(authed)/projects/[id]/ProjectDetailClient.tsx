@@ -160,12 +160,19 @@ function KanbanBoard({
 }) {
   const dark = useIsDark();
   const currentUser = useCurrentUser();
+  const meId = currentUser?.id ? String(currentUser.id) : '';
   const soundEnabled = !!currentUser?.soundDropEnabled;
   const [localTasks, setLocalTasks] = useState<any[]>(tasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   // Where the dragged card would land: a column + the insertion index within it.
   const [dragOver, setDragOver] = useState<{ col: string; index: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  /** Leads manage all cards; assignees may drag their own (status only). */
+  function canDragTask(t: any): boolean {
+    if (isLead) return true;
+    return !!(meId && t.assigneeId && String(t.assigneeId) === meId);
+  }
 
   // Tasks of one column, in persisted order.
   const colSorted = (col: string) =>
@@ -391,11 +398,19 @@ function KanbanBoard({
                         <div className="h-0.5 rounded-full mb-2" style={{ background: meta.color }} />
                       )}
                       <div
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, t.id)}
+                        draggable={canDragTask(t)}
+                        onDragStart={(e) => {
+                          if (!canDragTask(t)) {
+                            e.preventDefault();
+                            return;
+                          }
+                          handleDragStart(e, t.id);
+                        }}
                         onDragEnd={handleDragEnd}
                         onDragOver={(e) => handleCardDragOver(e, col, index)}
-                        className="group relative rounded-lg border transition-all duration-150 cursor-grab active:cursor-grabbing"
+                        className={`group relative rounded-lg border transition-all duration-150 ${
+                          canDragTask(t) ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
+                        }`}
                         style={{
                           background: dark ? '#1e293b' : '#ffffff',
                           borderColor: isDraggingThis
@@ -538,8 +553,15 @@ function KanbanBoardMobile({
   canDelete: boolean;
   onDelete: (taskId: string) => void;
 }) {
+  const currentUser = useCurrentUser();
+  const meId = currentUser?.id ? String(currentUser.id) : '';
   const [active, setActive] = useState<string>('todo');
   const [moving, setMoving] = useState<any | null>(null);
+
+  function canMoveTask(t: any): boolean {
+    if (isLead) return true;
+    return !!(meId && t.assigneeId && String(t.assigneeId) === meId);
+  }
 
   const byStatus = (s: string) =>
     tasks
@@ -655,15 +677,17 @@ function KanbanBoardMobile({
                     </div>
                   )}
                 </Link>
-                {/* Card actions: Move (lead) + Delete (owner-only). Big tap targets. */}
-                {isLead && (
+                {/* Card actions: Move (lead or assignee) + Delete (owner-only). */}
+                {(canMoveTask(t) || canDelete) && (
                   <div className="flex items-stretch border-t border-slate-100 dark:border-white/5">
-                    <button
-                      onClick={() => setMoving(t)}
-                      className="flex-1 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center gap-1.5"
-                    >
-                      <ChevronRight size={13} /> Move
-                    </button>
+                    {canMoveTask(t) && (
+                      <button
+                        onClick={() => setMoving(t)}
+                        className="flex-1 py-2.5 text-xs font-semibold text-[var(--mars)] hover:bg-[var(--mars-soft)] dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center gap-1.5"
+                      >
+                        <ChevronRight size={13} /> Move
+                      </button>
+                    )}
                     {canDelete && (
                       <button
                         onClick={() => onDelete(t.id)}

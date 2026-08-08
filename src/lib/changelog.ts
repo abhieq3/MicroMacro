@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Assignees can finish work; kill dead Platform link',
+    tags: ['fix', 'improvement'],
+    highlight: true,
+    body: [
+      'Contributors assigned a task can update status (and description / due date) on task detail and kanban — “Do this next” is a real verb. Reassignment and compliance fields stay lead-owned.',
+      'Removed dead Platform nav (no /master-admin page). Fixed master_admin role label. My Day empty state readable in light mode.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Jobs pass: restore thinking tools, calm home, freeze identity',
     tags: ['feature', 'improvement'],
     highlight: true,

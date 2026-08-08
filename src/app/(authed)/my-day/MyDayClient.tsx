@@ -636,8 +636,8 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
           </form>
 
           {open.length === 0 && done.length === 0 && (
-            <div className="border border-dashed border-[#2f3336] p-8 text-center" style={{ borderRadius: 16 }}>
-              <div className="text-[15px] font-bold text-[#e7e9ea] mb-1">
+            <div className="border border-dashed border-[#e7e5e4] dark:border-[#2f3336] p-8 text-center" style={{ borderRadius: 16 }}>
+              <div className="text-[15px] font-bold text-[#0f1419] dark:text-[#e7e9ea] mb-1">
                 Keep today short
               </div>
               <div className="text-[13px] text-[#71767b] max-w-xs mx-auto leading-relaxed">

@@ -348,18 +348,17 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const hasReferenceData =
     task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
-  // IC edit contract: a contributor may edit ONLY the description and due date,
-  // and ONLY on a task assigned to them. Everything else — status, assignee,
-  // priority, reference/compliance fields — is lead-owned. A task assigned to
-  // someone else (or unassigned) is fully read-only for an IC, and the inputs
-  // are disabled so no save is even attempted. Leads/admins keep full control.
+  // IC edit contract: assignees can drive status (do the work), description,
+  // and due date. Assignee reassignment, priority, and compliance fields stay
+  // lead-owned. Unassigned / others' tasks are read-only for ICs.
   const isAssignee = !!(me && task.assigneeId && String(task.assigneeId) === String(me.id));
   // Description + due date: editable by leads or the assignee.
   const canEditBasics = isLead || isAssignee;
-  // Reference/tracking fields, status, assignee, priority, etc.: leads only.
+  // Reference/tracking fields, assignee, priority, etc.: leads only.
   const canEditAll = isLead;
   const canComment = isLead || isAssignee;
-  const canEditStatus = isLead;
+  // Status is the verb of “do this next” — assignees must be able to finish.
+  const canEditStatus = isLead || isAssignee;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
@@ -435,7 +434,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         {!isLead && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
             {canEditBasics
-              ? 'You can edit the description and due date of this task. Status, assignee and other fields are lead-owned.'
+              ? 'You can update status, description, and due date. Assignee and other fields are lead-owned.'
               : 'Read-only: only the assignee and team leads can edit this task.'}
           </div>
         )}

@@ -71,7 +71,6 @@ import {
   ScrollText,
   UserCircle,
   Layers,
-  Globe,
   ExternalLink,
   Search,
 } from 'lucide-react';
@@ -411,7 +410,6 @@ export default function AppShell({
   };
 
   const isAdmin = user.role === 'admin' || user.role === 'master_admin';
-  const isMasterAdmin = user.role === 'master_admin';
   const isLeadOrAdmin = user.role === 'lead' || isAdmin;
 
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
@@ -464,19 +462,6 @@ export default function AppShell({
       adminOnly: true,
     },
   ];
-  const masterAdminExtra: NavItem[] = isMasterAdmin
-    ? [
-        {
-          href: '/master-admin',
-          label: 'Platform',
-          icon: Globe,
-          iconColor: ink,
-          iconBg: inkBg,
-          adminOnly: true,
-        },
-      ]
-    : [];
-
   const contributorNav: NavItem[] = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
@@ -491,11 +476,7 @@ export default function AppShell({
     iconBg: inkBg,
   };
 
-  const nav = isAdmin
-    ? [...leadNav, ...adminExtra, ...masterAdminExtra]
-    : isLeadOrAdmin
-      ? leadNav
-      : contributorNav;
+  const nav = isAdmin ? [...leadNav, ...adminExtra] : isLeadOrAdmin ? leadNav : contributorNav;
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname?.startsWith(href));
 
   async function logout() {
@@ -506,7 +487,13 @@ export default function AppShell({
   }
 
   const roleText =
-    user.role === 'admin' ? 'Admin' : user.role === 'lead' ? 'Team Lead' : 'Individual Contributor';
+    user.role === 'master_admin'
+      ? 'Platform owner'
+      : user.role === 'admin'
+        ? 'Admin'
+        : user.role === 'lead'
+          ? 'Team Lead'
+          : 'Individual Contributor';
 
   // Decluttered: a single entry into the profile (which now holds Activity and,
   // behind a disclosure, Security / Quick PIN / admin tools). Notifications and
@@ -1172,14 +1159,14 @@ export default function AppShell({
                     <Presentation size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Whiteboard
                   </Link>
                 )}
-                {isAdmin && [...adminExtra, ...masterAdminExtra].length > 0 && (
+                {isAdmin && adminExtra.length > 0 && (
                   <>
                     <div
                       className={`px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] ${dark ? 'text-white/35' : 'text-zinc-400'}`}
                     >
                       Admin
                     </div>
-                    {[...adminExtra, ...masterAdminExtra].map((n) => {
+                    {adminExtra.map((n) => {
                       const Icon = n.icon;
                       return (
                         <Link
