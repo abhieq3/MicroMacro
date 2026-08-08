@@ -8,7 +8,7 @@ import { BUILTIN_QUOTES, dailyQuoteOffset, readingMs } from '@/lib/quotes';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { AVATAR_FONTS, avatarFg } from '@/components/ui';
 
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v13';
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v14';
 
 function unseenQuoteIndices(count: number): number[] {
   const all = Array.from({ length: count }, (_, i) => i);

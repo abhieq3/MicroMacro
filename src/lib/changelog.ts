@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Tab icons fixed; login quotes: Bezos + 16 Leadership Principles',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Regenerated favicon and PWA icons from the classic blue→forest mark so the browser tab matches the in-app logo (cache-busted).',
+      'Login rotates plain-language Jeff Bezos lines and all 16 Amazon Leadership Principles, written so they map to visible work, ownership, quality, and shipping — no attribution on screen.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Restore classic interior UI/UX (pre-density thrash)',
     tags: ['improvement'],
     highlight: true,
