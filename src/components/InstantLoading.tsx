@@ -19,9 +19,7 @@ export function InstantLoading({ label }: { label?: string }) {
         <div
           className="route-sweep-fast h-full w-1/3 rounded-full"
           style={{
-            background:
-              'linear-gradient(90deg, transparent, var(--text-primary) 50%, transparent)',
-            opacity: 0.35,
+            background: 'linear-gradient(90deg, transparent, #1769C8 30%, #43A047 70%, transparent)',
             animation: 'route-sweep-fast 0.75s ease-in-out infinite',
           }}
         />

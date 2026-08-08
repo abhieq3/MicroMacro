@@ -1,27 +1,28 @@
 # Identity freeze (30 days)
 
-**Decision date:** 2026-08-09 (updated — classic brand restored)  
+**Decision date:** 2026-08-09 (classic brand + classic interior restored)  
 **Expires:** 2026-09-08  
 
 ## Frozen
 
 | Decision | Choice |
 |----------|--------|
-| Visual system | **Classic brand** — blue `#1565C0` → forest `#2E7D32` gradient mark, light page `#f4f7fb`, warm dark opt-in |
-| Login | Aurora brand panel + white form (not pure black / not Mars rust) |
-| Home layout | **Two-column** board (Projects · Due) |
-| Login voice | **Steve Jobs only** |
-| Personal tools | **My Day + Whiteboard** |
-| Theme thrash | **Forbidden** — no Mars, no pure-black-only, no X.com palette |
+| Visual system | **Classic brand** — blue `#1565C0` → forest `#2E7D32` |
+| Interior UI | **Pre–Jul 31 chrome** — carded surfaces, colorful nav tiles, rounded panels (not X feed / not monochrome density) |
+| Login | Aurora brand panel + white form |
+| Home layout | Two-column Projects · Due with real cards |
+| Login voice | Steve Jobs only |
+| Personal tools | My Day + Whiteboard |
 
-## What was rejected
+## Rejected
 
-- Jul 31 pure-black redesign  
-- Jul 31 X/Twitter theme  
-- Jul 31 Mars rust theme  
+- Pure black redesign  
+- X/Twitter theme  
+- Mars rust theme  
+- Flat feed / “no card boxes” density pass  
 
-## Notes
+## Keepers (do not regress)
 
-`--mars` CSS variables remain as **aliases to brand blue** so mid-flight code still compiles without rust chrome.
-
-See also: `docs/PRODUCT_PRINCIPLES.md`.
+- Assignees can update status on their tasks  
+- Whiteboard in nav  
+- No dead `/master-admin` link  

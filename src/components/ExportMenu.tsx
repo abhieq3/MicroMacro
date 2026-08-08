@@ -145,7 +145,7 @@ export function ExportMenu({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed w-64 max-w-[calc(100vw-24px)] rounded-xl border border-slate-200/80 bg-white dark:bg-[#262624] dark:border-[#2f3336] shadow-xl z-[80] overflow-hidden p-1 modal-in"
+            className="fixed w-64 max-w-[calc(100vw-24px)] rounded-xl border border-slate-200/80 bg-white dark:bg-[#262624] dark:border-white/10 shadow-xl z-[80] overflow-hidden p-1 modal-in"
             style={{
               top: menuPosition.top,
               right: menuPosition.right,

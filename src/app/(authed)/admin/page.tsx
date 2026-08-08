@@ -192,7 +192,7 @@ export default async function AdminConsolePage() {
 
       <div className="grid lg:grid-cols-2 gap-4 items-start">
         <div className="card overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-[#2f3336] flex items-center gap-2">
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-white/10 flex items-center gap-2">
             <ShieldAlert size={15} className="text-amber-500" />
             <h2 className="text-sm font-bold text-slate-800 dark:text-white">Needs attention</h2>
           </div>
@@ -225,7 +225,7 @@ export default async function AdminConsolePage() {
         </div>
 
         <div className="card overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-[#2f3336] flex items-center gap-2">
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-white/10 flex items-center gap-2">
             <ScrollText size={15} className="text-indigo-500" />
             <h2 className="text-sm font-bold text-slate-800 dark:text-white flex-1">Recent activity</h2>
             <Link

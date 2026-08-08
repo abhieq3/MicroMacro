@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, ChevronDown } from 'lucide-react';
 import { api } from '@/lib/client/api';
 
 interface CalTask {
@@ -78,28 +78,36 @@ export function notifyCalendarChange() {
 
 export function SidebarCalendar({ dark }: { dark: boolean }) {
   const router = useRouter();
-  // Fresh "now" each render for day labels; cursor is month navigation state.
-  const [now] = useState(() => new Date());
-  const [cursor, setCursor] = useState(() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), 1);
-  });
+  const today = useMemo(() => new Date(), []);
+  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [tasks, setTasks] = useState<CalTask[]>([]);
   const [hover, setHover] = useState<{ key: string; x: number; y: number; placeLeft: boolean } | null>(null);
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Always snap back to the real current month on mount (schedule-first).
+  // Collapsed by default — the rail is navigation first; the month grid is
+  // one click away and the choice is remembered per browser. While collapsed
+  // the data fetch is skipped entirely.
+  const [openCal, setOpenCal] = useState(false);
   useEffect(() => {
-    const n = new Date();
-    setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
+    try {
+      setOpenCal(localStorage.getItem('pragati-sidebar-cal') === '1');
+    } catch {}
   }, []);
+  function toggleCal() {
+    setOpenCal((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem('pragati-sidebar-cal', next ? '1' : '0');
+      } catch {}
+      return next;
+    });
+  }
 
   // Touch-swipe tracking for month navigation.
   const touchStartY = useRef<number | null>(null);
 
-  const today = now;
   const isCurrentMonth =
-    cursor.getMonth() === new Date().getMonth() && cursor.getFullYear() === new Date().getFullYear();
+    cursor.getMonth() === today.getMonth() && cursor.getFullYear() === today.getFullYear();
 
   // Build a grid of exactly the days in the current month, with leading blank
   // cells to align to the correct day-of-week. No trailing overflow.
@@ -138,18 +146,22 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
   );
 
   useEffect(() => {
+    if (!openCal) return;
     loadRange();
-  }, [rangeKey, loadRange]);
+  }, [rangeKey, openCal, loadRange]);
 
-  // Live refresh when tasks change elsewhere in the app.
+  // Live refresh: any task create/edit/delete/date-change in the app dispatches
+  // `pragati:calendar-refresh`, so the dots update without a page reload. The
+  // whole module cache is cleared (the changed task may have moved months) and
+  // the visible range is refetched when the calendar is open.
   useEffect(() => {
     function onRefresh() {
       rangeCache.clear();
-      loadRange(true);
+      if (openCal) loadRange(true);
     }
     window.addEventListener('pragati:calendar-refresh', onRefresh);
     return () => window.removeEventListener('pragati:calendar-refresh', onRefresh);
-  }, [loadRange]);
+  }, [openCal, loadRange]);
 
   // Group tasks by local day key.
   const byDay = useMemo(() => {
@@ -203,17 +215,14 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
 
   function hoverAccentColor(list: CalTask[]): string {
     const sig = signals(list);
-    if (sig.overdue) return '#f4212e';
-    if (sig.mine) return 'var(--mars)';
-    return '#00ba7c';
+    if (sig.overdue) return '#ef4444';
+    if (sig.mine) return '#1976D2';
+    return '#22a565';
   }
 
   const prevMonth = useCallback(() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1)), []);
   const nextMonth = useCallback(() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1)), []);
-  const goToday = useCallback(() => {
-    const n = new Date();
-    setCursor(new Date(n.getFullYear(), n.getMonth(), 1));
-  }, []);
+  const goToday = useCallback(() => setCursor(new Date(today.getFullYear(), today.getMonth(), 1)), [today]);
 
   function onTouchStart(e: React.TouchEvent) {
     touchStartY.current = e.touches[0].clientY;
@@ -233,36 +242,43 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
   const monthYear = cursor.getFullYear();
   const hoverList = hover ? byDay.get(hover.key) || [] : [];
 
-  // Overdue count this visible month (schedule pressure signal).
-  const overdueInView = useMemo(() => {
-    let n = 0;
-    for (const t of tasks) {
-      if (t.status === 'done') continue;
-      if (dayKey(new Date(t.due)) < todayKey) n++;
-    }
-    return n;
-  }, [tasks, todayKey]);
-
   return (
     <div
       className="mt-2 pt-2.5 border-t select-none"
-      style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}
+      style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      <div className="flex items-center justify-between px-1 mb-1">
-        <span className={`text-[11px] font-bold tracking-wide ${dark ? 'text-[#e7e9ea]' : 'text-slate-800'}`}>
-          Schedule
-        </span>
-        {overdueInView > 0 && (
-          <span className="text-[10px] font-bold text-[#f4212e] tabular-nums">{overdueInView} late</span>
+      {/* Disclosure row — always visible; the grid below only when open */}
+      <button
+        type="button"
+        onClick={toggleCal}
+        aria-expanded={openCal}
+        className={`w-full flex items-center gap-2 px-1.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+          dark
+            ? 'text-white/45 hover:text-white/75 hover:bg-white/5'
+            : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+        }`}
+      >
+        <CalendarDays size={12} />
+        <span>Calendar</span>
+        {/* Month shown only while collapsed — when open the grid header already
+            names it, so repeating it here is just noise. */}
+        {!openCal && (
+          <span className={`ml-auto font-semibold ${dark ? 'text-white/30' : 'text-slate-300'}`}>
+            {monthName}
+          </span>
         )}
-      </div>
-      {/* Month header — always open */}
-      <div className="flex items-center justify-between px-1 mb-1.5">
+        <ChevronDown size={12} className={`${openCal ? 'ml-auto rotate-180' : ''} transition-transform`} />
+      </button>
+
+      {openCal && (
+        <>
+          {/* Header — centered month + year, nav arrows flank */}
+          <div className="flex items-center justify-between px-1 mb-1.5">
             <button
               onClick={prevMonth}
-              className={`p-0.5 rounded transition-colors shrink-0 ${dark ? 'text-[#71767b] hover:text-[#e7e9ea] hover:bg-[rgba(231,233,234,0.1)]' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
+              className={`p-0.5 rounded transition-colors shrink-0 ${dark ? 'text-white/30 hover:text-white/65 hover:bg-white/5' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
               aria-label="Previous month"
             >
               <ChevronLeft size={13} />
@@ -271,22 +287,19 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
             <button
               onClick={isCurrentMonth ? undefined : goToday}
               className={`flex items-baseline gap-1 text-[11px] tracking-tight transition-colors ${
-                isCurrentMonth ? 'cursor-default' : 'hover:text-[var(--mars)] cursor-pointer'
+                isCurrentMonth ? 'cursor-default' : 'hover:text-blue-500 cursor-pointer'
               }`}
-              title={isCurrentMonth ? undefined : 'Jump to this month'}
+              title={isCurrentMonth ? undefined : 'Back to this month'}
             >
-              <span className={`font-bold ${dark ? 'text-[#e7e9ea]' : 'text-slate-700'}`}>{monthName}</span>
-              <span className={`font-semibold ${dark ? 'text-[#71767b]' : 'text-slate-400'}`}>
+              <span className={`font-black ${dark ? 'text-white/80' : 'text-slate-700'}`}>{monthName}</span>
+              <span className={`font-semibold ${dark ? 'text-white/35' : 'text-slate-400'}`}>
                 {monthYear}
               </span>
-              {!isCurrentMonth && (
-                <span className="text-[10px] font-bold text-[var(--mars)] ml-1">Today</span>
-              )}
             </button>
 
             <button
               onClick={nextMonth}
-              className={`p-0.5 rounded transition-colors shrink-0 ${dark ? 'text-[#71767b] hover:text-[#e7e9ea] hover:bg-[rgba(231,233,234,0.1)]' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
+              className={`p-0.5 rounded transition-colors shrink-0 ${dark ? 'text-white/30 hover:text-white/65 hover:bg-white/5' : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
               aria-label="Next month"
             >
               <ChevronRight size={13} />
@@ -345,32 +358,34 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                         ? {
                             width: 26,
                             height: 26,
-                            background: dark ? '#e7e9ea' : '#0f1419',
-                            color: dark ? '#000000' : '#ffffff',
+                            background: 'linear-gradient(135deg,#0d47a1 0%,#1565C0 45%,#1e88e5 100%)',
+                            boxShadow: '0 2px 8px rgba(21,101,192,0.45)',
                           }
                         : { width: 24, height: 24 }
                     }
                   >
                     {d.getDate()}
                   </button>
-                  {/* Dots — mine blue, team green; overdue red */}
+                  {/* Dots — at most two (mine=blue, team=green); overdue paints red */}
                   <div className="flex items-center gap-[2px] h-[5px] mt-[1px]">
                     {sig?.overdue && (
-                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#f4212e' }} />
+                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#ef4444' }} />
                     )}
                     {!sig?.overdue && sig?.mine && (
-                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: 'var(--mars)' }} />
+                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#1976D2' }} />
                     )}
                     {!sig?.overdue && sig?.team && (
-                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#00ba7c' }} />
+                      <span className="w-[4px] h-[4px] rounded-full" style={{ background: '#22a565' }} />
                     )}
                   </div>
                 </div>
               );
             })}
           </div>
+        </>
+      )}
 
-      {/* Floating hover card */}
+      {/* Floating hover card — portalled so the sidebar's overflow never clips it */}
       {hover &&
         hoverList.length > 0 &&
         typeof document !== 'undefined' &&
@@ -388,16 +403,16 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
             onMouseLeave={closeHover}
           >
             <div
-              className="w-[248px] border p-2.5 overflow-hidden"
+              className="w-[248px] rounded-xl border p-2.5 shadow-2xl overflow-hidden"
               style={{
-                background: dark ? '#16181c' : '#ffffff',
-                borderColor: dark ? '#2f3336' : '#eff3f4',
-                borderRadius: 16,
+                background: dark ? '#2b2b29' : '#ffffff',
+                borderColor: dark ? 'rgba(255,255,255,0.10)' : '#e2e8f0',
+                boxShadow: dark ? '0 14px 36px rgba(0,0,0,0.5)' : '0 14px 36px rgba(15,23,42,0.15)',
                 borderLeft: `3px solid ${hoverAccentColor(hoverList)}`,
               }}
             >
               <div
-                className={`text-[11px] font-bold tracking-tight mb-1.5 ${dark ? 'text-[#e7e9ea]' : 'text-slate-700'}`}
+                className={`text-[11px] font-black tracking-tight mb-1.5 ${dark ? 'text-white/80' : 'text-slate-700'}`}
               >
                 {new Date(hover.key + 'T00:00:00').toLocaleDateString(undefined, {
                   weekday: 'short',
@@ -419,32 +434,32 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                     >
                       <span
                         className="w-[5px] h-[5px] rounded-full mt-[5px] shrink-0"
-                        style={{ background: overdue ? '#f4212e' : t.mine ? 'var(--mars)' : '#00ba7c' }}
+                        style={{ background: overdue ? '#ef4444' : t.mine ? '#1976D2' : '#22a565' }}
                       />
                       <div className="min-w-0 flex-1">
                         <div
-                          className={`text-[11px] font-medium leading-snug truncate ${dark ? 'text-[#e7e9ea]' : 'text-slate-700'}`}
+                          className={`text-[11px] font-medium leading-snug truncate ${dark ? 'text-white/80' : 'text-slate-700'}`}
                         >
                           {t.title}
                         </div>
                         <div
-                          className={`text-[9.5px] mt-px flex items-center gap-1 min-w-0 ${dark ? 'text-[#71767b]' : 'text-slate-400'}`}
+                          className={`text-[9.5px] mt-px flex items-center gap-1 min-w-0 ${dark ? 'text-white/35' : 'text-slate-400'}`}
                         >
                           {t.mine ? (
-                            <span className="font-semibold text-[var(--mars)] shrink-0">You</span>
+                            <span className="font-semibold text-blue-500 shrink-0">You</span>
                           ) : t.assigneeName ? (
-                            <span className="font-semibold shrink-0" style={{ color: '#00ba7c' }}>
+                            <span className="font-semibold shrink-0" style={{ color: '#22a565' }}>
                               {firstName(t.assigneeName)}
                             </span>
                           ) : t.teamName ? (
-                            <span className="font-semibold shrink-0" style={{ color: '#00ba7c' }}>
+                            <span className="font-semibold shrink-0" style={{ color: '#22a565' }}>
                               {t.teamName}
                             </span>
                           ) : null}
                           {t.projectRef && (
                             <span className="font-mono truncate min-w-0 opacity-80">· {t.projectRef}</span>
                           )}
-                          {overdue && <span className="font-semibold text-[#f4212e] shrink-0">· overdue</span>}
+                          {overdue && <span className="font-semibold text-red-500 shrink-0">· overdue</span>}
                         </div>
                       </div>
                     </button>
@@ -452,7 +467,7 @@ export function SidebarCalendar({ dark }: { dark: boolean }) {
                 })}
                 {hoverList.length > 5 && (
                   <div
-                    className={`text-[9.5px] font-semibold pt-0.5 ${dark ? 'text-[#71767b]' : 'text-slate-400'}`}
+                    className={`text-[9.5px] font-semibold pt-0.5 ${dark ? 'text-white/30' : 'text-slate-400'}`}
                   >
                     +{hoverList.length - 5} more
                   </div>

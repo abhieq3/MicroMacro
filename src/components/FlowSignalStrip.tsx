@@ -69,10 +69,10 @@ function dotColorFor(item: FlowSignalItem, mode: FlowSignalPayload['mode']): str
   if (item.reasonCodes.includes('help') || item.reasonCodes.includes('decision')) return '#dc2626';
   if (item.reasonCodes.includes('blocked')) return '#dc2626';
   // Confirmed waiting state — restrained slate-blue.
-  if (item.reasonCodes.includes('confirmed')) return '#fafafa';
+  if (item.reasonCodes.includes('confirmed')) return '#1565C0';
   // Inferred check (Phase 4+) — subtle amber.
   if (mode === 'check_needed') return '#d97706';
-  return '#a1a1aa';
+  return '#1565C0';
 }
 
 interface StripProps {
@@ -176,7 +176,7 @@ export function FlowSignalStrip({ data, onChange }: StripProps) {
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="shrink-0 text-[11px] font-semibold text-slate-500 dark:text-white/45 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-[#2f3336] rounded-md px-2 py-0.5"
+            className="shrink-0 text-[11px] font-semibold text-slate-500 dark:text-white/45 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5"
           >
             {extraItems.length} more
           </button>
@@ -248,7 +248,7 @@ function FlowActionsRow({
       <div className="mt-1 flex items-center gap-1.5 flex-wrap">
         <Link
           href={`/tasks/${item.taskId}`}
-          className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-[#2f3336] rounded-md px-2 py-0.5"
+          className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5"
         >
           Open task
         </Link>
@@ -269,7 +269,7 @@ function FlowActionsRow({
     <div className="mt-1 flex items-center gap-1.5 flex-wrap">
       <Link
         href={`/tasks/${item.taskId}`}
-        className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-[#2f3336] rounded-md px-2 py-0.5"
+        className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5"
       >
         Open
       </Link>
@@ -277,7 +277,7 @@ function FlowActionsRow({
         type="button"
         disabled={busy}
         onClick={() => onAction(item.taskId, 'still_moving')}
-        className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-[#2f3336] rounded-md px-2 py-0.5 disabled:opacity-50"
+        className="text-[11px] font-semibold text-slate-600 dark:text-white/55 hover:text-blue-700 dark:hover:text-blue-400 border border-slate-200 dark:border-white/10 rounded-md px-2 py-0.5 disabled:opacity-50"
       >
         {busy ? 'Saving…' : 'OK'}
       </button>

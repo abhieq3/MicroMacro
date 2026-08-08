@@ -141,7 +141,7 @@ function HeroStat({
   accent?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-xl border border-slate-200/70 dark:border-[#2f3336] bg-slate-50/60 dark:bg-white/[0.02] px-3 py-2.5">
+    <div className="min-w-0 rounded-xl border border-slate-200/70 dark:border-white/[0.07] bg-slate-50/60 dark:bg-white/[0.02] px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
         {Icon && <Icon size={12} className="shrink-0" style={accent ? { color: accent } : undefined} />}
         <span className="truncate">{label}</span>
@@ -462,7 +462,7 @@ export default function TeamDetailPage() {
             {/* Owner/admin can change the avatar directly without a decorative cover. */}
             <div className="shrink-0 flex flex-col items-center gap-1">
               <div
-                className="relative cursor-pointer rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-[#2f3336] dark:bg-[#262624]"
+                className="relative cursor-pointer rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-[#262624]"
                 onMouseEnter={() => setAvatarHover(true)}
                 onMouseLeave={() => setAvatarHover(false)}
                 onClick={() => isOwnerOrAdmin && avatarInputRef.current?.click()}
@@ -546,7 +546,7 @@ export default function TeamDetailPage() {
                 scopeKey={`team:${id}`}
                 onClick={() => setShowBirdEye(true)}
                 label="Bird’s-eye"
-                className="border border-slate-200 bg-white shadow-sm dark:border-[#2f3336] dark:bg-white/[0.04]"
+                className="border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]"
               />
               <ExportMenu
                 onPdf={() => printTeamReport(team, progress, board, me?.name || me?.email || '')}
@@ -559,7 +559,7 @@ export default function TeamDetailPage() {
         </div>
 
         {/* Stat strip — the team at a glance, from data already on screen. */}
-        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-[#2f3336] grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-white/[0.06] grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           <HeroStat icon={Users} label="Members" value={team.members.length} />
           <HeroStat icon={FolderKanban} label="Projects" value={heroProjects.length} />
           <HeroStat

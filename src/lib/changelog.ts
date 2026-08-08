@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Restore classic interior UI/UX (pre-density thrash)',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Restored the product chrome users knew before the Jul 31 pure-black / X / flat-feed redesigns: colorful nav tiles, carded dashboard (Projects · Due · My Tasks), rounded surfaces, classic blue focus states, and the fuller shell calendar treatment.',
+      'Brand stay classic blue→forest. Functional keepers: Jobs login quotes, whiteboard, assignees can finish work, no dead Platform link.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Restore classic brand theme (blue → forest)',
     tags: ['improvement'],
     highlight: true,

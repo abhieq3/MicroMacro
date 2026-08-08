@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/client/api';
 import { Avatar, formatDateTime } from '@/components/ui';
-
+import { PwaInstallSection } from '@/components/PwaInstall';
 // The contribution heatmap is a sizeable, below-the-fold client component —
 // lazy-load it so it never blocks first paint of the profile page.
 const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m) => m.ActivityGraph), {
@@ -46,6 +46,12 @@ import { MonogramEditor } from '@/components/MonogramEditor';
 import { linkMeta, type LinkBrand } from '@/lib/links';
 import { ProfileHero } from '@/components/ProfileHero';
 import { SelfImpactTiles } from '@/components/ProfileStatTiles';
+
+// Foresight panel is below the fold — keep it out of the settings first paint.
+const DeliveryForesight = dynamic(
+  () => import('@/components/DeliveryForesight').then((m) => m.DeliveryForesight),
+  { ssr: false, loading: () => <div className="h-28 rounded-xl bg-slate-50 animate-pulse" /> },
+);
 
 /* ── Profile avatar wrapper ───────────────────────────────────────────────
    Renders the user's monogram avatar with a hover-overlay "edit" hint.
@@ -123,7 +129,7 @@ function DropSoundToggle({ initial }: { initial: boolean }) {
   }
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-[#2f3336] p-5">
+    <div className="rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/10 p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-sm font-bold text-slate-800 dark:text-white/90">Drop sound</div>
@@ -488,7 +494,7 @@ function LinksEditor({
           return (
             <div key={i} className="flex items-center gap-2">
               <span
-                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-[#2f3336] flex items-center justify-center shrink-0"
+                className="w-8 h-8 rounded-lg border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0"
                 style={{ color: m ? m.color : '#94a3b8' }}
                 title={m ? m.label : 'Add a link'}
               >
@@ -853,118 +859,102 @@ function CalendarFeedSection() {
     <div id="calendar-feed" className="scroll-mt-6">
       <Section
         icon={CalendarDays}
-        title="Your calendar"
-        subtitle="Every dated task in Outlook, Google, or Apple. One subscribe — stays in sync."
+        title="Pragati calendar"
+        subtitle="Subscribe once — a Pragati calendar appears in Outlook, Google or Apple with every dated task. Reschedule here and it follows automatically."
       >
         {!state ? (
-          <div className="text-[13px] text-[#71767b] py-2">Loading…</div>
+          <div className="text-xs text-slate-400 py-2">Loading…</div>
         ) : state.enabled && state.url ? (
-          <div className="space-y-4">
-            <div
-              className="border border-[#eff3f4] dark:border-[#2f3336] p-4 space-y-3"
-              style={{ borderRadius: 16 }}
-            >
-              <p className="text-[13px] font-bold text-[#0f1419] dark:text-[#e7e9ea]">
-                Step 1 — add to your app
-              </p>
-              <p className="text-[13px] text-[#536471] dark:text-[#71767b]">
-                Click your calendar. Tasks with due dates appear automatically. Change a date here and it
-                updates on the next refresh.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <a
-                  className="btn-primary text-[13px] justify-center py-2.5"
-                  href={`https://outlook.office.com/calendar/0/addfromweb?url=${encodeURIComponent(state.url)}&name=${encodeURIComponent('Pragati')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <CalendarDays size={14} /> Outlook (work)
-                </a>
-                <a
-                  className="btn-secondary text-[13px] justify-center py-2.5"
-                  href={`https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(state.url)}&name=${encodeURIComponent('Pragati')}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <CalendarDays size={14} /> Outlook (personal)
-                </a>
-                <a
-                  className="btn-secondary text-[13px] justify-center py-2.5"
-                  href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(state.url.replace(/^https?:\/\//, 'webcal://'))}`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <CalendarDays size={14} /> Google Calendar
-                </a>
-                <a
-                  className="btn-secondary text-[13px] justify-center py-2.5"
-                  href={state.url.replace(/^https?:\/\//, 'webcal://')}
-                >
-                  <CalendarDays size={14} /> Apple Calendar
-                </a>
-              </div>
+          <div className="space-y-3">
+            {/* First-timer path: pick your app, one click adds it. The raw link
+                + management controls are tucked below so the primary action is
+                unmistakable. */}
+            <p className="text-[12.5px] text-slate-500 dark:text-white/50">
+              Pick your calendar app — one click adds <strong>Pragati</strong>, then it keeps itself up to
+              date.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <a
+                className="btn-primary text-xs inline-flex items-center gap-1.5"
+                href={`https://outlook.office.com/calendar/0/addfromweb?url=${encodeURIComponent(state.url)}&name=${encodeURIComponent('Pragati')}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <CalendarDays size={13} /> Outlook (work)
+              </a>
+              <a
+                className="btn-ghost text-xs inline-flex items-center gap-1.5"
+                href={`https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(state.url)}&name=${encodeURIComponent('Pragati')}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <CalendarDays size={13} /> Outlook (personal)
+              </a>
+              <a
+                className="btn-ghost text-xs inline-flex items-center gap-1.5"
+                href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(state.url.replace(/^https?:\/\//, 'webcal://'))}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <CalendarDays size={13} /> Google
+              </a>
+              <a
+                className="btn-ghost text-xs inline-flex items-center gap-1.5"
+                href={state.url.replace(/^https?:\/\//, 'webcal://')}
+              >
+                <CalendarDays size={13} /> Apple
+              </a>
             </div>
 
-            <div
-              className="border border-[#eff3f4] dark:border-[#2f3336] p-4 space-y-2"
-              style={{ borderRadius: 16 }}
-            >
-              <p className="text-[13px] font-bold text-[#0f1419] dark:text-[#e7e9ea]">
-                Step 2 — or paste the link
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                <code className="text-[12px] font-mono bg-[#f7f9f9] dark:bg-[#16181c] border border-[#eff3f4] dark:border-[#2f3336] px-2.5 py-2 break-all flex-1 min-w-[200px]" style={{ borderRadius: 8 }}>
+            {/* Secondary: the raw link, behind a quiet disclosure. Most people
+                never need it; power users / unlisted apps can copy it. */}
+            <details className="group">
+              <summary className="cursor-pointer list-none text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white/60 inline-flex items-center gap-1">
+                <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
+                Other app, or copy the link
+              </summary>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <code className="text-[11px] font-mono bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1.5 break-all flex-1 min-w-[200px]">
                   {state.url}
                 </code>
                 <button
-                  className="btn-primary text-[13px] inline-flex items-center gap-1.5 py-2 px-3"
+                  className="btn-ghost text-xs inline-flex items-center gap-1.5"
                   onClick={() => {
                     navigator.clipboard?.writeText(state.url!);
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}
                 >
-                  {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied' : 'Copy link'}
+                  {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy'}
                 </button>
               </div>
-              <p className="text-[12px] text-[#71767b] leading-relaxed">
-                Private to you. Rotate if the link leaks. Turn off to stop all apps from reading it.
-              </p>
-              <div className="flex gap-2 pt-1">
-                <button className="btn-secondary text-[12px] py-1.5 px-3" onClick={mint} disabled={busy}>
-                  Rotate link
-                </button>
-                <button
-                  className="text-[12px] font-bold text-[#f4212e] px-3 py-1.5 hover:underline"
-                  onClick={revoke}
-                  disabled={busy}
-                >
-                  Turn off
-                </button>
-              </div>
+            </details>
+
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Changes in Pragati flow through on your calendar app’s next refresh. Anyone with the link can
+              read your agenda — rotate it if it leaks.
+            </p>
+            <div className="flex gap-2">
+              <button className="btn-ghost text-xs" onClick={mint} disabled={busy}>
+                Rotate link
+              </button>
+              <button
+                className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                onClick={revoke}
+                disabled={busy}
+              >
+                Turn off
+              </button>
             </div>
           </div>
         ) : (
-          <div
-            className="border border-[#eff3f4] dark:border-[#2f3336] p-5 space-y-4"
-            style={{ borderRadius: 16 }}
-          >
-            <div>
-              <p className="text-[15px] font-bold text-[#0f1419] dark:text-[#e7e9ea]">
-                Put every due date on your real calendar
-              </p>
-              <p className="text-[13px] text-[#536471] dark:text-[#71767b] mt-1.5 leading-relaxed">
-                One private feed. Add it once to Outlook, Google, or Apple. New tasks and date changes
-                follow automatically — no double entry.
-              </p>
-            </div>
-            <ol className="text-[13px] text-[#0f1419] dark:text-[#e7e9ea] space-y-1.5 list-decimal list-inside">
-              <li>Generate your private link</li>
-              <li>Open your calendar app and subscribe</li>
-              <li>Done — keep working in Pragati</li>
-            </ol>
-            <button className="btn-primary text-[14px] py-2.5 px-5" onClick={mint} disabled={busy}>
-              {busy ? 'Generating…' : 'Turn on calendar sync'}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-sm text-slate-600 dark:text-white/60">
+              Generate your private link, add it to your calendar app once, and you're done — new tasks and
+              date changes flow in by themselves.
+            </p>
+            <button className="btn-primary text-sm" onClick={mint} disabled={busy}>
+              {busy ? 'Generating…' : 'Generate link'}
             </button>
           </div>
         )}
@@ -1580,23 +1570,26 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
       {/* ── Impact row — your delivery at a glance (matches the public profile) ── */}
       <SelfImpactTiles />
 
-      {/* Calendar subscribe first — schedule is the product surface. */}
-      <CalendarFeedSection />
+      {/* ── Delivery Foresight — predictive read over the heavy engine ──── */}
+      <DeliveryForesight userId={user.id} isSelf />
 
-      {/* ── Daily task email ── */}
-      <DailyDigestToggle initialUser={initialUser} />
-
-      {/* ── Activity ── */}
+      {/* ── Activity — the star feature, front and centre ────────────────── */}
       <div id="activity" className="scroll-mt-6">
         <Section
           icon={Activity}
           title="Activity"
-          subtitle="Completed work on Pragati."
+          subtitle="Your delivered work on Pragati — completed tasks, weighted for on-time and priority."
         >
           <ActivityGraph />
         </Section>
       </div>
 
+      {/* ── Install as app (PWA) ──────────────────────────────────────────── */}
+      <PwaInstallSection />
+
+      {/* ── Daily task email — personal opt-in, then (admin) workspace config ── */}
+      <DailyDigestToggle initialUser={initialUser} />
+      <CalendarFeedSection />
       {user.role === 'admin' && <AdminDigestSettings />}
 
       {/* ── Account & security — tucked behind a disclosure so the day-to-day

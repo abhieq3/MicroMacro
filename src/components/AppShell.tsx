@@ -71,6 +71,7 @@ import {
   ScrollText,
   UserCircle,
   Layers,
+  Globe,
   ExternalLink,
   Search,
 } from 'lucide-react';
@@ -111,9 +112,9 @@ function useDarkMode(initialDark: boolean): [boolean, () => void] {
   const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    // Mars identity freeze: light default, dark opt-in. Persist only.
-    document.cookie = `pragati_theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
-    document.cookie = 'theme=; path=/; max-age=0; SameSite=Lax';
+    // Persist via cookie so the next SSR render starts in the right
+    // mode. 365 d, sameSite=lax so it travels with normal navigation.
+    document.cookie = `theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
   }, [dark]);
   return [dark, () => setDark((d) => !d)];
 }
@@ -224,7 +225,7 @@ export default function AppShell({
       '/teams',
       '/my-day',
       '/settings',
-      ...(WHITEBOARD_ENABLED ? ['/whiteboard'] : []),
+      '/whiteboard',
       '/people',
       '/audit',
       '/admin',
@@ -387,7 +388,9 @@ export default function AppShell({
           T: '/teams',
           m: '/my-day',
           M: '/my-day',
-          ...(WHITEBOARD_ENABLED ? { w: '/whiteboard', W: '/whiteboard' } : {}),
+          ...(WHITEBOARD_ENABLED
+            ? { w: '/whiteboard', W: '/whiteboard' }
+            : {}),
         };
         if (dest[e.key]) {
           e.preventDefault();
@@ -410,73 +413,80 @@ export default function AppShell({
   };
 
   const isAdmin = user.role === 'admin' || user.role === 'master_admin';
+  const isMasterAdmin = user.role === 'master_admin';
   const isLeadOrAdmin = user.role === 'lead' || isAdmin;
 
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
   // user management (create/reset/unlock/delete/promote accounts) is an
   // admin-only surface, appended via adminExtra below.
-  // My Day + private Whiteboard are pinned above the footer as personal
-  // surfaces. Shared org views (Dashboard / Projects / Teams) stay above.
-  // Classic brand — blue active, slate idle (pre-Mars / pre-X identity).
-  const ink = dark ? '#42a5f5' : '#1565c0';
-  const inkMuted = dark ? '#8a8780' : '#64748b';
-  const inkBg = dark ? 'rgba(66,165,245,0.12)' : 'rgba(21,101,192,0.08)';
-  const inkBgActive = dark ? 'rgba(66,165,245,0.2)' : 'rgba(21,101,192,0.14)';
-
-  // Personal tool only — not shared team tracking. Sits with My Day.
+  // My Day and Whiteboard are NOT in the main nav list — they render pinned
+  // just above the user footer as the viewer's *personal* surfaces, kept
+  // together and always reachable without scrolling. Whiteboard sits beside
+  // My Day because they're the same kind of space: yours alone, for thinking
+  // and capturing before work becomes tracked records. (The three record
+  // surfaces — Dashboard/Projects/Teams — are the shared org view above.)
   const whiteboardItem: NavItem = {
     href: '/whiteboard',
     label: 'Whiteboard',
     icon: Presentation,
-    iconColor: ink,
-    iconBg: inkBg,
+    iconColor: '#0E7490',
+    iconBg: '#E0F7FA',
   };
   const leadNav: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
-    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
-    { href: '/teams', label: 'Teams', icon: Users, iconColor: ink, iconBg: inkBg },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
+    { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
   const adminExtra: NavItem[] = [
     {
       href: '/admin',
       label: 'Console',
       icon: ShieldCheck,
-      iconColor: ink,
-      iconBg: inkBg,
+      iconColor: '#B45309',
+      iconBg: '#FEF3C7',
       adminOnly: true,
     },
     {
       href: '/people',
       label: 'People',
       icon: UsersRound,
-      iconColor: ink,
-      iconBg: inkBg,
+      iconColor: '#00897B',
+      iconBg: '#E0F2F1',
       adminOnly: true,
     },
     {
       href: '/audit',
       label: 'Logs',
       icon: ScrollText,
-      iconColor: ink,
-      iconBg: inkBg,
+      iconColor: '#6366F1',
+      iconBg: '#EEF2FF',
       adminOnly: true,
     },
   ];
+  // The master-admin item is only added when the signed-in user actually holds
+  // that role. In the current single-tenant deploy no one does, so the link
+  // never appears — the route itself also redirects non-master-admins.
+  const masterAdminExtra: NavItem[] = []; // /master-admin not shipped — no dead link
+
   const contributorNav: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
-    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
-    { href: '/teams', label: 'Teams', icon: Users, iconColor: ink, iconBg: inkBg },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
+    { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
 
   const myDayItem: NavItem = {
     href: '/my-day',
     label: 'My Day',
     icon: NotebookPen,
-    iconColor: ink,
-    iconBg: inkBg,
+    iconColor: '#1565C0',
+    iconBg: '#EFF6FF',
   };
 
-  const nav = isAdmin ? [...leadNav, ...adminExtra] : isLeadOrAdmin ? leadNav : contributorNav;
+  const nav = isAdmin
+    ? [...leadNav, ...adminExtra, ...masterAdminExtra]
+    : isLeadOrAdmin
+      ? leadNav
+      : contributorNav;
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname?.startsWith(href));
 
   async function logout() {
@@ -503,21 +513,20 @@ export default function AppShell({
   const AccountMenu = accountMenuOpen ? (
     <div
       ref={accountMenuRef}
-      className="absolute left-3 bottom-[72px] z-30 w-[270px] border p-1.5"
+      className="absolute left-3 bottom-[72px] z-30 w-[270px] rounded-2xl border p-2 shadow-2xl"
       style={{
-        background: dark ? '#16181c' : '#ffffff',
-        borderColor: dark ? '#292524' : '#e7e5e4',
-        borderRadius: 16,
-        boxShadow: dark ? '0 0 15px rgba(255,255,255,0.08)' : '0 0 15px rgba(0,0,0,0.08)',
+        background: dark ? '#2b2b29' : '#ffffff',
+        borderColor: dark ? 'rgba(255,255,255,0.10)' : '#dbe3ef',
+        boxShadow: dark ? '0 18px 44px rgba(0,0,0,0.45)' : '0 18px 44px rgba(15,23,42,0.16)',
       }}
     >
       <div
-        className="px-2.5 py-2.5 flex items-center gap-3 border-b mb-1"
-        style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}
+        className="px-2.5 py-2.5 flex items-center gap-3 border-b mb-1.5"
+        style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }}
       >
         <Avatar
           name={user.name}
-          size={36}
+          size={38}
           letter={user.avatarLetter}
           bg={user.avatarBg}
           font={user.avatarFont}
@@ -525,10 +534,10 @@ export default function AppShell({
           ring
         />
         <div className="min-w-0">
-          <div className={`text-sm font-bold truncate tracking-tight ${dark ? 'text-white' : 'text-zinc-900'}`}>
+          <div className={`text-sm font-black truncate ${dark ? 'text-white' : 'text-slate-900'}`}>
             {user.name}
           </div>
-          <div className={`text-[11px] truncate ${dark ? 'text-white/40' : 'text-zinc-400'}`}>
+          <div className={`text-[11px] truncate ${dark ? 'text-white/45' : 'text-slate-400'}`}>
             {user.username ? `@${user.username}` : roleText}
           </div>
         </div>
@@ -540,14 +549,13 @@ export default function AppShell({
           <Link
             key={item.href}
             href={item.href}
-            className={`flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
               dark
-                ? 'text-white/70 hover:text-white hover:bg-white/[0.06]'
-                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                ? 'text-white/70 hover:text-white hover:bg-white/5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
-            style={{ borderRadius: 4 }}
           >
-            <Icon size={15} className={dark ? 'text-white/35' : 'text-zinc-400'} />
+            <Icon size={16} className={dark ? 'text-white/40' : 'text-slate-400'} />
             <span>{item.label}</span>
           </Link>
         );
@@ -555,21 +563,20 @@ export default function AppShell({
 
       <PwaInstallMenuItem dark={dark} onDone={() => setAccountMenuOpen(false)} />
 
-      <div className="my-1 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }} />
+      <div className="my-1.5 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }} />
       <button
         type="button"
         onClick={() => {
           toggleDark();
           setAccountMenuOpen(false);
         }}
-        className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium transition-colors ${
+        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
           dark
-            ? 'text-white/70 hover:text-white hover:bg-white/[0.06]'
-            : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+            ? 'text-white/70 hover:text-white hover:bg-white/5'
+            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
         }`}
-        style={{ borderRadius: 4 }}
       >
-        {dark ? <Sun size={15} className="text-white/50" /> : <Moon size={15} className="text-zinc-400" />}
+        {dark ? <Sun size={16} className="text-amber-300" /> : <Moon size={16} className="text-slate-400" />}
         <span>{dark ? 'Light mode' : 'Dark mode'}</span>
       </button>
       <button
@@ -578,12 +585,11 @@ export default function AppShell({
           setAccountMenuOpen(false);
           setConfirmLogout(true);
         }}
-        className={`w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium transition-colors ${
-          dark ? 'text-red-400/80 hover:text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'
+        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-sm font-semibold transition-colors ${
+          dark ? 'text-red-300/75 hover:text-red-300 hover:bg-red-400/10' : 'text-red-600 hover:bg-red-50'
         }`}
-        style={{ borderRadius: 4 }}
       >
-        <LogOut size={15} />
+        <LogOut size={16} />
         <span>Sign out</span>
       </button>
     </div>
@@ -606,18 +612,19 @@ export default function AppShell({
           That double-guard is what fixes the "logo squeezed from both sides"
           in the collapsed sidebar. */}
       <div
-        className="relative flex items-center h-[53px] shrink-0 overflow-hidden px-1"
+        className="relative flex items-center h-14 shrink-0 border-b overflow-hidden"
+        style={{ borderColor: dark ? 'rgba(255,255,255,0.07)' : '#e8edf4' }}
       >
         <Link
           href="/"
           className={`flex items-center min-w-0 w-full ${showCollapsed ? 'justify-center' : 'gap-2.5 pl-[18px] pr-4'}`}
         >
           <span className="shrink-0">
-            <PragatiMark size={28} flat />
+            <PragatiMark size={30} />
           </span>
           {!showCollapsed && (
             <span
-              className={`brand-wordmark text-[20px] whitespace-nowrap ${dark ? 'text-[#fafaf9]' : 'text-[#1c1917]'}`}
+              className={`brand-wordmark text-[21px] whitespace-nowrap ${dark ? 'text-white' : 'brand-wordmark-gradient'}`}
             >
               Pragati
             </span>
@@ -643,14 +650,13 @@ export default function AppShell({
           type="button"
           onClick={() => setPaletteOpen(true)}
           title="Search (⌘K)"
-          className={`flex items-center gap-2 text-[15px] font-normal transition-colors ${
-            showCollapsed ? 'p-2.5 justify-center' : 'w-full px-4 py-2.5'
+          className={`flex items-center gap-2 rounded-lg text-[12px] font-medium transition-colors ${
+            showCollapsed ? 'p-2 justify-center' : 'w-full px-2.5 py-1.5'
           } ${
             dark
-              ? 'text-[#a8a29e] hover:text-[#fafaf9] bg-[#1c1917] hover:bg-[#292524]'
-              : 'text-[#57534e] hover:text-[#1c1917] bg-[#f5f2ed] hover:bg-[#e7e5e4]'
+              ? 'text-white/40 hover:text-white/70 bg-white/[0.04] hover:bg-white/[0.08]'
+              : 'text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100'
           }`}
-          style={{ borderRadius: 9999 }}
         >
           <Search size={14} className="shrink-0" />
           {!showCollapsed && (
@@ -696,37 +702,59 @@ export default function AppShell({
                   prefetch
                   title={showCollapsed ? n.label : undefined}
                   data-tour={`nav-${n.label.toLowerCase().replace(/\s+/g, '-')}`}
-                  className={`flex items-center gap-5 ${showCollapsed ? 'justify-center px-0 py-3' : 'px-3.5 py-3'} text-[20px] transition-colors duration-150 ${
+                  className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
                     active
-                      ? dark
-                        ? 'text-[#fafaf9] font-bold'
-                        : 'text-[#1c1917] font-bold'
-                      : dark
-                        ? 'text-[#a8a29e] font-normal hover:bg-[rgba(231,229,228,0.08)] hover:text-[#fafaf9]'
-                        : 'text-[#57534e] font-normal hover:bg-[rgba(28,25,23,0.05)] hover:text-[#1c1917]'
+                      ? 'text-brand-700 dark:text-[#faf9f5]'
+                      : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
                   }`}
-                  style={{ borderRadius: 9999 }}
+                  style={
+                    active
+                      ? showCollapsed
+                        ? {
+                            background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+                          }
+                        : {
+                            background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+                            borderLeft: `3px solid ${n.iconColor}`,
+                            paddingLeft: '9px',
+                          }
+                      : {}
+                  }
                 >
-                  <Icon
-                    size={showCollapsed ? 24 : 26}
-                    strokeWidth={active ? 2.25 : 1.6}
-                    className="shrink-0"
-                    style={{ color: active ? ink : inkMuted }}
-                  />
-                  {!showCollapsed && <span className="flex-1 truncate leading-none">{n.label}</span>}
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                    style={{
+                      background: active
+                        ? dark
+                          ? `${n.iconColor}30`
+                          : n.iconBg
+                        : dark
+                          ? `${n.iconColor}18`
+                          : `${n.iconColor}14`,
+                    }}
+                  >
+                    <Icon
+                      size={14}
+                      style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }}
+                    />
+                  </div>
+                  {!showCollapsed && <span className="flex-1 truncate">{n.label}</span>}
                 </Link>
               </Fragment>
             );
           })}
         </div>
 
-        {/* Month calendar with due-date dots — always open when expanded. */}
+        {/* Sidebar calendar — compact month view with due-date dots. Hidden on
+            the collapsed icon rail; sits just above the personal surfaces so
+            those stay pinned closest to the footer. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* Personal tools: My Day (+ private Whiteboard when enabled). */}
+        {/* Personal surfaces — My Day (+ Whiteboard when enabled), pinned just
+            above the footer. Both are "yours alone": capture and thinking. */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
-          style={{ borderColor: dark ? '#292524' : '#e7e5e4' }}
+          style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}
         >
           {[myDayItem, ...(WHITEBOARD_ENABLED ? [whiteboardItem] : [])].map((n) => {
             const Icon = n.icon;
@@ -738,24 +766,43 @@ export default function AppShell({
                 prefetch
                 title={showCollapsed ? n.label : undefined}
                 data-tour={`nav-${n.label.toLowerCase().replace(/\s+/g, '-')}`}
-                className={`flex items-center gap-5 ${showCollapsed ? 'justify-center px-0 py-3' : 'px-3.5 py-3'} text-[20px] transition-colors duration-150 ${
+                className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
                   active
-                    ? dark
-                      ? 'text-[#fafaf9] font-bold'
-                      : 'text-[#1c1917] font-bold'
-                    : dark
-                      ? 'text-[#a8a29e] font-normal hover:bg-[rgba(231,229,228,0.08)] hover:text-[#fafaf9]'
-                      : 'text-[#57534e] font-normal hover:bg-[rgba(28,25,23,0.05)] hover:text-[#1c1917]'
+                    ? 'text-brand-700 dark:text-[#faf9f5]'
+                    : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
                 }`}
-                style={{ borderRadius: 9999 }}
+                style={
+                  active
+                    ? showCollapsed
+                      ? {
+                          background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+                        }
+                      : {
+                          background: dark ? 'rgba(255,255,255,0.08)' : '#EEF4FD',
+                          borderLeft: `3px solid ${n.iconColor}`,
+                          paddingLeft: '9px',
+                        }
+                    : {}
+                }
               >
-                <Icon
-                  size={showCollapsed ? 24 : 26}
-                  strokeWidth={active ? 2.25 : 1.6}
-                  className="shrink-0"
-                  style={{ color: active ? ink : inkMuted }}
-                />
-                {!showCollapsed && <span className="flex-1 truncate leading-none">{n.label}</span>}
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                  style={{
+                    background: active
+                      ? dark
+                        ? `${n.iconColor}30`
+                        : n.iconBg
+                      : dark
+                        ? `${n.iconColor}18`
+                        : `${n.iconColor}14`,
+                  }}
+                >
+                  <Icon
+                    size={14}
+                    style={{ color: active ? n.iconColor : dark ? n.iconColor + 'bb' : n.iconColor + '99' }}
+                  />
+                </div>
+                {!showCollapsed && <span className="flex-1 truncate">{n.label}</span>}
               </Link>
             );
           })}
@@ -766,7 +813,7 @@ export default function AppShell({
       {showCollapsed ? (
         <div
           className="px-2 py-3 border-t shrink-0 flex flex-col items-center gap-1.5 relative"
-          style={{ borderColor: dark ? '#292524' : '#e7e5e4' }}
+          style={{ borderColor: dark ? 'rgba(255,255,255,0.05)' : '#e8edf4' }}
         >
           {AccountMenu}
           {/* Notifications are intentionally NOT shown on the collapsed rail —
@@ -801,15 +848,15 @@ export default function AppShell({
          corner — it feels like a deliberate identity panel. */
         <div
           className="p-3 border-t shrink-0 relative"
-          style={{ borderColor: dark ? '#292524' : '#e7e5e4' }}
+          style={{ borderColor: dark ? 'rgba(255,255,255,0.05)' : '#e8edf4' }}
         >
           {AccountMenu}
 
           <div
-            className={`flex items-center gap-3 px-3 py-2.5 transition-colors cursor-pointer ${
-              dark ? 'hover:bg-[rgba(231,233,234,0.1)]' : 'hover:bg-[rgba(15,20,25,0.1)]'
+            className={`flex items-center gap-2.5 rounded-xl px-2.5 py-2 transition-colors cursor-pointer ${
+              dark ? 'bg-white/[0.03] hover:bg-white/[0.06]' : 'bg-slate-50 hover:bg-slate-100/80'
             }`}
-            style={{ border: dark ? '1px solid #2f3336' : '1px solid #eff3f4', borderRadius: 9999 }}
+            style={{ border: dark ? '1px solid rgba(255,255,255,0.05)' : '1px solid #e8edf4' }}
             onClick={() => setAccountMenuOpen((v) => !v)}
             onMouseDown={(e) => e.stopPropagation()}
           >
@@ -907,10 +954,15 @@ export default function AppShell({
           ${collapsed && !open && sidebarHovered ? 'lg:fixed lg:z-50' : ''}
         `}
             style={{
-              width: showCollapsed ? 72 : Math.max(sidebarWidth, 260),
-              background: dark ? '#0c0a09' : '#faf8f5',
-              borderRight: dark ? '1px solid #292524' : '1px solid #e7e5e4',
-              boxShadow: undefined,
+              width: showCollapsed ? 68 : sidebarWidth,
+              background: dark ? '#262624' : '#ffffff',
+              borderRight: dark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #e8edf4',
+              boxShadow:
+                collapsed && !open && sidebarHovered
+                  ? dark
+                    ? '4px 0 24px rgba(0,0,0,0.5)'
+                    : '4px 0 24px rgba(15,23,42,0.18)'
+                  : undefined,
             }}
             onMouseEnter={() => {
               if (collapsed && !open) setSidebarHovered(true);
@@ -937,8 +989,8 @@ export default function AppShell({
                   aria-hidden="true"
                 >
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-[2px] transition-all duration-100 opacity-0 group-hover/drag:opacity-100"
-                    style={{ background: dark ? 'var(--mars)' : 'var(--mars)', margin: '8px 0' }}
+                    className="absolute right-0 top-0 bottom-0 w-[3px] transition-all duration-150 rounded-full opacity-0 group-hover/drag:opacity-100"
+                    style={{ background: '#3b82f6', margin: '8px 0' }}
                   />
                 </div>
                 <div
@@ -948,8 +1000,8 @@ export default function AppShell({
                   aria-hidden="true"
                 >
                   <div
-                    className="absolute right-0 top-0 bottom-0 w-[2px] transition-all duration-100 opacity-0 group-hover/drag2:opacity-100"
-                    style={{ background: dark ? 'var(--mars)' : 'var(--mars)', margin: '8px 0' }}
+                    className="absolute right-0 top-0 bottom-0 w-[3px] transition-all duration-150 rounded-full opacity-0 group-hover/drag2:opacity-100"
+                    style={{ background: '#3b82f6', margin: '8px 0' }}
                   />
                 </div>
               </>
@@ -959,13 +1011,12 @@ export default function AppShell({
             z-[25] sits above the drag handle (z-20) so hovering the button
             never activates the resize cursor behind it. */}
             <button
-              className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-[25] w-5 h-8 items-center justify-center transition-colors cursor-pointer"
+              className="hidden lg:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-[25] w-5 h-10 items-center justify-center rounded-full transition-colors cursor-pointer"
               style={{
-                background: dark ? '#0c0a09' : '#faf8f5',
-                border: dark ? '1px solid #2f3336' : '1px solid #cfd9de',
-                borderRadius: 9999,
-                boxShadow: 'none',
-                color: dark ? '#71767b' : '#536471',
+                background: dark ? '#30302e' : '#ffffff',
+                border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #dde3ec',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                color: dark ? 'rgba(255,255,255,0.35)' : '#94a3b8',
               }}
               onClick={(e) => {
                 e.stopPropagation();
@@ -986,15 +1037,18 @@ export default function AppShell({
             <div
               className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14"
               style={{
-                background: dark ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.85)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                borderBottom: dark ? '1px solid #2f3336' : '1px solid #eff3f4',
+                background: dark ? 'rgba(38,38,36,0.92)' : 'rgba(255,255,255,0.92)',
+                backdropFilter: 'saturate(180%) blur(12px)',
+                WebkitBackdropFilter: 'saturate(180%) blur(12px)',
+                borderBottom: dark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #e8edf4',
+                boxShadow: dark ? '0 2px 16px rgba(0,0,0,0.45)' : '0 2px 12px rgba(15,23,42,0.07)',
               }}
             >
               <Link href="/" className="flex items-center gap-2.5">
-                <PragatiMark size={26} flat />
-                <span className={`brand-wordmark text-[17px] ${dark ? 'text-white' : 'text-black'}`}>
+                <PragatiMark size={26} />
+                <span
+                  className={`brand-wordmark text-[17px] ${dark ? 'text-white' : 'brand-wordmark-gradient'}`}
+                >
                   Pragati
                 </span>
               </Link>
@@ -1023,9 +1077,20 @@ export default function AppShell({
             {/* Page content — on mobile, pad the bottom so content isn't hidden
             behind the bottom tab bar (approx 64px + safe-area). */}
             <main className="flex-1 min-h-0 overflow-y-auto relative">
+              {pathname === '/' && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute top-0 left-0 right-0 h-[200px]"
+                  style={{
+                    zIndex: 0,
+                    background:
+                      'linear-gradient(180deg, rgba(21,101,192,0.09) 0%, rgba(21,101,192,0.04) 50%, transparent 100%)',
+                  }}
+                />
+              )}
               <div
                 key={pathname}
-                className="page-enter max-w-[990px] mx-auto px-4 sm:px-5 py-3 pb-24 lg:pb-6 relative overflow-x-hidden"
+                className="page-enter max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden"
               >
                 {children}
               </div>
@@ -1037,10 +1102,11 @@ export default function AppShell({
             <nav
               className="lg:hidden fixed bottom-0 inset-x-0 z-40 mobile-bottom-nav"
               style={{
-                background: dark ? 'rgba(0,0,0,0.85)' : 'rgba(255,255,255,0.9)',
-                borderTop: dark ? '1px solid #2f3336' : '1px solid #eff3f4',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
+                background: dark ? 'rgba(38,38,36,0.97)' : 'rgba(255,255,255,0.97)',
+                borderTop: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e8edf4',
+                boxShadow: dark ? '0 -4px 20px rgba(0,0,0,0.5)' : '0 -4px 20px rgba(15,23,42,0.08)',
+                backdropFilter: 'saturate(180%) blur(12px)',
+                WebkitBackdropFilter: 'saturate(180%) blur(12px)',
                 paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
               }}
               aria-label="Main navigation"
@@ -1058,8 +1124,8 @@ export default function AppShell({
                     href: user.username ? `/${user.username}` : '/settings',
                     label: 'Profile',
                     icon: UserCircle,
-                    iconColor: ink,
-                    iconBg: inkBg,
+                    iconColor: '#C2185B',
+                    iconBg: '#FCE4EC',
                   } as NavItem,
                 ].map((n) => {
                   const Icon = n.icon;
@@ -1071,24 +1137,31 @@ export default function AppShell({
                       href={n.href}
                       prefetch
                       data-mobile-tour={tourKey}
-                      className="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors min-w-[52px]"
-                      style={{
-                        borderRadius: 4,
-                        ...(active
-                          ? { background: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }
-                          : {}),
-                      }}
+                      className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl transition-colors min-w-[52px]"
+                      style={
+                        active
+                          ? {
+                              background: dark ? 'rgba(255,255,255,0.06)' : `${n.iconColor}12`,
+                            }
+                          : {}
+                      }
                     >
                       <div className="relative w-6 h-6 flex items-center justify-center">
                         <Icon
                           size={active ? 20 : 18}
-                          strokeWidth={active ? 2.25 : 1.75}
-                          style={{ color: active ? ink : dark ? 'rgba(255,255,255,0.4)' : '#a1a1aa' }}
+                          style={{ color: active ? n.iconColor : dark ? 'rgba(255,255,255,0.4)' : '#94a3b8' }}
                         />
+                        {n.adminOnly && (
+                          <span
+                            className="absolute top-0 right-0 w-2 h-2 rounded-full bg-amber-400"
+                            style={{ boxShadow: `0 0 0 2px ${dark ? '#262624' : '#ffffff'}` }}
+                            title="Admin"
+                          />
+                        )}
                       </div>
                       <span
-                        className="text-[9px] font-semibold truncate max-w-full tracking-wide uppercase"
-                        style={{ color: active ? ink : dark ? 'rgba(255,255,255,0.35)' : '#a1a1aa' }}
+                        className="text-[9px] font-semibold truncate max-w-full"
+                        style={{ color: active ? n.iconColor : dark ? 'rgba(255,255,255,0.35)' : '#94a3b8' }}
                       >
                         {n.label}
                       </span>
@@ -1105,27 +1178,29 @@ export default function AppShell({
           {mobileMenuOpen && (
             <div className="lg:hidden fixed inset-0 z-[55]" onClick={() => setMobileMenuOpen(false)}>
               <div
-                className="absolute inset-x-0 bottom-0 p-5 space-y-0.5"
+                className="absolute inset-x-0 bottom-0 rounded-t-3xl shadow-2xl p-6 space-y-1"
                 style={{
-                  background: dark ? '#0c0a09' : '#faf8f5',
-                  borderTop: dark ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.12)',
-                  borderRadius: '10px 10px 0 0',
+                  background: dark ? '#262624' : '#ffffff',
+                  border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #dbe3ef',
+                  boxShadow: dark ? '0 -20px 60px rgba(0,0,0,0.6)' : '0 -20px 60px rgba(15,23,42,0.15)',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex justify-center mb-3">
+                {/* Drag handle indicator */}
+                <div className="flex justify-center mb-4">
                   <div
-                    className="w-8 h-0.5"
-                    style={{ background: dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)' }}
+                    className="w-10 h-1 rounded-full"
+                    style={{ background: dark ? 'rgba(255,255,255,0.15)' : '#e2e8f0' }}
                   />
                 </div>
+                {/* User identity */}
                 <div
                   className="flex items-center gap-3 pb-4 mb-2 border-b"
-                  style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}
+                  style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }}
                 >
                   <Avatar
                     name={user.name}
-                    size={40}
+                    size={44}
                     letter={user.avatarLetter}
                     bg={user.avatarBg}
                     font={user.avatarFont}
@@ -1133,10 +1208,10 @@ export default function AppShell({
                     ring
                   />
                   <div>
-                    <div className={`text-sm font-bold tracking-tight ${dark ? 'text-white' : 'text-zinc-900'}`}>
+                    <div className={`text-sm font-black ${dark ? 'text-white' : 'text-slate-900'}`}>
                       {user.name}
                     </div>
-                    <div className={`text-[11px] ${dark ? 'text-white/40' : 'text-zinc-400'}`}>
+                    <div className={`text-[11px] ${dark ? 'text-white/45' : 'text-slate-400'}`}>
                       {user.username ? `@${user.username}` : roleText}
                     </div>
                   </div>
@@ -1144,29 +1219,32 @@ export default function AppShell({
                 <Link
                   href="/settings"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                  style={{ borderRadius: 4 }}
+                  className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
                 >
-                  <UserCircle size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Profile &amp; settings
+                  <UserCircle size={18} className="text-slate-400" /> Profile &amp; settings
                 </Link>
+                {/* Whiteboard doesn't fit the 5-tab bottom bar, so the sheet is
+                its mobile entry point — the canvas itself is touch-native. */}
                 {WHITEBOARD_ENABLED && (
                   <Link
                     href="/whiteboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
-                    style={{ borderRadius: 4 }}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
                   >
-                    <Presentation size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Whiteboard
+                    <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
                   </Link>
                 )}
-                {isAdmin && adminExtra.length > 0 && (
+                {/* Admin-only links — these never fit in the 4-tab bottom nav, so
+                this is the only mobile entry point for Logs (and Platform for
+                master-admins). */}
+                {isAdmin && [...adminExtra, ...masterAdminExtra].length > 0 && (
                   <>
                     <div
-                      className={`px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] ${dark ? 'text-white/35' : 'text-zinc-400'}`}
+                      className={`px-3 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest ${dark ? 'text-amber-400/70' : 'text-amber-600/80'}`}
                     >
                       Admin
                     </div>
-                    {adminExtra.map((n) => {
+                    {[...adminExtra, ...masterAdminExtra].map((n) => {
                       const Icon = n.icon;
                       return (
                         <Link
@@ -1251,7 +1329,7 @@ export default function AppShell({
               <div
                 className="w-[300px] rounded-2xl p-6 flex flex-col items-center gap-4 text-center shadow-2xl"
                 style={{
-                  background: dark ? '#0c0a09' : '#faf8f5',
+                  background: dark ? '#262624' : '#ffffff',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1305,7 +1383,7 @@ export default function AppShell({
               <div
                 className="w-[340px] rounded-2xl p-5 shadow-2xl"
                 style={{
-                  background: dark ? '#0c0a09' : '#faf8f5',
+                  background: dark ? '#262624' : '#ffffff',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
                 onClick={(e) => e.stopPropagation()}
@@ -1322,7 +1400,9 @@ export default function AppShell({
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
                     { keys: ['G', 'M'], label: 'My Day' },
-                    ...(WHITEBOARD_ENABLED ? [{ keys: ['G', 'W'], label: 'Whiteboard' }] : []),
+                    ...(WHITEBOARD_ENABLED
+                      ? [{ keys: ['G', 'W'], label: 'Whiteboard' }]
+                      : []),
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (
@@ -1379,7 +1459,7 @@ export default function AppShell({
               <div
                 className="w-[320px] rounded-2xl p-6 flex flex-col gap-4 text-center shadow-2xl"
                 style={{
-                  background: dark ? '#0c0a09' : '#faf8f5',
+                  background: dark ? '#262624' : '#ffffff',
                   border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
                 }}
               >

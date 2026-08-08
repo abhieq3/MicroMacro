@@ -348,16 +348,12 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const hasReferenceData =
     task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
-  // IC edit contract: assignees can drive status (do the work), description,
-  // and due date. Assignee reassignment, priority, and compliance fields stay
-  // lead-owned. Unassigned / others' tasks are read-only for ICs.
+  // Assignees can drive status (do the work), description, and due date.
+  // Reassignment, priority, and compliance fields stay lead-owned.
   const isAssignee = !!(me && task.assigneeId && String(task.assigneeId) === String(me.id));
-  // Description + due date: editable by leads or the assignee.
   const canEditBasics = isLead || isAssignee;
-  // Reference/tracking fields, assignee, priority, etc.: leads only.
   const canEditAll = isLead;
   const canComment = isLead || isAssignee;
-  // Status is the verb of “do this next” — assignees must be able to finish.
   const canEditStatus = isLead || isAssignee;
 
   return (
@@ -875,7 +871,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 <button
                   type="button"
                   onClick={() => setEffortOpen(true)}
-                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-left transition hover:border-blue-200 hover:bg-blue-50/40 dark:border-[#2f3336] dark:bg-white/[0.025]"
+                  className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2.5 text-left transition hover:border-blue-200 hover:bg-blue-50/40 dark:border-white/[0.06] dark:bg-white/[0.025]"
                 >
                   <div>
                     <div className="text-xs font-semibold text-slate-700 dark:text-white/75">
@@ -947,7 +943,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                   )}
 
                   {canLogEffort && (
-                    <div className="pt-1 border-t border-slate-100 dark:border-[#2f3336]">
+                    <div className="pt-1 border-t border-slate-100 dark:border-white/[0.06]">
                       <label className="label">Log time</label>
                       <div className="flex gap-2">
                         <input
@@ -982,7 +978,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                   )}
 
                   {entries.length > 0 && (
-                    <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-[#2f3336]">
+                    <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-white/[0.06]">
                       {entries.slice(0, 8).map((e: any) => (
                         <div key={e.id} className="flex items-start gap-2">
                           <UserAvatar userId={e.userId} name={e.userName} size={22} />

@@ -300,42 +300,38 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-start justify-center pt-[8vh]"
-      style={{ background: 'rgba(91, 112, 131, 0.4)' }}
+      className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Search"
-        className="w-[600px] max-w-[90vw] overflow-hidden"
+        aria-label="Command palette"
+        className="w-[560px] max-w-[90vw] rounded-2xl shadow-2xl overflow-hidden"
         style={{
-          background: dark ? '#000000' : '#ffffff',
-          border: dark ? '1px solid #2f3336' : '1px solid #eff3f4',
-          borderRadius: 16,
-          boxShadow: dark ? '0 0 24px rgba(255,255,255,0.08)' : '0 0 24px rgba(0,0,0,0.12)',
-          animation: 'paletteIn 0.15s ease both',
+          background: dark ? '#262624' : '#ffffff',
+          border: dark ? '1px solid rgba(255,255,255,0.10)' : '1px solid #e2e8f0',
         }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={mode === 'compose' ? onComposeKeyDown : onSearchKeyDown}
       >
         <div
-          className="flex items-center gap-3 px-4 border-b"
-          style={{ borderColor: dark ? '#2f3336' : '#eff3f4' }}
+          className="flex items-center gap-2.5 px-4 border-b"
+          style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }}
         >
           {mode === 'compose' ? (
-            <Plus size={16} className={dark ? 'text-white/35' : 'text-zinc-400'} />
+            <Plus size={16} className={dark ? 'text-white/35' : 'text-slate-400'} />
           ) : (
-            <Search size={16} className={dark ? 'text-white/35' : 'text-zinc-400'} />
+            <Search size={16} className={dark ? 'text-white/35' : 'text-slate-400'} />
           )}
           <input
             ref={inputRef}
             value={mode === 'compose' ? composeText : query}
             onChange={(e) => (mode === 'compose' ? setComposeText(e.target.value) : setQuery(e.target.value))}
-            placeholder={mode === 'compose' ? 'Task title…' : 'Search…'}
+            placeholder={mode === 'compose' ? 'Buy stamps tomorrow !!' : 'Search pages, projects, teams…'}
             disabled={creating}
             className={`flex-1 h-12 bg-transparent outline-none text-sm ${
-              dark ? 'text-white/90 placeholder:text-white/30' : 'text-zinc-900 placeholder:text-zinc-400'
+              dark ? 'text-white/90 placeholder:text-white/30' : 'text-slate-800 placeholder:text-slate-400'
             }`}
           />
         </div>

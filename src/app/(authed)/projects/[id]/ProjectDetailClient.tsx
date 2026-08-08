@@ -111,7 +111,7 @@ function ProjectStatusHover({
       {open && (
         <div
           role="menu"
-          className="absolute left-full top-1/2 z-30 ml-2 flex -translate-y-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-lg dark:border-[#2f3336] dark:bg-[#262624]"
+          className="absolute left-full top-1/2 z-30 ml-2 flex -translate-y-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-lg dark:border-white/10 dark:bg-[#262624]"
         >
           {options
             .filter((status) => status !== value)
@@ -162,17 +162,16 @@ function KanbanBoard({
   const currentUser = useCurrentUser();
   const meId = currentUser?.id ? String(currentUser.id) : '';
   const soundEnabled = !!currentUser?.soundDropEnabled;
+
+  function canDragTask(task: any): boolean {
+    if (isLead) return true;
+    return !!(meId && task.assigneeId && String(task.assigneeId) === meId);
+  }
   const [localTasks, setLocalTasks] = useState<any[]>(tasks);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   // Where the dragged card would land: a column + the insertion index within it.
   const [dragOver, setDragOver] = useState<{ col: string; index: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  /** Leads manage all cards; assignees may drag their own (status only). */
-  function canDragTask(t: any): boolean {
-    if (isLead) return true;
-    return !!(meId && t.assigneeId && String(t.assigneeId) === meId);
-  }
 
   // Tasks of one column, in persisted order.
   const colSorted = (col: string) =>
@@ -416,7 +415,7 @@ function KanbanBoard({
                           borderColor: isDraggingThis
                             ? meta.color
                             : dark
-                              ? '#2f3336'
+                              ? 'rgba(255,255,255,0.1)'
                               : '#e2e8f0',
                           boxShadow: isDraggingThis
                             ? `0 8px 24px rgba(0,0,0,0.15), 0 0 0 2px ${meta.color}`
@@ -558,9 +557,9 @@ function KanbanBoardMobile({
   const [active, setActive] = useState<string>('todo');
   const [moving, setMoving] = useState<any | null>(null);
 
-  function canMoveTask(t: any): boolean {
+  function canMoveTask(task: any): boolean {
     if (isLead) return true;
-    return !!(meId && t.assigneeId && String(t.assigneeId) === meId);
+    return !!(meId && task.assigneeId && String(task.assigneeId) === meId);
   }
 
   const byStatus = (s: string) =>
@@ -623,7 +622,7 @@ function KanbanBoardMobile({
       {/* Cards for the selected status — full-width vertical list. */}
       <div className="space-y-2 mt-1">
         {colTasks.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-[#2f3336] py-10 text-center text-sm text-slate-400">
+          <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 py-10 text-center text-sm text-slate-400">
             No tasks in {STATUS_META[active].label}.
           </div>
         ) : (
@@ -632,7 +631,7 @@ function KanbanBoardMobile({
             return (
               <div
                 key={t.id}
-                className="relative rounded-xl border bg-white dark:bg-slate-800 dark:border-[#2f3336]"
+                className="relative rounded-xl border bg-white dark:bg-slate-800 dark:border-white/10"
                 style={{ borderColor: '#e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
               >
                 <Link href={`/tasks/${t.id}`} className="block p-3.5">
@@ -677,13 +676,13 @@ function KanbanBoardMobile({
                     </div>
                   )}
                 </Link>
-                {/* Card actions: Move (lead or assignee) + Delete (owner-only). */}
+                {/* Card actions: Move (lead) + Delete (owner-only). Big tap targets. */}
                 {(canMoveTask(t) || canDelete) && (
                   <div className="flex items-stretch border-t border-slate-100 dark:border-white/5">
                     {canMoveTask(t) && (
                       <button
                         onClick={() => setMoving(t)}
-                        className="flex-1 py-2.5 text-xs font-semibold text-[var(--mars)] hover:bg-[var(--mars-soft)] dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center gap-1.5"
+                        className="flex-1 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center gap-1.5"
                       >
                         <ChevronRight size={13} /> Move
                       </button>
@@ -840,7 +839,7 @@ function QuickAddTask({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-2 w-full flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-slate-200 dark:border-[#2f3336] text-xs text-slate-400 dark:text-white/25 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-500/40 hover:bg-blue-50/40 dark:hover:bg-blue-500/[0.06] transition-all group"
+        className="mt-2 w-full flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 border-dashed border-slate-200 dark:border-white/[0.07] text-xs text-slate-400 dark:text-white/25 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-300 dark:hover:border-blue-500/40 hover:bg-blue-50/40 dark:hover:bg-blue-500/[0.06] transition-all group"
       >
         <Plus
           size={12}
@@ -889,7 +888,7 @@ function QuickAddTask({
               type="button"
               onClick={() => setDue(sug.dueDate!.date)}
               title={sug.dueDate.reason}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-white/70 border border-slate-200 dark:border-[#2f3336] hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-white/70 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
             >
               Due {formatDate(sug.dueDate.date)}
             </button>
@@ -2254,7 +2253,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       {doThisFirst && (
         <Link
           href={`/tasks/${doThisFirst.task.id}`}
-          className="flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-[#2f3336] bg-white dark:bg-[#262624] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
+          className="flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#262624] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
           style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
         >
           <div className="min-w-0 flex-1">
@@ -2381,7 +2380,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       {/* View toggle */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div
-          className="flex items-center gap-1 bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-[#2f3336] rounded-xl p-1 w-fit"
+          className="flex items-center gap-1 bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/[0.08] rounded-xl p-1 w-fit"
           style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
         >
           {[
@@ -2538,7 +2537,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                         <div className="flex items-center flex-wrap gap-1.5 sm:shrink-0 sm:justify-end pl-9 sm:pl-0">
                           {t.pendingWith && t.status !== 'done' && (
                             <span
-                              className="tag bg-slate-50 text-slate-500 border border-slate-200 dark:bg-white/[0.03] dark:text-white/40 dark:border-[#2f3336]"
+                              className="tag bg-slate-50 text-slate-500 border border-slate-200 dark:bg-white/[0.03] dark:text-white/40 dark:border-white/[0.06]"
                               title={`Waiting on ${t.pendingWith}`}
                             >
                               waiting on {t.pendingWith}
@@ -2553,7 +2552,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                               );
                               return days >= 7 ? (
                                 <span
-                                  className="tag bg-slate-50 text-slate-400 border border-slate-200 dark:bg-white/[0.03] dark:text-white/30 dark:border-[#2f3336]"
+                                  className="tag bg-slate-50 text-slate-400 border border-slate-200 dark:bg-white/[0.03] dark:text-white/30 dark:border-white/[0.06]"
                                   title="No activity recorded recently"
                                 >
                                   {days}d idle
@@ -2638,7 +2637,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                       <div className="flex items-center flex-wrap gap-1.5 sm:shrink-0 sm:justify-end pl-9 sm:pl-0">
                         {t.pendingWith && t.status !== 'done' && (
                           <span
-                            className="tag bg-slate-50 text-slate-500 border border-slate-200 dark:bg-white/[0.03] dark:text-white/40 dark:border-[#2f3336]"
+                            className="tag bg-slate-50 text-slate-500 border border-slate-200 dark:bg-white/[0.03] dark:text-white/40 dark:border-white/[0.06]"
                             title={`Waiting on ${t.pendingWith}`}
                           >
                             waiting on {t.pendingWith}
@@ -2653,7 +2652,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                             );
                             return days >= 7 ? (
                               <span
-                                className="tag bg-slate-50 text-slate-400 border border-slate-200 dark:bg-white/[0.03] dark:text-white/30 dark:border-[#2f3336]"
+                                className="tag bg-slate-50 text-slate-400 border border-slate-200 dark:bg-white/[0.03] dark:text-white/30 dark:border-white/[0.06]"
                                 title="No activity recorded recently"
                               >
                                 {days}d idle

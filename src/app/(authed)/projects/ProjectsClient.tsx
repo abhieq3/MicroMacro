@@ -70,41 +70,42 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
   useLiveRefresh(load); // eslint-disable-line react-hooks/exhaustive-deps
 
   const STATUS_COLORS: Record<string, { dot: string; label: string }> = {
-    planning: { dot: '#71767b', label: 'Planning' },
-    in_progress: { dot: 'var(--mars)', label: 'In progress' },
-    on_hold: { dot: '#ffd400', label: 'On hold' },
-    completed: { dot: '#00ba7c', label: 'Completed' },
-    cancelled: { dot: '#f4212e', label: 'Cancelled' },
+    planning: { dot: '#94a3b8', label: 'Planning' },
+    in_progress: { dot: '#3b82f6', label: 'In progress' },
+    on_hold: { dot: '#f59e0b', label: 'On hold' },
+    completed: { dot: '#22c55e', label: 'Completed' },
+    cancelled: { dot: '#ef4444', label: 'Cancelled' },
   };
 
   const HEALTH_COLORS: Record<string, string> = {
-    good: '#00ba7c',
-    at_risk: '#ffd400',
-    critical: '#f4212e',
+    good: '#22c55e',
+    at_risk: '#f59e0b',
+    critical: '#ef4444',
   };
 
   return (
-    <div className="space-y-4 max-w-6xl">
+    <div className="space-y-5 max-w-6xl">
       {/* Header */}
-      <div className="flex items-start justify-between pt-1 gap-3">
+      <div className="flex items-start justify-between pt-1">
         <div>
-          <h1 className="text-[20px] font-bold tracking-tight text-[#0f1419] dark:text-[#e7e9ea]">
-            Projects
-          </h1>
-          <p className="text-[13px] text-[#536471] dark:text-[#71767b] mt-0.5">
-            Work with owners and dates. Overdue first.
+          <h1 className="page-title">Projects</h1>
+          <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
+            All quality projects across teams &amp; lifecycles.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Link href="/projects/new" className="btn-primary gap-2 text-[14px] py-2 px-4">
+          {/* Single create flow for every user — the form on /projects/new
+              has the "Personal" toggle, so contributors and leads share the
+              same entry point. */}
+          <Link href="/projects/new" className="btn-primary gap-2">
             <Plus size={15} /> New project
           </Link>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — archiving isn't in use yet, so the Archived bin is hidden. */}
       <div
-        className="flex gap-1 border-b border-[#eff3f4] dark:border-[#2f3336]"
+        className="flex gap-1 border-b border-slate-100 dark:border-white/[0.06]"
         role="tablist"
         aria-label="Project filters"
       >
@@ -119,7 +120,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
             }}
             className={`px-4 py-2 text-sm font-semibold rounded-t-lg transition-colors capitalize focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
               tab === t
-                ? 'text-[#e7e9ea] dark:text-blue-400 border-b-2 border-[#e7e9ea] bg-blue-50/50 dark:bg-blue-500/10'
+                ? 'text-blue-700 dark:text-blue-400 border-b-2 border-blue-600 bg-blue-50/50 dark:bg-blue-500/10'
                 : 'text-slate-400 dark:text-white/35 hover:text-slate-600 dark:hover:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.04]'
             }`}
           >
@@ -295,7 +296,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                   </div>
 
                   {/* Project name */}
-                  <h3 className="font-bold text-[14.5px] text-slate-900 dark:text-white/90 line-clamp-1 group-hover:text-[#e7e9ea] dark:group-hover:text-blue-400 transition-colors leading-snug mb-1">
+                  <h3 className="font-bold text-[14.5px] text-slate-900 dark:text-white/90 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors leading-snug mb-1">
                     {p.name}
                   </h3>
 
@@ -320,7 +321,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                   </div>
 
                   {/* Footer — exceptions and open work, not % theater. */}
-                  <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-[#2f3336] flex items-center justify-between gap-3">
+                  <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-[11px] min-w-0">
                       {p.tasksOverdue > 0 ? (
                         <span className="text-[10.5px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full shrink-0">
@@ -367,7 +368,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
 
       {loaded && projects.length === 0 && (
         <div className="card p-12 text-center">
-          <div className="w-12 h-12  bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
             {q || team || lc || status ? (
               <Search size={22} className="text-blue-400" />
             ) : (
@@ -390,7 +391,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                 setLc('');
                 setStatus('');
               }}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#2f3336] text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/60 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
             >
               <X size={14} /> Clear filters
             </button>

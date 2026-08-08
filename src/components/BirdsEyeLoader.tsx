@@ -1,9 +1,16 @@
 import { PragatiMark } from '@/components/PragatiMark';
 
-/** Shared loading mark. Plain status text only. */
+/**
+ * Shared "bird's-eye view" loading visual — the same brand-forward loader the
+ * dashboard route uses between server fetches, lifted into a component so every
+ * in-app loading state (profile, unlock, etc.) feels identical instead of each
+ * surface inventing its own raw spinner.
+ *
+ * `inline` drops the tall min-height so it can sit inside a card or modal.
+ */
 export function BirdsEyeLoader({
-  label = 'Loading…',
-  sublabel = '',
+  label = 'Ascending…',
+  sublabel = "Getting your bird's-eye view ready.",
   size = 'md',
   inline = false,
 }: {
@@ -15,16 +22,18 @@ export function BirdsEyeLoader({
   const mark = size === 'sm' ? 36 : 48;
   const ring = size === 'sm' ? 'w-14 h-14' : 'w-20 h-20';
   return (
-    <div
-      className={`flex flex-col items-center justify-center gap-4 ${inline ? 'py-10' : 'min-h-[60vh]'}`}
-    >
+    <div className={`flex flex-col items-center justify-center gap-5 ${inline ? 'py-10' : 'min-h-[60vh]'}`}>
+      {/* The mark sits perfectly still and crisp; only a thin ring rotates
+          around it. (The old loader spun a blurred conic-gradient *behind* the
+          icon, which read as the logo squeezing/warping on every app open.) */}
       <div className={`relative ${ring} flex items-center justify-center`}>
         <div
           className="absolute inset-0 rounded-full"
           style={{
-            border: '1.5px solid rgba(255,255,255,0.08)',
-            borderTopColor: 'rgba(255,255,255,0.55)',
-            animation: 'pragati-spin 0.85s linear infinite',
+            border: '2.5px solid #e8edf4',
+            borderTopColor: '#1565C0',
+            borderRightColor: '#2E7D32',
+            animation: 'pragati-spin 0.9s linear infinite',
           }}
         />
         <PragatiMark size={mark} flat />
@@ -34,14 +43,12 @@ export function BirdsEyeLoader({
         <div className="text-center">
           {label && (
             <div
-              className={`font-semibold tracking-tight text-zinc-800 dark:text-white/80 ${
-                size === 'sm' ? 'text-sm' : 'text-[15px]'
-              }`}
+              className={`font-bold text-slate-800 tracking-tight ${size === 'sm' ? 'text-sm' : 'text-base'}`}
             >
               {label}
             </div>
           )}
-          {sublabel ? <div className="text-xs text-zinc-500 dark:text-white/35 mt-1">{sublabel}</div> : null}
+          {sublabel && <div className="text-xs text-slate-400 mt-1">{sublabel}</div>}
         </div>
       )}
 
@@ -49,3 +56,4 @@ export function BirdsEyeLoader({
     </div>
   );
 }
+

@@ -204,10 +204,10 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
       <>
         {/* Add note form */}
           <form onSubmit={addNote} className="mb-4">
-            <div className="rounded-xl border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] overflow-hidden focus-within:border-amber-400/60 dark:focus-within:border-amber-500/40 focus-within:shadow-[0_0_0_3px_rgba(245,158,11,0.08)] transition-all">
+            <div className="rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden focus-within:border-amber-400/60 dark:focus-within:border-amber-500/40 focus-within:shadow-[0_0_0_3px_rgba(245,158,11,0.08)] transition-all">
               {showTitle && (
                 <input
-                  className="w-full bg-transparent text-[13px] font-semibold text-slate-700 dark:text-white/80 placeholder-slate-300 dark:placeholder-white/25 border-0 border-b border-slate-100 dark:border-[#2f3336] outline-none px-3 py-2"
+                  className="w-full bg-transparent text-[13px] font-semibold text-slate-700 dark:text-white/80 placeholder-slate-300 dark:placeholder-white/25 border-0 border-b border-slate-100 dark:border-white/[0.06] outline-none px-3 py-2"
                   placeholder="Title (optional)"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -264,7 +264,7 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="rounded-xl border border-slate-100 dark:border-[#2f3336] p-3 space-y-1.5"
+                  className="rounded-xl border border-slate-100 dark:border-white/[0.06] p-3 space-y-1.5"
                 >
                   <div className="skeleton h-3 w-2/3" />
                   <div className="skeleton h-2.5 w-full" />
@@ -274,7 +274,7 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
           )}
 
           {!loading && notes.length === 0 && (
-            <div className="rounded-xl border border-dashed border-slate-200 dark:border-[#2f3336] p-6 text-center">
+            <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/[0.07] p-6 text-center">
               <FileText size={16} className="mx-auto mb-2 text-slate-300 dark:text-white/15" />
               <div className="text-[11px] text-slate-400 dark:text-white/25">
                 No notes yet. Save anything you want to keep.
@@ -289,14 +289,14 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
                 className={`group rounded-xl border transition-all cursor-pointer ${
                   note.pinned
                     ? 'border-amber-200/80 dark:border-amber-500/25 bg-amber-50/60 dark:bg-amber-500/[0.06]'
-                    : 'border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12'
+                    : 'border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12'
                 }`}
                 onClick={() => setExpandedId(expandedId === note.id ? null : note.id)}
               >
                 {editingId === note.id ? (
                   <div className="p-3 space-y-1.5" onClick={(e) => e.stopPropagation()}>
                     <input
-                      className="w-full bg-transparent text-[12px] font-semibold text-slate-600 dark:text-white/70 placeholder-slate-300 border-b border-slate-100 dark:border-[#2f3336] outline-none pb-1.5"
+                      className="w-full bg-transparent text-[12px] font-semibold text-slate-600 dark:text-white/70 placeholder-slate-300 border-b border-slate-100 dark:border-white/[0.07] outline-none pb-1.5"
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value)}
                       placeholder="Title (optional)"
@@ -426,7 +426,7 @@ function NotesFAB() {
             />
             <div className="relative w-full h-full bg-slate-50 dark:bg-[#1e1e1c] shadow-2xl flex flex-col fade-in-soft">
               <div
-                className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-[#2f3336] shrink-0"
+                className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 dark:border-white/[0.07] shrink-0"
                 style={{ background: 'linear-gradient(to right, rgba(245,158,11,0.08), transparent)' }}
               >
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
@@ -585,35 +585,53 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                 </span>
               )}
             </div>
-            <h1 className="text-[20px] font-bold tracking-tight leading-tight text-[#0f1419] dark:text-[#e7e9ea]">
+            <h1 className="text-[1.7rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
               <span suppressHydrationWarning>
                 {dayGreeting()}
-                {firstName ? `, ${firstName}` : ''}
+                {firstName ? ', ' : '.'}
               </span>
+              {firstName && (
+                <span className="text-blue-700 dark:text-blue-400" suppressHydrationWarning>
+                  {firstName}.
+                </span>
+              )}
             </h1>
             {dateLabel && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <Calendar size={12} className="text-[#71767b] shrink-0" />
-                <span className="text-[13px] text-[#536471] dark:text-[#71767b] font-medium">{dateLabel}</span>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <Calendar size={11} className="text-slate-400 dark:text-white/25 shrink-0" />
+                <span className="text-[12px] text-slate-500 dark:text-white/40 font-medium">{dateLabel}</span>
               </div>
             )}
           </div>
         </div>
       </div>
 
+      {/* Tasks stay full-width; secondary tools live in unobtrusive hanging buttons. */}
       <div>
+        {/* ── Left: assigned reality first, then personal capture ─── */}
         <div className="min-w-0">
           <TodayFromProjects />
+          <MyDayForesight />
 
-          {/* Capture — short list, hard day */}
+          {/* ── Capture bar ────────────────────────────────────────── */}
           <form onSubmit={add} className="mb-4">
-            <div className="relative border border-[#eff3f4] dark:border-[#2f3336] bg-transparent px-3.5 py-3 focus-within:border-[var(--mars)] transition-colors" style={{ borderRadius: 16 }}>
+            <div className="relative rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm hover:border-slate-300/80 focus-within:border-blue-500/60 dark:focus-within:border-blue-500/50 focus-within:shadow-[0_0_0_3px_rgba(21,101,192,0.10)] transition-all">
               <div className="flex items-center gap-3">
-                <PenLine size={18} className="text-[#71767b] shrink-0" />
+                {/* Capture icon — a pen, matching the "empty your mind" prompt */}
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, rgba(21,101,192,0.15) 0%, rgba(34,197,94,0.12) 100%)',
+                    boxShadow: '0 0 0 1px rgba(21,101,192,0.12)',
+                  }}
+                >
+                  <PenLine size={18} className="text-blue-600 dark:text-blue-400" />
+                </div>
                 <input
                   ref={inputRef}
-                  className="flex-1 bg-transparent text-[15px] text-[#0f1419] dark:text-[#e7e9ea] placeholder:text-[#71767b] border-0 outline-none py-1 min-w-0"
-                  placeholder="One thing for today…"
+                  className="flex-1 bg-transparent text-[15px] text-slate-800 dark:text-white/90 placeholder-slate-400 dark:placeholder-white/30 border-0 outline-none py-1 min-w-0"
+                  placeholder="What needs to get done today?"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   autoFocus
@@ -622,12 +640,12 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                 {text.trim() ? (
                   <button
                     type="submit"
-                    className="btn-primary shrink-0 text-[12px] px-3 py-1.5"
+                    className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 fade-in-soft transition-colors"
                   >
-                    <Plus size={13} /> Add
+                    <Plus size={13} /> Add ↵
                   </button>
                 ) : (
-                  <span className="shrink-0 hidden sm:inline text-[11px] text-[#71767b] font-medium pr-1">
+                  <span className="shrink-0 hidden sm:inline text-[11px] text-slate-400 dark:text-white/25 font-medium pr-1">
                     Enter ↵
                   </span>
                 )}
@@ -635,13 +653,14 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
             </div>
           </form>
 
+          {/* ── Empty state ──────────────────────────────────────── */}
           {open.length === 0 && done.length === 0 && (
-            <div className="border border-dashed border-[#e7e5e4] dark:border-[#2f3336] p-8 text-center" style={{ borderRadius: 16 }}>
-              <div className="text-[15px] font-bold text-[#0f1419] dark:text-[#e7e9ea] mb-1">
-                Keep today short
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] p-8 text-center">
+              <div className="text-sm font-bold text-slate-700 dark:text-white/60 mb-1">
+                Capture one thing
               </div>
-              <div className="text-[13px] text-[#71767b] max-w-xs mx-auto leading-relaxed">
-                Capture the few things that must move. Assigned work from projects is above.
+              <div className="text-xs text-slate-400 dark:text-white/25 max-w-xs mx-auto leading-relaxed">
+                Ideas, blockers, follow-ups. Unfinished notes carry over.
               </div>
             </div>
           )}
@@ -660,7 +679,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                       ${
                         isChecking
                           ? 'border-emerald-200 dark:border-emerald-500/25 bg-emerald-50/80 dark:bg-emerald-500/[0.08] scale-[0.995]'
-                          : 'border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12 hover:shadow-sm dark:hover:bg-white/[0.045]'
+                          : 'border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] hover:border-slate-300 dark:hover:border-white/12 hover:shadow-sm dark:hover:bg-white/[0.045]'
                       }
                     `}
                   >
@@ -1065,6 +1084,65 @@ function PromoteModal({
   );
 }
 
+/* ── Delivery Foresight strip ─────────────────────────────────────────────────
+   The forward-looking counterpart to the task list: one computed line over the
+   heavy engine (lib/ai/deliveryForesight), and — when something is trending to
+   miss — a single "start here" pointer at the task most likely to slip. This is
+   "optimal order" in its minimal form: not a re-sorted list, just the one move
+   that matters today. Silent until there's enough history to forecast. */
+function MyDayForesight() {
+  const [f, setF] = useState<any | null>(null);
+  useEffect(() => {
+    api('/me/foresight')
+      .then((d: any) => setF(d))
+      .catch(() => setF(null));
+  }, []);
+
+  if (!f || !f.hasSignal) return null;
+  // Nothing forward-looking to add on a clear plate — the list speaks for itself.
+  if (f.status === 'clear' && !f.topRisk) return null;
+
+  const clearLabel = f.clearDateP80
+    ? new Date(f.clearDateP80).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : null;
+  const accent =
+    f.status === 'at_risk' || f.status === 'overloaded'
+      ? '#d97706'
+      : f.status === 'cooling'
+        ? '#64748b'
+        : '#7c3aed';
+
+  return (
+    <div
+      className="mt-5 rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] px-3.5 py-3"
+      style={{ borderLeft: `3px solid ${accent}` }}
+    >
+      <div className="flex items-center gap-1.5 mb-1">
+        <Sparkles size={12} style={{ color: accent }} className="shrink-0" />
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent }}>
+          Foresight
+        </span>
+        {clearLabel && f.openTasks > 0 && (
+          <span className="ml-auto text-[10px] font-medium text-slate-400 dark:text-white/30">
+            plate clears ~{clearLabel}
+          </span>
+        )}
+      </div>
+      <p className="text-[12.5px] text-slate-700 dark:text-white/75 leading-snug">{f.headline}</p>
+      {f.topRisk && (
+        <Link
+          href={`/tasks/${f.topRisk.id}`}
+          className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/[0.1] border border-amber-200/70 dark:border-amber-400/20 px-2.5 py-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300 transition hover:bg-amber-100 dark:hover:bg-amber-500/[0.16]"
+        >
+          <Zap size={12} strokeWidth={2.5} className="shrink-0" />
+          <span className="truncate">Start here: {f.topRisk.title}</span>
+          <ArrowRight size={12} className="shrink-0" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
 /* ── Today from your projects ────────────────────────────────────────────────
    My Day is the personal cockpit, but the day also has assigned work. This
    pulls the viewer's Daily Brief (same object as the dashboard card) and
@@ -1092,7 +1170,7 @@ function TodayFromProjects() {
   if (rows.length === 0) return null;
 
   return (
-    <div className="mt-5 rounded-xl border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025] px-3.5 py-2.5">
+    <div className="mt-5 rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] px-3.5 py-2.5">
       <div className="flex items-center gap-2 mb-1">
         <FolderKanban size={12} className="text-slate-400 dark:text-white/30 shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">

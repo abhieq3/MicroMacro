@@ -13,7 +13,7 @@ export function BirdEyeIcon({
   size = 18,
   className = '',
   blink = false,
-  title = 'Map',
+  title = "Bird's-eye view",
 }: {
   size?: number;
   className?: string;

@@ -32,7 +32,7 @@ function ProfileHeroGhost() {
           <Skel className="h-7 w-24 rounded-full shrink-0" />
         </div>
       </div>
-      <div className="mt-5 pt-4 border-t border-slate-100 dark:border-[#2f3336] flex items-center justify-between gap-3">
+      <div className="mt-5 pt-4 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
         <Skel className="h-3.5 w-28 rounded" />
         <Skel className="h-7 w-20 rounded-full" />
       </div>
@@ -210,7 +210,7 @@ function RowListSkeleton({
 
 function TabsSkeleton({ count = 3 }: { count?: number }) {
   return (
-    <div className="flex gap-2 border-b border-slate-100 dark:border-[#2f3336]">
+    <div className="flex gap-2 border-b border-slate-100 dark:border-white/10">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="h-8 rounded-t-xl px-4 flex items-center">
           <Skel className="h-3 w-16 rounded" />
@@ -388,11 +388,11 @@ export function TeamDetailSkeleton() {
             </div>
           </div>
         </div>
-        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-[#2f3336] grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-white/[0.06] grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl border border-slate-200/70 dark:border-[#2f3336] bg-slate-50/60 dark:bg-white/[0.02] px-3 py-2.5 space-y-1.5"
+              className="rounded-xl border border-slate-200/70 dark:border-white/[0.07] bg-slate-50/60 dark:bg-white/[0.02] px-3 py-2.5 space-y-1.5"
             >
               <Skel className="h-2.5 w-16 rounded" />
               <Skel className="h-5 w-12 rounded" />
@@ -541,7 +541,7 @@ export function MyDaySkeleton() {
       </div>
       {/* Capture bar */}
       <div className="mb-4">
-        <div className="rounded-2xl border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm">
+        <div className="rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] px-3.5 py-3 shadow-sm">
           <div className="flex items-center gap-3">
             <Skel className="h-9 w-9 rounded-xl shrink-0" />
             <Skel className="h-5 flex-1 rounded-lg" />
@@ -554,7 +554,7 @@ export function MyDaySkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 border border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.025]"
+            className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025]"
           >
             <Skel className="h-[18px] w-[18px] rounded-[5px] shrink-0" />
             <Skel className="h-4 flex-1 max-w-[380px] rounded" />
@@ -645,7 +645,7 @@ export function SettingsSkeleton() {
       </div>
       {Array.from({ length: 2 }).map((_, i) => (
         <div key={i} className="card overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-[#2f3336] flex items-center gap-2.5">
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07] flex items-center gap-2.5">
             <Skel className="h-4 w-4 rounded" />
             <div className="flex-1 space-y-1">
               <Skel className="h-4 w-36 rounded" />

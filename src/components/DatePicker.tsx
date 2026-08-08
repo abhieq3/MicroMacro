@@ -149,7 +149,7 @@ export function DatePicker({
         createPortal(
           <div
             ref={popRef}
-            className="fixed rounded-2xl fade-in-soft datepicker-pop bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-[#2f3336] overflow-hidden"
+            className="fixed rounded-2xl fade-in-soft datepicker-pop bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/10 overflow-hidden"
             style={{
               top: coords.top,
               left: coords.left,
@@ -167,7 +167,7 @@ export function DatePicker({
               inset, so it was visibly overflowing on both edges). */}
             <div
               className="h-1"
-              style={{ background: '#000000' }}
+              style={{ background: 'linear-gradient(90deg, #0D47A1 0%, #1565C0 45%, #2E7D32 100%)' }}
             />
             <div className="p-3">
               <CalendarGrid
@@ -303,7 +303,7 @@ function CalendarGrid({
               onClick={() => !disabled && onPick(day)}
               style={
                 isSel
-                  ? { background: '#000000', color: '#ffffff' }
+                  ? { background: 'linear-gradient(135deg, #1565C0 0%, #1976D2 50%, #2E7D32 100%)' }
                   : undefined
               }
               className={cls}
