@@ -38,8 +38,8 @@ export const metadata: Metadata = {
 
 export const viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#faf8f5' },
-    { media: '(prefers-color-scheme: dark)', color: '#0c0a09' },
+    { media: '(prefers-color-scheme: light)', color: '#f4f7fb' },
+    { media: '(prefers-color-scheme: dark)', color: '#1f1e1d' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -47,7 +47,7 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Mars identity: warm light default. Dark only when user opts in.
+  // Classic brand: light office canvas. Dark opt-in.
   const theme = cookies().get('pragati_theme')?.value;
   const dark = theme === 'dark';
 

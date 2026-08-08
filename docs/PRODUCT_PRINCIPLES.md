@@ -16,7 +16,7 @@ Work backward from that morning — not from a theme, a feed, or a philosophy bo
 
 Focus is not a denser monochrome UI. Focus is refusing the hundred other good ideas.
 
-- One visual identity (Mars). No palette thrash.
+- One visual identity (classic blue→forest brand). No palette thrash.
 - One home layout until real usage forces a change.
 - One login voice (Steve Jobs). Optional atmosphere only — never in the work path.
 

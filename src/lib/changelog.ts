@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Restore classic brand theme (blue → forest)',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Reverted the Jul 31 pure-black / X / Mars identity thrash. Login and product chrome are back on the classic blue→forest brand mark, aurora login panel, light office canvas, and gradient primary buttons users already knew.',
+      'Functional work stays: Jobs quotes, whiteboard, assignee status, calm home. --mars tokens now alias brand blue so leftover references do not rust the UI.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Assignees can finish work; kill dead Platform link',
     tags: ['fix', 'improvement'],
     highlight: true,

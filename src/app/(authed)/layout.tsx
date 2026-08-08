@@ -31,7 +31,7 @@ export default async function AuthedLayout({ children }: { children: React.React
     };
   }
 
-  // Mars identity: warm light default (office), dark when user opts in.
+  // Classic brand: light default; dark when cookie says so.
   // Cookie is the only source of truth — no FOUC, no theme thrash.
   const themeCookie = cookies().get('pragati_theme')?.value;
   const initialDark = themeCookie === 'dark';

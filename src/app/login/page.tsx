@@ -68,7 +68,7 @@ function RotatingQuote() {
   return (
     <div
       style={{ fontSize: 13, transition: 'opacity 0.35s ease', opacity: show ? 1 : 0, minHeight: 40 }}
-      className="text-[#71767b] max-w-[320px] mx-auto leading-snug text-center"
+      className="text-white/50 max-w-[320px] mx-auto leading-snug text-center"
     >
       “{q.text}”
     </div>
@@ -350,44 +350,141 @@ export default function LoginPage() {
           100% { transform: translateX(250%); }
         }
         .veil-bar { animation: veil-bar 0.9s ease-in-out infinite; }
+        @keyframes aurora-1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(8%, 6%) scale(1.15); } }
+        @keyframes aurora-2 { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-7%, -5%) scale(1); } }
+        @keyframes aurora-3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(5%, -8%) scale(1.2); } }
+        .aurora-1 { animation: aurora-1 16s ease-in-out infinite; }
+        .aurora-2 { animation: aurora-2 20s ease-in-out infinite; }
+        .aurora-3 { animation: aurora-3 24s ease-in-out infinite; }
+        @keyframes pulse-ring {
+          0% { transform: scale(0.92); opacity: 0.55; }
+          70% { transform: scale(1.12); opacity: 0; }
+          100% { opacity: 0; }
+        }
+        .pulse-ring { animation: pulse-ring 2.8s ease-out infinite; }
+        .pulse-ring-2 { animation: pulse-ring 2.8s 0.7s ease-out infinite; }
+        .pulse-ring-3 { animation: pulse-ring 2.8s 1.4s ease-out infinite; }
+        @keyframes logo-float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-6px); }
+        }
+        .logo-float { animation: logo-float 4.5s ease-in-out infinite; }
+        @keyframes shimmer-line-run {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .shimmer-line::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent);
+          animation: shimmer-line-run 2.4s ease-in-out infinite;
+        }
         @media (prefers-reduced-motion: reduce) {
-          .pin-shake, .pin-pop, .veil-bar { animation: none !important; }
+          .pin-shake, .pin-pop, .veil-bar, .aurora-1, .aurora-2, .aurora-3,
+          .pulse-ring, .pulse-ring-2, .pulse-ring-3, .logo-float, .shimmer-line::after { animation: none !important; }
           .fade-up, .fade-up-1, .fade-up-2, .fade-up-3, .fade-in-soft, .form-swap, .veil-in { animation-duration: 0.01ms !important; }
         }
       `}</style>
 
-      <div className="min-h-screen flex bg-black">
-        {/* ════ LEFT — pure black brand panel ════════════════════════════ */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col relative overflow-hidden bg-black border-r border-[#2f3336]">
+      <div className="min-h-screen flex">
+        {/* ════ LEFT — classic brand panel (blue → forest) ═══════════════ */}
+        <div
+          className="hidden lg:flex lg:w-[54%] flex-col relative overflow-hidden"
+          style={{
+            background: 'linear-gradient(160deg, #050E1D 0%, #091828 40%, #0B1F3A 70%, #0C2347 100%)',
+          }}
+        >
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            <div
+              className="absolute aurora-1"
+              style={{
+                top: '-10%',
+                left: '8%',
+                width: 560,
+                height: 560,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(30,136,229,0.40) 0%, transparent 60%)',
+                filter: 'blur(28px)',
+              }}
+            />
+            <div
+              className="absolute aurora-2"
+              style={{
+                top: '28%',
+                right: '-12%',
+                width: 480,
+                height: 480,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(46,125,50,0.32) 0%, transparent 62%)',
+                filter: 'blur(30px)',
+              }}
+            />
+            <div
+              className="absolute aurora-3"
+              style={{
+                bottom: '-16%',
+                left: '30%',
+                width: 520,
+                height: 520,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 64%)',
+                filter: 'blur(34px)',
+              }}
+            />
+          </div>
           <div
-            className="absolute inset-0 pointer-events-none opacity-40"
+            className="absolute inset-0 pointer-events-none"
             style={{
-              backgroundImage: 'none',
+              backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
+              backgroundSize: '28px 28px',
             }}
           />
 
           <div className="relative flex flex-col flex-1 px-14 py-12">
             <div className="flex-1 flex flex-col justify-center">
               <div className="flex justify-center mb-10">
-                <PragatiMark size={88} />
+                <div className="relative logo-float" style={{ width: 112, height: 112 }}>
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      aria-hidden
+                      className={i === 0 ? 'pulse-ring' : i === 1 ? 'pulse-ring-2' : 'pulse-ring-3'}
+                      style={{
+                        position: 'absolute',
+                        inset: -18,
+                        borderRadius: '32%',
+                        border: '1.5px solid rgba(66,165,245,0.45)',
+                        boxShadow: 'inset 0 0 18px rgba(66,165,245,0.12)',
+                        pointerEvents: 'none',
+                      }}
+                    />
+                  ))}
+                  <PragatiMark size={112} />
+                </div>
               </div>
 
               <h1
                 className="fade-up-1 brand-wordmark text-center text-white"
-                style={{ fontSize: 'clamp(56px, 5.5vw, 80px)' }}
+                style={{ fontSize: 'clamp(62px, 6.2vw, 88px)' }}
               >
                 Pragati
               </h1>
 
-              <div className="fade-up-2 flex justify-center mt-6">
-                <div className="h-px w-12 bg-white/25" />
+              <div className="fade-up-2 flex justify-center mt-5">
+                <div
+                  className="relative h-0.5 w-20 rounded-full overflow-hidden shimmer-line"
+                  style={{ background: 'linear-gradient(90deg, #1769C8, #43A047)' }}
+                />
               </div>
 
               <p
-                className="fade-up-2 text-center text-[#71767b] mt-6 leading-relaxed mx-auto tracking-wide"
-                style={{ fontSize: 13, maxWidth: 280 }}
+                className="fade-up-2 text-center text-white/55 mt-5 leading-relaxed mx-auto"
+                style={{ fontSize: 14, maxWidth: 320 }}
               >
-                Focus. Ship. Make the work visible.
+                A bird&apos;s-eye view of every project,
+                <br />
+                every action, every contributor.
               </p>
             </div>
 
@@ -398,38 +495,43 @@ export default function LoginPage() {
         </div>
 
         {/* ════ RIGHT — Form panel ═══════════════════════════════════════ */}
-        <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative bg-white dark:bg-black">
+        <div className="flex-1 flex flex-col justify-center items-center px-6 py-12 relative bg-white">
+          <div className="absolute inset-0 lg:hidden profile-hero-shimmer opacity-90" />
+          <div
+            className="absolute top-0 left-0 right-0 h-[3px]"
+            style={{ background: 'linear-gradient(90deg, #1565C0 0%, #1769C8 50%, #2B8C29 100%)' }}
+          />
+
           <div className="w-full max-w-[340px] fade-up relative">
-            <div className="flex flex-col items-center mb-10 lg:hidden">
-              <PragatiMark size={48} />
-              <div className="brand-wordmark text-[1.75rem] text-[#0f1419] dark:text-white mt-4">Pragati</div>
-              <div className="text-xs text-[#71767b] mt-1 tracking-wide">Team work, fully visible</div>
-              <div className="mt-5 w-full max-w-[300px]">
+            <div className="flex flex-col items-center mb-8 lg:hidden">
+              <div
+                className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mb-1"
+                style={{ boxShadow: '0 8px 24px rgba(15,23,42,0.3)' }}
+              >
+                <PragatiMark size={44} />
+              </div>
+              <div className="brand-wordmark text-[2rem] text-white mt-3 drop-shadow">Pragati</div>
+              <div className="text-sm text-white/70 mt-1">The view from above</div>
+              <div className="mt-4 w-full max-w-[300px] bg-white/95 rounded-xl px-3 py-2.5 shadow-lg">
                 <RotatingQuote />
               </div>
             </div>
 
-            <div className="p-0">
+            <div className="rounded-2xl bg-white p-6 shadow-2xl lg:p-0 lg:rounded-none lg:bg-transparent lg:shadow-none">
               {/* Deactivated-account notice */}
               {notice && (
-                <div
-                  className="mb-5 border border-red-500/30 bg-red-500/10 px-4 py-3 flex items-start gap-2.5 fade-in-soft"
-                  style={{ borderRadius: 12 }}
-                >
-                  <span className="text-red-400 font-bold shrink-0 mt-0.5 text-sm">!</span>
-                  <div className="text-sm text-red-200 leading-snug">{notice}</div>
+                <div className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2.5 fade-in-soft">
+                  <span className="text-red-500 font-bold shrink-0 mt-0.5 text-sm">!</span>
+                  <div className="text-sm text-red-800 leading-snug">{notice}</div>
                 </div>
               )}
 
               {dbDown && (
-                <div
-                  className="mb-5 border border-amber-500/30 bg-amber-500/10 px-4 py-3 fade-in-soft"
-                  style={{ borderRadius: 12 }}
-                >
-                  <div className="text-sm text-amber-200 leading-snug">
-                    <strong>Can’t reach the database.</strong> Sign-in won’t work until it’s back.
+                <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 fade-in-soft">
+                  <div className="text-sm text-amber-800 leading-snug">
+                    <strong>Can&apos;t reach the database.</strong> Sign-in won&apos;t work until it&apos;s back.
                   </div>
-                  <div className="text-[12px] text-amber-200/70 leading-snug mt-1.5">
+                  <div className="text-[12px] text-amber-700/90 leading-snug mt-1.5">
                     Check <code className="font-mono">MONGODB_URI</code> and Atlas Network Access, then
                     redeploy. <code className="font-mono">/api/health</code> →{' '}
                     <code className="font-mono">ok</code> when fixed.
@@ -449,7 +551,7 @@ export default function LoginPage() {
                         className="relative rounded-full p-[1px]"
                         style={{ background: 'rgba(255,255,255,0.2)' }}
                       >
-                        <div className="rounded-full p-[2px] bg-black">
+                        <div className="rounded-full p-[2px] bg-white">
                           {deviceAvatar.image ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -473,13 +575,13 @@ export default function LoginPage() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-[10px] font-bold text-[#71767b] uppercase tracking-[0.2em] mb-1.5 fade-up-1">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1.5 fade-up-1">
                       Welcome back
                     </p>
-                    <h2 className="font-display text-[26px] font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight leading-none fade-up-1">
+                    <h2 className="font-display text-[26px] font-bold text-slate-900 tracking-tight leading-none fade-up-1">
                       {deviceName || 'You'}
                     </h2>
-                    <p className="text-[13px] text-[#71767b] mt-2 leading-snug fade-up-2">
+                    <p className="text-[13px] text-slate-500 mt-2 leading-snug fade-up-2">
                       Enter your PIN
                     </p>
                   </div>
@@ -498,14 +600,14 @@ export default function LoginPage() {
                           borderRadius: 12,
                           border: `1px solid ${
                             unlocked
-                              ? '#00ba7c'
+                              ? '#16a34a'
                               : shake
-                                ? '#f4212e'
+                                ? '#ef4444'
                                 : pin.length === i
-                                  ? 'var(--mars)'
+                                  ? '#1565C0'
                                   : pin.length > i
                                     ? '#536471'
-                                    : '#2f3336'
+                                    : '#e2e8f0'
                           }`,
                           background: unlocked
                             ? 'rgba(34,197,94,0.1)'
@@ -513,16 +615,16 @@ export default function LoginPage() {
                               ? 'rgba(239,68,68,0.1)'
                               : pin.length > i
                                 ? 'rgba(255,255,255,0.08)'
-                                : '#000000',
+                                : '#ffffff',
                           boxShadow:
                             !unlocked && !shake && pin.length === i
-                              ? '0 0 0 1px var(--mars)'
+                              ? '0 0 0 3px rgba(21,101,192,0.18)'
                               : 'none',
                         }}
                       >
                         {pin.length > i && (
                           <div
-                            className={`w-2.5 h-2.5 rounded-full ${unlocked ? 'bg-green-500 pin-pop' : 'bg-white'}`}
+                            className={`w-2.5 h-2.5 rounded-full ${unlocked ? 'bg-green-600 pin-pop' : 'bg-blue-600'}`}
                           />
                         )}
                       </div>
@@ -575,16 +677,16 @@ export default function LoginPage() {
 
                   <div className="mt-6 flex flex-col items-center gap-2">
                     <div className="flex items-center gap-2 w-full">
-                      <span className="h-px flex-1 bg-white/10" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/30">
+                      <span className="h-px flex-1 bg-slate-200" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                         or
                       </span>
-                      <span className="h-px flex-1 bg-white/10" />
+                      <span className="h-px flex-1 bg-slate-200" />
                     </div>
                     <button
                       onClick={usePasswordInstead}
                       type="button"
-                      className="w-full py-2.5 text-sm font-semibold text-[#536471] dark:text-white/60 hover:text-[#0f1419] dark:hover:text-white border border-[#eff3f4] dark:border-[#2f3336] hover:bg-[rgba(15,20,25,0.03)] dark:hover:bg-white/[0.04] transition-colors"
+                      className="w-full py-2.5 text-sm font-semibold text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 transition-colors"
                       style={{ borderRadius: 12 }}
                     >
                       Use password / switch account
@@ -596,10 +698,10 @@ export default function LoginPage() {
               {/* Heading */}
               {mode !== 'unlock' && (
                 <div className="mb-8 form-swap" key={mode + '-h'}>
-                  <h2 className="text-2xl font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight">
+                  <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
                     {mode === 'login' ? 'Sign in' : 'Set up workspace'}
                   </h2>
-                  <p className="text-sm text-[#71767b] mt-1.5 leading-snug">
+                  <p className="text-sm text-slate-500 mt-1.5 leading-snug">
                     {mode === 'login' ? 'Enter credentials to continue.' : 'Create the first lead account.'}
                   </p>
                 </div>
@@ -610,7 +712,7 @@ export default function LoginPage() {
                   {mode === 'setup' && (
                     <>
                       <div>
-                        <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-1.5">
                           Full name
                         </label>
                         <input
@@ -622,8 +724,8 @@ export default function LoginPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
-                          Job title <span className="normal-case font-normal text-white/25">(optional)</span>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-1.5">
+                          Job title <span className="normal-case font-normal text-slate-400">(optional)</span>
                         </label>
                         <input
                           className="input"
@@ -636,7 +738,7 @@ export default function LoginPage() {
                   )}
 
                   <div>
-                    <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-1.5">
                       {mode === 'login' ? 'Username' : 'Email'}
                     </label>
                     <input
@@ -653,7 +755,7 @@ export default function LoginPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-[#71767b] uppercase tracking-[0.14em] mb-1.5">
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-1.5">
                       Password
                     </label>
                     <div className="relative">
@@ -671,7 +773,7 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#71767b] hover:text-[#0f1419] dark:hover:text-white transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors"
                         tabIndex={-1}
                         aria-label={showPw ? 'Hide password' : 'Show password'}
                       >
@@ -685,8 +787,7 @@ export default function LoginPage() {
                     <div
                       role="alert"
                       aria-live="assertive"
-                      className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft"
-                      style={{ borderRadius: 12 }}
+                      className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 leading-snug flex items-start gap-2 fade-in-soft"
                     >
                       <span aria-hidden="true" className="font-bold leading-none mt-0.5">
                         !
@@ -704,7 +805,7 @@ export default function LoginPage() {
                     {loading ? (
                       <>
                         <span
-                          className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"
+                          className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
                           aria-hidden="true"
                         />
                         <span>{mode === 'login' ? 'Signing in…' : 'Creating workspace…'}</span>
@@ -722,14 +823,14 @@ export default function LoginPage() {
               {mode !== 'unlock' && (
                 <div className="mt-6 text-center">
                   {mode === 'setup' ? (
-                    <p className="text-sm text-white/40">
+                    <p className="text-sm text-slate-500">
                       Already have an account?{' '}
                       <button
                         onClick={() => {
                           setMode('login');
                           setErr('');
                         }}
-                        className="text-white font-semibold hover:underline"
+                        className="text-[#1565C0] font-semibold hover:underline"
                       >
                         Sign in
                       </button>
@@ -739,16 +840,15 @@ export default function LoginPage() {
                       <button
                         type="button"
                         onClick={() => setShowForgot((v) => !v)}
-                        className="text-xs text-white/35 hover:text-white/70 underline underline-offset-2 transition-colors"
+                        className="text-xs text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
                       >
                         Forgot your password?
                       </button>
                       {showForgot && (
                         <div
-                          className="mt-3 border border-white/10 bg-white/[0.04] px-4 py-3 text-left fade-in-soft"
-                          style={{ borderRadius: 12 }}
+                          className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left fade-in-soft"
                         >
-                          <p className="text-[12px] text-white/55 leading-snug">
+                          <p className="text-[12px] text-slate-600 leading-snug">
                             Contact your administrator to reset your password.
                           </p>
                         </div>
@@ -776,7 +876,7 @@ export default function LoginPage() {
             Welcome back{deviceName ? `, ${deviceName.split(/\s+/)[0]}` : ''}
           </div>
           <div className="text-[13px] text-white/40 mt-2 fade-up-2">Loading workspace…</div>
-          <div className="mt-8 w-36 h-px overflow-hidden bg-white/10 fade-up-3">
+          <div className="mt-8 w-36 h-px overflow-hidden bg-slate-200 fade-up-3">
             <div className="h-full w-1/2 veil-bar bg-white" />
           </div>
         </div>

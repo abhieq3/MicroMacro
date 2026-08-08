@@ -2,314 +2,354 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   PRAGATI — Mars theme
-   Light (default): warm dust surfaces, stone text, Mars rust accent.
-   Dark: pure black rails + Mars rust accent (not sterile blue).
-   ═══════════════════════════════════════════════════════════════════════════ */
-
+/* Display face for the Pragati wordmark + hero headings. Falls back to the
+   system stack until General Sans loads. Tightened tracking for a premium,
+   modern feel. */
 .font-display {
   font-family:
+    'General Sans',
+    ui-sans-serif,
+    system-ui,
     -apple-system,
-    BlinkMacSystemFont,
     'Segoe UI',
-    Roboto,
-    Helvetica,
-    Arial,
     sans-serif;
   letter-spacing: -0.02em;
-  font-weight: 700;
+  font-feature-settings: 'ss01';
 }
 
+/* ── Pragati brand wordmark ────────────────────────────────────────────────
+   The single, canonical treatment for the literal word "Pragati" everywhere
+   it appears as the logotype (sidebar, login, signup, forgot-password). It
+   uses the General Sans display face at its heaviest weight with tightened,
+   optically-balanced tracking and the 'ss01' stylistic set + discretionary
+   ligatures, so the wordmark reads as a crafted logotype rather than just bold
+   body text. Colour is left to the call site (white on the login hero,
+   ink/white in the sidebar) so this stays purely typographic. */
 .brand-wordmark {
   font-family:
+    'General Sans',
+    ui-sans-serif,
+    system-ui,
     -apple-system,
-    BlinkMacSystemFont,
     'Segoe UI',
-    Roboto,
-    Helvetica,
-    Arial,
     sans-serif;
   font-weight: 800;
   letter-spacing: -0.03em;
-  font-feature-settings: 'liga' 1, 'kern' 1;
+  /* The 'ss01' stylistic set rewires lowercase glyphs in General Sans (notably
+     a double-storey 'g' → single-storey). When General Sans hasn't loaded yet
+     and we fall back to system fonts, 'ss01' has no defined mapping and most
+     system fonts render 'ss01' as a tofu-like fragment for the 'g', which is
+     what the team reported as the wordmark looking "broken". We rely on plain
+     ligatures only — the wordmark still reads as a logotype, and the 'g' is
+     consistent across loaded + fallback states. */
+  font-feature-settings:
+    'liga' 1,
+    'kern' 1;
+  font-optical-sizing: auto;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* The descender of General Sans' 'g' is deep. With `background-clip: text`
+     the glyph is painted into a tight line box, so a small line-height (or a
+     parent's overflow:hidden) shaved the tail — the "broken g" report. Give it
+     its own non-clipping inline-block box with generous line-height + a hair of
+     bottom padding so the descender always has room, regardless of the
+     surrounding layout. */
   display: inline-block;
-  line-height: 1.2 !important;
-  padding-bottom: 0.06em;
+  /* !important so a utility like `leading-none` on the same element can't pull
+     the line box tight and clip the descender. */
+  line-height: 1.28 !important;
+  padding-bottom: 0.14em;
   overflow: visible;
 }
 
+/* Gradient-filled variant for light surfaces (sidebar in light mode, auth
+   cards). Paints the brand blue→forest gradient straight into the glyphs —
+   the same hues as the logo mark — for a richer, more memorable logotype.
+   Only use where the background is light; on dark/coloured surfaces use the
+   plain .brand-wordmark with an explicit colour instead. */
 .brand-wordmark-gradient {
-  color: #0f1419;
-  background: none;
-  -webkit-background-clip: unset;
-  background-clip: unset;
-  filter: none;
+  /* Blue-dominant with a deep-azure core and a forest finish on the final
+     glyphs — mirrors the logo mark's tile gradient. The extra #0D47A1 stop
+     gives the start a richer, inkier depth than a flat two-stop ramp, and the
+     green is pushed to the tail (88–100%) so it reads as an accent, not half
+     the word. */
+  background: linear-gradient(118deg, #0d47a1 0%, #1565c0 30%, #1976d2 60%, #2e7d32 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  /* Hairline shadow lifts the gradient glyphs off light cards without muddying
+     the fill (kept very soft so it never reads as a drop-shadow). */
+  filter: drop-shadow(0 1px 0 rgba(15, 23, 42, 0.04));
 }
 
-/* ── Mars tokens ─────────────────────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  /* Mars rust — primary accent both modes */
-  --mars: #c2410c;
-  --mars-hover: #9a3412;
-  --mars-soft: rgba(194, 65, 12, 0.12);
-  --mars-glow: rgba(234, 88, 12, 0.18);
-  --x-blue: #c2410c;
-  --x-blue-hover: #9a3412;
-  --x-green: #15803d;
-  --x-red: #dc2626;
-  --x-pink: #e11d48;
-  --x-border: #e7e5e4;
-  --x-hover: rgba(28, 25, 23, 0.06);
-
-  --brand: #1c1917;
-  --brand-dark: #1c1917;
-  --brand-light: #f5f5f4;
-  --forest: #15803d;
-  --forest-light: rgba(21, 128, 61, 0.12);
-  --teal: #78716c;
-  --mint: #fafaf9;
-  --brand-gradient: #c2410c;
-  --brand-gradient-soft: rgba(194, 65, 12, 0.1);
-  --brand-gradient-hover: #9a3412;
-  --radius: 9999px;
-  --radius-card: 16px;
-  --radius-control: 4px;
-  /* Warm dust page — not sterile pure white */
-  --bg-page: #faf8f5;
+  --brand: #1565c0;
+  --brand-dark: #0d47a1;
+  --brand-light: #e3f2fd;
+  --forest: #2e7d32;
+  --forest-light: #e8f5e9;
+  --teal: #00897b;
+  --mint: #b7e4c2;
+  /* Two-stop brand gradient — used on primary CTAs, active sidebar item,
+     header chips, and the focus ring. Same hues as the logo mark. */
+  --brand-gradient: linear-gradient(135deg, #1565c0 0%, #1976d2 45%, #2e7d32 100%);
+  --brand-gradient-soft: linear-gradient(135deg, rgba(21, 101, 192, 0.1) 0%, rgba(46, 125, 50, 0.1) 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #1256b0 0%, #1565c0 45%, #257026 100%);
+  --radius: 10px;
+  /* Flat page canvas. The brand colour shows up on the dashboard hero card
+     (.brand-mesh) instead of on the body itself — painting two radial
+     gradients across the full viewport hurt FCP and triggered repaints
+     on every scroll. */
+  --bg-page: #f4f7fb;
   --bg-card: #ffffff;
-  --bg-subtle: #f5f2ed;
-  --bg-elevated: #ffffff;
-  --border-card: #e7e5e4;
-  --border-strong: #d6d3d1;
-  --text-primary: #1c1917;
-  --text-secondary: #57534e;
-  --text-muted: #78716c;
-  --accent: #c2410c;
-  --focus-ring: rgba(194, 65, 12, 0.28);
-  --status-go: #15803d;
-  --status-warn: #d97706;
-  --status-stop: #dc2626;
-  --status-info: #78716c;
-  --icon: #57534e;
-  --icon-active: #c2410c;
+  --bg-subtle: #f8fafc;
+  --border-card: rgba(210, 218, 228, 0.8);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  /* Compatibility: post-Mars code still uses --mars; map to classic brand blue */
+  --mars: #1565c0;
+  --mars-hover: #0d47a1;
+  --mars-soft: rgba(21, 101, 192, 0.12);
+  --mars-glow: rgba(21, 101, 192, 0.22);
+  --x-blue: #1565c0;
+  --x-blue-hover: #0d47a1;
+  --accent: #1565c0;
+  --focus-ring: rgba(21, 101, 192, 0.28);
+  --icon: #475569;
+  --icon-active: #1565c0;
 }
 
 .dark {
   color-scheme: dark;
-  --mars: #ea580c;
-  --mars-hover: #f97316;
-  --mars-soft: rgba(234, 88, 12, 0.16);
-  --mars-glow: rgba(234, 88, 12, 0.22);
-  --x-blue: #ea580c;
-  --x-blue-hover: #f97316;
-  --x-green: #22c55e;
-  --x-red: #f87171;
-  --x-pink: #fb7185;
-  --x-border: #292524;
-  --x-hover: rgba(231, 229, 228, 0.08);
-
-  --brand: #fafaf9;
-  --brand-dark: #fafaf9;
-  --brand-light: #1c1917;
-  --forest: #22c55e;
-  --forest-light: rgba(34, 197, 94, 0.14);
-  --brand-gradient: #ea580c;
-  --brand-gradient-soft: rgba(234, 88, 12, 0.14);
-  --brand-gradient-hover: #f97316;
-  --bg-page: #0c0a09;
-  --bg-card: #0c0a09;
-  --bg-subtle: #1c1917;
-  --bg-elevated: #1c1917;
-  --border-card: #292524;
-  --border-strong: #44403c;
-  --text-primary: #fafaf9;
-  --text-secondary: #a8a29e;
-  --text-muted: #78716c;
-  --accent: #ea580c;
-  --focus-ring: rgba(234, 88, 12, 0.35);
-  --status-go: #22c55e;
-  --status-warn: #fbbf24;
-  --status-stop: #f87171;
-  --status-info: #a8a29e;
-  --icon: #a8a29e;
-  --icon-active: #ea580c;
+  /* Claude-style warm neutral dark — coffee-toned grays, not blue. */
+  --bg-page: #1f1e1d;
+  --bg-card: #262624;
+  --bg-subtle: #2a2927;
+  --bg-elevated: #30302e;
+  --border-card: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --text-primary: #faf9f5;
+  --text-secondary: #c2c0b6;
+  --text-muted: #8a8780;
+  --accent: #c96442;
+  --mars: #42a5f5;
+  --mars-hover: #64b5f6;
+  --mars-soft: rgba(66, 165, 245, 0.16);
+  --mars-glow: rgba(66, 165, 245, 0.22);
+  --x-blue: #42a5f5;
+  --x-blue-hover: #64b5f6;
+  --focus-ring: rgba(66, 165, 245, 0.35);
+  --icon: #c2c0b6;
+  --icon-active: #42a5f5;
 }
 
+/* ── Base ─────────────────────────────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
 }
 
 body {
-  @apply antialiased;
+  @apply text-slate-800 antialiased;
   font-family:
+    ui-sans-serif,
+    system-ui,
     -apple-system,
-    BlinkMacSystemFont,
     'Segoe UI',
     Roboto,
-    Helvetica,
+    'Helvetica Neue',
     Arial,
     sans-serif;
   background: var(--bg-page);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+  /* Momentum scrolling on iOS; avoid rubber-band fighting fixed chrome */
   overscroll-behavior-y: none;
   -webkit-tap-highlight-color: transparent;
-  font-size: 15px;
-  line-height: 1.4;
 }
 
+/* ── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(29, 155, 240, 0.35);
-  color: inherit;
+  background: #bbdefb;
+  color: #0d47a1;
 }
 
 @layer components {
-  /* ── Buttons (X: white pill primary, outlined secondary) ─────────────── */
+  /* ════════════════════════════════════════════════════════════════════
+     BUTTONS
+  ════════════════════════════════════════════════════════════════════ */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-[15px] font-bold cursor-pointer select-none;
-    border-radius: 9999px;
-    transition:
-      background 0.15s ease,
-      color 0.15s ease,
-      border-color 0.15s ease,
-      opacity 0.15s ease;
+    @apply inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-150 cursor-pointer select-none;
   }
 
   .btn-primary {
-    @apply btn disabled:opacity-50 relative text-white;
-    background: var(--mars);
-    border: 1px solid var(--mars);
-    box-shadow: none;
+    @apply btn text-white disabled:opacity-50 relative overflow-hidden;
+    background: var(--brand-gradient);
+    box-shadow:
+      0 1px 3px rgba(21, 101, 192, 0.3),
+      0 1px 2px rgba(46, 125, 50, 0.18),
+      0 0 0 0 transparent;
   }
   .btn-primary:hover:not(:disabled) {
-    background: var(--mars-hover);
-    border-color: var(--mars-hover);
+    background: var(--brand-gradient-hover);
+    box-shadow:
+      0 4px 14px rgba(21, 101, 192, 0.3),
+      0 2px 6px rgba(46, 125, 50, 0.22);
+    transform: translateY(-0.5px);
   }
   .btn-primary:active:not(:disabled) {
-    opacity: 0.92;
-  }
-  .dark .btn-primary {
-    background: var(--mars) !important;
-    color: #ffffff !important;
-    border-color: var(--mars) !important;
-  }
-  .dark .btn-primary:hover:not(:disabled) {
-    background: var(--mars-hover) !important;
-    border-color: var(--mars-hover) !important;
+    transform: translateY(0) scale(0.97);
   }
 
   .btn-secondary {
-    @apply btn bg-transparent font-bold;
-    color: var(--text-primary);
-    border: 1px solid var(--border-card);
-    box-shadow: none;
+    @apply btn bg-white border border-slate-200 text-slate-700;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.05),
+      0 0 0 0 transparent;
+    transition: all 0.15s ease;
   }
   .btn-secondary:hover {
-    background: var(--x-hover);
+    @apply border-slate-300 bg-slate-50/80;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+    transform: translateY(-0.5px);
+  }
+  .btn-secondary:active {
+    transform: translateY(0) scale(0.97);
   }
 
   .btn-ghost {
-    @apply btn font-semibold;
-    color: var(--text-secondary);
-    border: 1px solid transparent;
-  }
-  .btn-ghost:hover {
-    background: var(--x-hover);
-    color: var(--text-primary);
-  }
-
-  /* X blue CTA (subscribe / primary accent) */
-  .btn-accent {
-    @apply btn text-white font-bold;
-    background: var(--mars);
-    border: 1px solid var(--mars);
-  }
-  .btn-accent:hover {
-    background: var(--mars-hover);
-    border-color: var(--mars-hover);
+    @apply btn text-slate-500 hover:bg-slate-100/80 hover:text-slate-700;
   }
 
   .btn-success {
     @apply btn text-white;
-    background: var(--x-green);
-    border: 1px solid var(--x-green);
+    background: linear-gradient(135deg, #2b8c29 0%, #43a047 100%);
+    box-shadow: 0 1px 3px rgba(43, 140, 41, 0.3);
   }
+  .btn-success:hover {
+    background: linear-gradient(135deg, #237021 0%, #388e3c 100%);
+    transform: translateY(-0.5px);
+  }
+
   .btn-danger {
     @apply btn text-white;
-    background: var(--x-red);
-    border: 1px solid var(--x-red);
+    background: linear-gradient(135deg, #c62828 0%, #e53935 100%);
+    box-shadow: 0 1px 3px rgba(198, 40, 40, 0.3);
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+     FLUID — gradient surfaces + hover lift used across the app
+  ════════════════════════════════════════════════════════════════════ */
+  /* Mesh of two soft brand blobs — drop into a hero/header to give it
+     life without a heavy image. Combine with .grain or a wordmark. */
   .brand-mesh {
     position: relative;
-    background: var(--bg-page);
+    background:
+      radial-gradient(800px 380px at 0% 0%, rgba(21, 101, 192, 0.18), transparent 55%),
+      radial-gradient(700px 360px at 100% 100%, rgba(46, 125, 50, 0.18), transparent 60%),
+      linear-gradient(135deg, #f4f7fb 0%, #eff6fb 50%, #eef7ee 100%);
   }
   .brand-mesh-strong {
-    background: #000000;
-    color: #e7e9ea;
+    background:
+      radial-gradient(900px 420px at -5% 0%, rgba(21, 101, 192, 0.32), transparent 55%),
+      radial-gradient(700px 360px at 105% 100%, rgba(46, 125, 50, 0.28), transparent 60%),
+      linear-gradient(135deg, #0d47a1 0%, #1565c0 45%, #2e7d32 100%);
+    color: #ffffff;
+  }
+  /* Soft animated sheen — useful on hero text-strips */
+  @keyframes brand-shimmer {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
   }
   .brand-shimmer-text {
-    color: var(--text-primary);
-    background: none;
-    animation: none;
+    background: linear-gradient(90deg, #1565c0, #1976d2, #2e7d32, #1976d2, #1565c0);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: brand-shimmer 8s ease-in-out infinite;
   }
+  /* Animated blue→green shimmer for hero card backgrounds */
   .profile-hero-shimmer {
-    background: #000000;
-    animation: none;
+    background: linear-gradient(135deg, #0f4fb8 0%, #1769c8 25%, #2b8c47 50%, #1769c8 75%, #0f4fb8 100%);
+    background-size: 300% 300%;
+    animation: brand-shimmer 10s ease-in-out infinite;
   }
+  /* Card lift — minimal travel, just enough motion to feel responsive. */
   .fluid-card {
-    transition: background 0.15s ease;
+    transition:
+      transform 200ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      box-shadow 200ms cubic-bezier(0.2, 0.7, 0.2, 1),
+      border-color 200ms ease;
   }
   .fluid-card:hover {
-    background: var(--x-hover);
+    transform: translateY(-2px);
+    box-shadow:
+      0 12px 28px rgba(21, 101, 192, 0.1),
+      0 6px 14px rgba(46, 125, 50, 0.08);
+    border-color: rgba(21, 101, 192, 0.25);
   }
+  /* Active sidebar pill */
   .nav-active {
-    background: transparent;
-    color: var(--text-primary);
-    font-weight: 700;
-    border: none;
-    box-shadow: none;
+    background: var(--brand-gradient-soft);
+    color: #0d47a1;
+    border: 1px solid rgba(21, 101, 192, 0.18);
+    box-shadow: inset 0 0 0 1px rgba(46, 125, 50, 0.1);
   }
 
-  /* ── Inputs ──────────────────────────────────────────────────────────── */
+  /* ════════════════════════════════════════════════════════════════════
+     INPUTS
+  ════════════════════════════════════════════════════════════════════ */
   .input,
   .select,
   .textarea {
-    @apply w-full px-3 py-2.5 text-[15px];
-    background: transparent;
-    color: var(--text-primary);
-    border: 1px solid var(--border-card);
-    border-radius: 4px;
-    box-shadow: none;
+    @apply w-full border rounded-lg px-3 py-2.5 text-sm transition-all duration-150 bg-white text-slate-800;
+    border-color: #dde3ec;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.04),
+      inset 0 1px 2px rgba(0, 0, 0, 0.02);
     outline: none;
-    transition:
-      border-color 0.15s ease,
-      background 0.15s ease;
   }
   .input:focus,
   .select:focus,
   .textarea:focus {
-    border-color: var(--mars);
-    box-shadow: 0 0 0 1px var(--mars);
+    border-color: #1769c8;
+    box-shadow:
+      0 0 0 3px rgba(21, 101, 192, 0.14),
+      0 0 0 4px rgba(46, 125, 50, 0.08),
+      0 1px 2px rgba(0, 0, 0, 0.04);
   }
   .input:hover:not(:focus),
   .select:hover:not(:focus),
   .textarea:hover:not(:focus) {
-    border-color: var(--border-strong);
+    border-color: #c5cdd8;
   }
   .input::placeholder,
   .textarea::placeholder {
-    color: var(--text-muted);
+    @apply text-slate-400;
   }
+  /* Custom chevron + extra right-padding so the native dropdown arrow doesn't
+     read as generic / fighting the rest of the design system. The SVG is
+     inlined to avoid an extra request and so the colour matches `text-slate-400`
+     in light mode (the dark-mode override is in the .dark .select block
+     further down). */
   .select {
     @apply cursor-pointer;
     appearance: none;
     -webkit-appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2371767b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
     background-repeat: no-repeat;
     background-position: right 0.7rem center;
     background-size: 14px 14px;
@@ -319,160 +359,159 @@ body {
     resize: vertical;
   }
 
-  /* Search pill — X compose / right-rail search */
-  .search-pill {
-    @apply w-full flex items-center gap-3 px-4 py-2.5 text-[15px];
-    background: var(--bg-subtle);
-    border: 1px solid transparent;
-    border-radius: 9999px;
-    color: var(--text-primary);
-  }
-  .search-pill:focus-within {
-    background: var(--bg-card);
-    border-color: var(--mars);
-  }
-
-  /* ── Cards — X bordered panels, no shadow ────────────────────────────── */
+  /* ════════════════════════════════════════════════════════════════════
+     CARDS
+  ════════════════════════════════════════════════════════════════════ */
   .card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-card);
-    border-radius: var(--radius-card);
-    box-shadow: none;
+    @apply bg-white rounded-xl border;
+    border-color: rgba(210, 218, 228, 0.8);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.05),
+      0 4px 12px rgba(0, 0, 0, 0.03);
+    transition:
+      box-shadow 0.2s ease,
+      transform 0.2s ease,
+      border-color 0.2s ease,
+      background 0.2s ease;
   }
   .card-hover {
     @apply card cursor-pointer;
   }
   .card-hover:hover {
-    background: var(--x-hover);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      0 8px 24px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1.5px);
+    border-color: rgba(190, 205, 220, 0.9);
   }
   .card-hover:active {
-    opacity: 0.98;
+    transform: translateY(0px) scale(0.995);
   }
   .card-accent {
-    @apply card;
-    border-left: 3px solid var(--mars);
+    @apply card border-l-4;
+    border-left-color: #1565c0;
   }
   .card-success {
-    @apply card;
-    border-left: 3px solid var(--status-go);
+    @apply card border-l-4;
+    border-left-color: #2b8c29;
   }
   .card-danger {
-    @apply card;
-    border-left: 3px solid var(--status-stop);
-  }
-  .card-header {
-    @apply px-4 py-3 font-bold;
-    color: var(--text-primary);
-    background: transparent;
-    border-bottom: 1px solid var(--border-card);
-    border-radius: var(--radius-card) var(--radius-card) 0 0;
+    @apply card border-l-4;
+    border-left-color: #e53935;
   }
 
+  .card-header {
+    @apply text-white rounded-t-xl px-4 py-3;
+    background: linear-gradient(135deg, #1256b0 0%, #1769c8 100%);
+  }
+
+  /* ════════════════════════════════════════════════════════════════════
+     TAGS & LABELS
+  ════════════════════════════════════════════════════════════════════ */
   .tag {
-    @apply inline-flex items-center px-2 py-0.5 text-xs font-medium;
-    border-radius: 4px;
-    background: var(--bg-subtle);
-    color: var(--text-secondary);
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium;
   }
 
   .label {
-    @apply block text-[13px] font-semibold mb-1.5;
-    color: var(--text-muted);
+    @apply block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5;
   }
 
   .section-title {
-    @apply text-[13px] font-bold mb-2;
-    color: var(--text-muted);
+    @apply text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-2;
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+     PAGE HEADER
+  ════════════════════════════════════════════════════════════════════ */
   .page-header {
-    @apply flex items-end justify-between pt-1 mb-4;
+    @apply flex items-end justify-between pt-1 mb-5;
   }
   .page-title {
-    @apply text-[20px] font-bold tracking-tight leading-none;
-    color: var(--text-primary);
+    @apply text-[1.75rem] font-black text-slate-900 dark:text-white tracking-tight leading-tight;
   }
   .page-subtitle {
-    @apply text-[13px] mt-1;
-    color: var(--text-muted);
+    @apply text-xs text-slate-400 mt-0.5;
   }
 
+  /* ════════════════════════════════════════════════════════════════════
+     DIVIDER
+  ════════════════════════════════════════════════════════════════════ */
   .divider {
-    @apply h-px my-3;
-    background: var(--border-card);
-  }
-
-  .link-accent {
-    color: var(--mars);
-    font-weight: 400;
-  }
-  .link-accent:hover {
-    text-decoration: underline;
-  }
-
-  /* Timeline / feed row */
-  .x-row {
-    border-bottom: 1px solid var(--border-card);
-    transition: background 0.15s ease;
-  }
-  .x-row:hover {
-    background: var(--x-hover);
-  }
-
-  /* Sidebar nav item — large X style */
-  .x-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    padding: 0.75rem 0.9rem;
-    border-radius: 9999px;
-    font-size: 1.25rem;
-    font-weight: 400;
-    color: var(--text-primary);
-    transition: background 0.15s ease;
-  }
-  .x-nav-item:hover {
-    background: var(--x-hover);
-  }
-  .x-nav-item[data-active='true'] {
-    font-weight: 700;
+    @apply h-px bg-slate-100 my-4;
   }
 }
 
-/* ── Progress ────────────────────────────────────────────────────────────── */
+/* ── Progress bar ─────────────────────────────────────────────────────────── */
 .progress-bar-fill {
   position: relative;
-  background: var(--mars);
+  background: linear-gradient(90deg, #1769c8 0%, #2b8c29 100%);
   overflow: hidden;
 }
+/* Travelling highlight that sweeps across the filled portion — a subtle,
+   "live" pulse that makes project progress feel active rather than static. */
 .progress-bar-sheen {
-  display: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+  transform: translateX(-100%);
+  animation: progress-sheen 2.2s ease-in-out infinite;
 }
-
-/* ── Motion (minimal) ────────────────────────────────────────────────────── */
-@keyframes bird-land {
+@keyframes progress-sheen {
   0% {
-    transform: translateY(-12px);
+    transform: translateX(-100%);
+  }
+  60%,
+  100% {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-bar-sheen {
+    animation: none;
     opacity: 0;
   }
+}
+
+/* ── Bird-landing loader ──────────────────────────────────────────────────────
+   The Pragati mark descends from above and settles onto the title row — a
+   "zooming from the bird's-eye view down into the detail" cue used on the
+   project / task / team detail loading screens. */
+@keyframes bird-land {
+  0% {
+    transform: translateY(-34px) scale(1.35);
+    opacity: 0;
+  }
+  55% {
+    transform: translateY(2px) scale(0.96);
+    opacity: 1;
+  }
+  72% {
+    transform: translateY(-4px) scale(1);
+  }
   100% {
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
     opacity: 1;
   }
 }
 @keyframes land-shadow {
   0% {
+    transform: scaleX(0.4);
     opacity: 0;
   }
+  55% {
+    transform: scaleX(1);
+    opacity: 0.5;
+  }
   100% {
-    opacity: 0.25;
+    transform: scaleX(0.85);
+    opacity: 0.35;
   }
 }
 .bird-land {
-  animation: bird-land 0.3s ease both;
+  animation: bird-land 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .bird-shadow {
-  animation: land-shadow 0.3s ease both;
+  animation: land-shadow 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
   .bird-land,
@@ -481,29 +520,40 @@ body {
   }
 }
 
+/* ── Celebration animations ───────────────────────────────────────────────── */
 @keyframes confetti-fall {
   0% {
-    transform: translateY(0);
+    transform: translateY(0) rotateZ(0deg);
+    opacity: 1;
+  }
+  80% {
     opacity: 1;
   }
   100% {
-    transform: translateY(100vh);
+    transform: translateY(105vh) rotateZ(600deg);
     opacity: 0;
   }
 }
 @keyframes celebration-pop {
   0% {
+    transform: scale(0.6) translateY(16px);
     opacity: 0;
   }
+  65% {
+    transform: scale(1.06) translateY(-4px);
+    opacity: 1;
+  }
   100% {
+    transform: scale(1) translateY(0);
     opacity: 1;
   }
 }
 
+/* ── Modal entry — lightweight, no bounce ────────────────────────────────── */
 @keyframes modal-in {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
@@ -519,65 +569,81 @@ body {
   }
 }
 .modal-in {
-  animation: modal-in 0.15s ease both;
+  animation: modal-in 0.14s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .overlay-in {
-  animation: overlay-in 0.12s ease both;
+  animation: overlay-in 0.12s ease-out both;
 }
 
+/* ── First-time tour spotlight — a soft pulsing ring around the highlighted
+   element so the eye latches onto it without us drawing a hard outline. */
 @keyframes tour-spotlight-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(29, 155, 240, 0.4);
+    box-shadow:
+      0 0 0 0 rgba(59, 130, 246, 0.55),
+      0 0 0 6px rgba(59, 130, 246, 0.18);
   }
   50% {
-    box-shadow: 0 0 0 6px rgba(29, 155, 240, 0);
+    box-shadow:
+      0 0 0 6px rgba(59, 130, 246, 0),
+      0 0 0 12px rgba(59, 130, 246, 0.05);
   }
 }
 .tour-spotlight-ring {
-  border: 2px solid var(--x-blue);
+  border: 2px solid rgba(96, 165, 250, 0.85);
   animation: tour-spotlight-pulse 1.8s ease-in-out infinite;
 }
 @keyframes tour-tip-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(4px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 .tour-tip-in {
-  animation: tour-tip-in 0.12s ease both;
+  animation: tour-tip-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* ── Scribble / hand-drawn tour (v3) ─────────────────────────────────────── */
 .tour-overlay-bg {
-  background: rgba(91, 112, 131, 0.4);
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(1.5px);
 }
+
 @keyframes tour-card-enter {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: translateY(10px) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 .tour-card-enter {
-  animation: tour-card-enter 0.15s ease both;
+  animation: tour-card-enter 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Mobile bottom nav — safe area aware */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .mobile-bottom-nav {
     padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
   }
 }
 
+/* ── Notification bell — live arrival cues ────────────────────────────────── */
 @keyframes notif-badge-pop {
   0% {
-    transform: scale(0.5);
+    transform: scale(0.4);
     opacity: 0;
+  }
+  55% {
+    transform: scale(1.35);
+    opacity: 1;
   }
   100% {
     transform: scale(1);
@@ -585,22 +651,33 @@ body {
   }
 }
 .notif-badge-pop {
-  animation: notif-badge-pop 0.2s ease both;
+  animation: notif-badge-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes notif-bell-ring {
-  0%,
+  0% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(14deg);
+  }
+  30% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(9deg);
+  }
+  60% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
   100% {
     transform: rotate(0);
   }
-  25% {
-    transform: rotate(12deg);
-  }
-  50% {
-    transform: rotate(-10deg);
-  }
 }
 .notif-bell-ring {
-  animation: notif-bell-ring 0.45s ease 1;
+  animation: notif-bell-ring 0.7s ease-in-out 1;
   transform-origin: 50% 10%;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -610,18 +687,29 @@ body {
   }
 }
 
+/* ── Sidebar watermark ────────────────────────────────────────────────────── */
 .chevron-watermark {
-  background-image: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 5px;
+  height: 5px;
 }
-::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-track {
   background: transparent;
 }
+::-webkit-scrollbar-thumb {
+  background: #d1d9e4;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b0bbc8;
+}
 
+/* ── No-scrollbar utility ─────────────────────────────────────────────────── */
 .no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -630,64 +718,91 @@ body {
   display: none;
 }
 
+/* ── Page transition ─────────────────────────────────────────────────────── */
 @keyframes page-enter {
   from {
-    opacity: 0.96;
+    opacity: 0.92;
   }
   to {
     opacity: 1;
   }
 }
+/* `backwards` (not `both`): keep the entrance slide, but DON'T retain
+   transform:translateY(0) after it ends — a lingering transform turns this
+   wrapper into the containing block for position:fixed, which made modals
+   (e.g. "Can't mark completed") center relative to the scrolled page
+   instead of the viewport. */
+/* Near-instant settle — motion must never feel like waiting. */
 .page-enter {
-  animation: page-enter 0.08s ease backwards;
+  animation: page-enter 0.08s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+/* Long lists: skip paint for off-screen rows (big win on team boards). */
 .list-row-cv {
   content-visibility: auto;
   contain-intrinsic-size: auto 52px;
 }
 
+/* ── Stat-card stagger ───────────────────────────────────────────────────── */
 @keyframes fade-up-stagger {
   from {
     opacity: 0;
+    transform: translateY(14px) scale(0.985);
   }
   to {
     opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 .fade-up-stagger {
-  animation: fade-up-stagger 0.2s ease both;
+  animation: fade-up-stagger 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* ── Late-arriving footer fade (daily quote) ─────────────────────────────── */
 @keyframes fade-in-late {
   from {
     opacity: 0;
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 .fade-in-late {
-  animation: fade-in-late 0.25s 0.2s ease both;
+  animation: fade-in-late 0.5s 0.7s ease-out both;
 }
 
+/* ── Hero greeting — gradient sweep, alive feel ──────────────────────────── */
+@keyframes hero-shine {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+/* Static brand ink — infinite shine was decoration that burned GPU for no leverage. */
 .hero-greeting {
-  color: var(--text-primary);
+  color: #0f172a;
 }
 .dark .hero-greeting {
-  color: #e7e9ea;
+  color: #faf9f5;
 }
 
+/* ── Generic small fade-in (used by inline forms) ────────────────────────── */
 @keyframes fade-in-soft-2 {
   from {
     opacity: 0;
+    transform: translateY(-2px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 .fade-in-soft {
-  animation: fade-in-soft-2 0.12s ease both;
+  animation: fade-in-soft-2 0.22s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -698,24 +813,42 @@ body {
   .skeleton {
     animation: none !important;
   }
+  .hero-greeting {
+    background: none;
+    -webkit-text-fill-color: #0f172a;
+    color: #0f172a;
+  }
+  .btn-primary:hover:not(:disabled),
+  .btn-secondary:hover,
+  .card-hover:hover {
+    transform: none;
+  }
 }
 
+/* ── Fluid interaction language (Jensen: speed is the product) ───────────── */
 @media (hover: hover) and (pointer: fine) {
   .fluid-row {
-    transition: background-color 0.12s ease;
+    transition:
+      background-color 0.1s ease,
+      border-color 0.1s ease;
   }
   .fluid-row:hover {
-    background-color: var(--x-hover);
+    background-color: rgba(15, 23, 42, 0.03);
+  }
+  .dark .fluid-row:hover {
+    background-color: rgba(255, 255, 255, 0.04);
   }
 }
 .fluid-press:active {
-  opacity: 0.9;
+  transform: scale(0.985);
+  transition: transform 0.08s ease;
 }
 
+/* ── Command palette / modal ─────────────────────────────────────────────── */
 @keyframes paletteIn {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(-6px);
+    transform: scale(0.94) translateY(-10px);
   }
   to {
     opacity: 1;
@@ -731,6 +864,7 @@ body {
   }
 }
 
+/* ── Toast drain bar ─────────────────────────────────────────────────────── */
 @keyframes drain {
   from {
     transform: scaleX(1);
@@ -740,6 +874,10 @@ body {
   }
 }
 
+/* ── LinkedIn-style skeleton shimmer ───────────────────────────────────────
+   Quiet layout placeholders beat spinners: users see the future shape of the
+   page immediately, perceived progress starts sooner, and content can hydrate
+   without a layout jump. */
 @keyframes shimmer {
   from {
     background-position: 200% center;
@@ -749,24 +887,25 @@ body {
   }
 }
 .skeleton {
-  background: linear-gradient(90deg, #eff3f4 0%, #f7f9f9 42%, #eff3f4 84%);
+  background: linear-gradient(90deg, #eef3f8 0%, #f7f9fb 42%, #eef3f8 84%);
   background-size: 220% auto;
-  animation: shimmer 1.2s ease-in-out infinite;
-  border-radius: 4px;
+  animation: shimmer 1.05s ease-in-out infinite;
+  border-radius: 6px;
   color: transparent;
 }
 .dark .skeleton {
-  background: linear-gradient(90deg, #16181c 0%, #1e2026 42%, #16181c 84%);
+  background: linear-gradient(90deg, #2a2927 0%, #363530 42%, #2a2927 84%);
   background-size: 220% auto;
 }
 
+/* ── Smooth link transitions ─────────────────────────────────────────────── */
 a {
   transition:
-    color 0.12s ease,
-    opacity 0.12s ease;
+    color 0.15s ease,
+    opacity 0.15s ease;
 }
 
-/* ── Dark structural overrides ───────────────────────────────────────────── */
+/* ── Dark mode structural overrides (Claude-style warm neutral) ─────────── */
 .dark .card,
 .dark [class*='bg-white'] {
   background-color: var(--bg-card) !important;
@@ -779,224 +918,225 @@ a {
 .dark [class*='bg-slate-100'] {
   background-color: var(--bg-subtle) !important;
 }
-.dark .bg-zinc-50,
-.dark .bg-zinc-100,
-.dark [class*='bg-zinc-50'],
-.dark [class*='bg-zinc-100'] {
-  background-color: var(--bg-subtle) !important;
-}
 
+/* Section header bar — class-based so it can theme in dark mode (inline
+   background styles can't be overridden by .dark rules). */
 .section-head {
-  background: var(--bg-page);
-  border-color: var(--border-card);
+  background: linear-gradient(to right, #fafbfd, #f7f9fc);
+  border-color: #f0f3f8;
 }
 .dark .section-head {
-  background: var(--bg-page) !important;
-  border-color: var(--border-card) !important;
+  background: #262624 !important;
+  border-color: rgba(255, 255, 255, 0.07) !important;
 }
 
-/* Map slate → X text scale in dark */
-.dark .text-slate-900,
-.dark .text-zinc-900 {
-  color: #e7e9ea !important;
+/* Warm off-white text scale */
+.dark .text-slate-900 {
+  color: #faf9f5 !important;
 }
-.dark .text-slate-800,
-.dark .text-zinc-800 {
-  color: #e7e9ea !important;
+.dark .text-slate-800 {
+  color: #f0eee5 !important;
 }
-.dark .text-slate-700,
-.dark .text-zinc-700 {
-  color: #e7e9ea !important;
+.dark .text-slate-700 {
+  color: #d8d5cb !important;
 }
-.dark .text-slate-600,
-.dark .text-zinc-600 {
-  color: #71767b !important;
+.dark .text-slate-600 {
+  color: #c2c0b6 !important;
 }
-.dark .text-slate-500,
-.dark .text-zinc-500 {
-  color: #71767b !important;
+.dark .text-slate-500 {
+  color: #a09e94 !important;
 }
-.dark .text-slate-400,
-.dark .text-zinc-400 {
-  color: #71767b !important;
+.dark .text-slate-400 {
+  color: #8a8780 !important;
 }
-.dark .text-slate-300,
-.dark .text-zinc-300 {
-  color: #536471 !important;
+.dark .text-slate-300 {
+  color: #6e6c66 !important;
 }
 
+/* Subtle warm borders */
 .dark .border-slate-100,
 .dark .border-slate-200,
-.dark .border-slate-300,
-.dark .border-zinc-100,
-.dark .border-zinc-200,
-.dark .border-zinc-300 {
-  border-color: #2f3336 !important;
+.dark .border-slate-300 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 .dark .divide-slate-50 > * + *,
 .dark .divide-slate-100 > * + *,
-.dark .divide-slate-200 > * + *,
-.dark .divide-zinc-100 > * + *,
-.dark .divide-zinc-200 > * + * {
-  border-color: #2f3336 !important;
+.dark .divide-slate-200 > * + * {
+  border-color: rgba(255, 255, 255, 0.07) !important;
 }
 
+/* Inputs */
 .dark .input,
 .dark .select,
 .dark .textarea {
-  background-color: #000000 !important;
-  border-color: #2f3336 !important;
-  color: #e7e9ea !important;
+  /* Use background-COLOR, not the `background` shorthand: the shorthand resets
+     background-repeat/position/size, which made the .select chevron tile across
+     the whole field in dark mode. */
+  background-color: #30302e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #faf9f5 !important;
 }
 .dark .select {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2371767b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+  /* Lighter chevron so it stays visible on the dark surface. No !important —
+     the custom <Select> sets an inline `background-image:none` to suppress this
+     (it draws its own lucide chevron), and !important here used to override that
+     and paint a second arrow. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.45)' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
 }
 .dark .input:focus,
 .dark .select:focus,
 .dark .textarea:focus {
-  border-color: var(--mars) !important;
-  box-shadow: 0 0 0 1px var(--mars) !important;
+  border-color: rgba(217, 119, 87, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.18) !important;
 }
 .dark .input::placeholder,
 .dark .textarea::placeholder {
-  color: #71767b !important;
+  color: #7a7770 !important;
 }
 
+/* Secondary buttons */
 .dark .btn-secondary {
-  background: transparent !important;
-  border-color: #536471 !important;
-  color: #eff3f4 !important;
+  background: #30302e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f0eee5 !important;
   box-shadow: none !important;
 }
 .dark .btn-secondary:hover {
-  background: rgba(239, 243, 244, 0.1) !important;
+  background: #3a3935 !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
 }
 .dark .btn-ghost {
-  color: #e7e9ea !important;
+  color: #c2c0b6 !important;
 }
 .dark .btn-ghost:hover {
-  background: rgba(231, 233, 234, 0.1) !important;
-  color: #e7e9ea !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #faf9f5 !important;
 }
 
-/* Map legacy blue utilities → Mars */
-.bg-blue-50,
-.bg-blue-100,
-.dark .bg-blue-50,
-.dark .bg-blue-100 {
-  background-color: var(--mars-soft) !important;
+/* Subtle blue-tinted backgrounds → warm neutral */
+.dark .bg-blue-50 {
+  background-color: rgba(217, 119, 87, 0.1) !important;
 }
-.text-blue-500,
-.text-blue-600,
-.text-blue-700,
-.text-blue-800,
-.text-blue-900,
-.dark .text-blue-500,
-.dark .text-blue-600,
+.dark .bg-blue-100 {
+  background-color: rgba(217, 119, 87, 0.16) !important;
+}
 .dark .text-blue-700,
 .dark .text-blue-800,
 .dark .text-blue-900 {
-  color: var(--mars) !important;
+  color: #e8a98c !important;
 }
-.border-blue-100,
-.border-blue-200,
 .dark .border-blue-100,
 .dark .border-blue-200 {
-  border-color: var(--mars-soft) !important;
-}
-.dark .text-brand-600,
-.dark .text-brand-700,
-.dark .text-brand-800 {
-  color: var(--text-primary) !important;
-}
-.bg-brand-50,
-.bg-brand-100,
-.dark .bg-brand-50,
-.dark .bg-brand-100 {
-  background-color: var(--mars-soft) !important;
+  border-color: rgba(217, 119, 87, 0.22) !important;
 }
 
-.dark .bg-emerald-50,
-.dark .bg-green-50 {
-  background-color: rgba(0, 186, 124, 0.12) !important;
-}
-.dark .bg-amber-50,
-.dark .bg-orange-50 {
-  background-color: rgba(255, 212, 0, 0.1) !important;
-}
-.dark .bg-red-50,
-.dark .bg-rose-50 {
-  background-color: rgba(244, 33, 46, 0.12) !important;
-}
-.dark .bg-violet-50,
-.dark .bg-purple-50,
-.dark .bg-indigo-50,
-.dark .bg-sky-50,
-.dark .bg-teal-50,
-.dark .bg-pink-50 {
-  background-color: rgba(231, 233, 234, 0.08) !important;
-}
-
+/* Kanban horizontal scroller — slim track so the slider doesn't add visual weight. */
 .kanban-scroll::-webkit-scrollbar {
-  height: 0;
+  height: 8px;
+}
+.kanban-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 .dark .kanban-scroll::-webkit-scrollbar-thumb {
-  background: #2f3336;
+  background: #3a3935;
+}
+.dark .kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: #4a4945;
 }
 
+/* DatePicker portal (rendered into body, outside .dark cascade in some flows) */
 .dark .datepicker-pop {
-  background: #16181c !important;
-  border-color: #2f3336 !important;
-  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1) !important;
-  border-radius: 16px !important;
+  background: #30302e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
+/* Selection */
+.dark ::selection {
+  background: rgba(217, 119, 87, 0.35);
+  color: #faf9f5;
+}
+
+/* Scrollbar */
 .dark ::-webkit-scrollbar-thumb {
-  background: transparent;
+  background: #3a3935;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #4a4945;
 }
 .dark ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #1f1e1d;
 }
 
+/* Dashboard disclosure affordance: pulse only the first expandable project and
+   the section-level contributor arrow for a short time on landing. This avoids
+   the noisy "every row is blinking" effect in large workspaces while still
+   teaching the interaction. */
 @keyframes dashboard-expand-nudge {
-  0%,
-  100% {
-    color: #71767b;
+  0% {
+    color: rgb(148 163 184);
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0);
   }
   40% {
-    color: var(--mars);
+    color: rgb(46 125 50);
+    box-shadow: 0 0 0 6px rgba(46, 125, 50, 0.22);
+  }
+  100% {
+    color: rgb(148 163 184);
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0);
   }
 }
+
 .dashboard-expand-nudge {
-  animation: dashboard-expand-nudge 0.9s ease-out 2;
+  animation: dashboard-expand-nudge 1s ease-out 3;
 }
 
+/* ── Expand-chevron green pulse ────────────────────────────────────────────
+   A soft green pulse on JUST the expand chevron (not the whole header)
+   so the row's interactivity reads without flooding the entire card.
+   Pulses twice then settles silent. */
 @keyframes pragati-row-expand-blink {
   0%,
   100% {
-    color: #71767b;
+    color: rgb(16 185 129);
+    transform: scale(1);
   }
   40% {
-    color: #e7e9ea;
+    color: rgb(5 150 105);
+    transform: scale(1.35);
   }
 }
 .pragati-row-expand-blink {
-  animation: pragati-row-expand-blink 800ms ease-in-out 2;
+  animation: pragati-row-expand-blink 1000ms ease-in-out 2;
+  transform-origin: center;
 }
 
+/* ── Expand affordance — green "water-drop" ripple ─────────────────────────
+   Highlights an expand control by rippling a green ring OUTWARD from around
+   the icon (box-shadow only — never transform), so the chevron underneath
+   keeps its orientation. Two gentle drops, then silent. */
 @keyframes pragati-drop-ripple {
   0% {
-    box-shadow: 0 0 0 0 rgba(29, 155, 240, 0.35);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45);
   }
   70% {
-    box-shadow: 0 0 0 8px rgba(29, 155, 240, 0);
+    box-shadow: 0 0 0 7px rgba(34, 197, 94, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(29, 155, 240, 0);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
   }
 }
 .pragati-drop-ripple {
-  animation: pragati-drop-ripple 1200ms ease 2;
+  animation: pragati-drop-ripple 1400ms cubic-bezier(0.4, 0, 0.2, 1) 2;
   border-radius: 9999px;
 }
 
@@ -1008,49 +1148,12 @@ a {
   }
 }
 
+/* Hide browser-native password reveal button (Edge/Chrome/Safari) to prevent
+   a second "eye" icon appearing alongside our custom toggle. */
 input[type='password']::-ms-reveal,
 input[type='password']::-ms-clear {
   display: none;
 }
 input::-webkit-credentials-auto-fill-button {
   display: none !important;
-}
-
-.text-brand-600,
-.text-brand-700 {
-  color: #0f1419;
-}
-.dark .text-brand-600,
-.dark .text-brand-700 {
-  color: #e7e9ea !important;
-}
-.bg-brand-50 {
-  background-color: #eff3f4;
-}
-.bg-brand-600 {
-  background-color: #0f1419;
-}
-.dark .bg-brand-600 {
-  background-color: #eff3f4 !important;
-  color: #0f1419 !important;
-}
-
-.text-x-blue,
-.text-mars {
-  color: var(--mars);
-}
-.bg-x-blue,
-.bg-mars {
-  background-color: var(--mars);
-}
-.border-x {
-  border-color: var(--border-card);
-}
-
-/* Nav icon stroke theming — not solid black blobs */
-.nav-icon {
-  color: var(--icon);
-}
-.nav-icon-active {
-  color: var(--icon-active);
 }

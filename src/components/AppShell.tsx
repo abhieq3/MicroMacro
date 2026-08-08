@@ -417,11 +417,11 @@ export default function AppShell({
   // admin-only surface, appended via adminExtra below.
   // My Day + private Whiteboard are pinned above the footer as personal
   // surfaces. Shared org views (Dashboard / Projects / Teams) stay above.
-  // Mars-themed nav icons — muted stone inactive, rust active (never pure black fill).
-  const ink = dark ? '#ea580c' : '#c2410c';
-  const inkMuted = dark ? '#a8a29e' : '#57534e';
-  const inkBg = dark ? 'rgba(234,88,12,0.1)' : 'rgba(194,65,12,0.08)';
-  const inkBgActive = dark ? 'rgba(234,88,12,0.18)' : 'rgba(194,65,12,0.14)';
+  // Classic brand — blue active, slate idle (pre-Mars / pre-X identity).
+  const ink = dark ? '#42a5f5' : '#1565c0';
+  const inkMuted = dark ? '#8a8780' : '#64748b';
+  const inkBg = dark ? 'rgba(66,165,245,0.12)' : 'rgba(21,101,192,0.08)';
+  const inkBgActive = dark ? 'rgba(66,165,245,0.2)' : 'rgba(21,101,192,0.14)';
 
   // Personal tool only — not shared team tracking. Sits with My Day.
   const whiteboardItem: NavItem = {
