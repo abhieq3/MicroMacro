@@ -31,12 +31,8 @@ export default async function AuthedLayout({ children }: { children: React.React
     };
   }
 
-  // Read the dark-mode preference server-side so AppShell mounts in the
-  // correct theme on first paint. Eliminates the flash-of-light-content
-  // that previously appeared on every navigation when the localStorage
-  // useEffect kicked in after hydration.
-  // Dark-first. New cookie; only explicit light opts out.
-  // Legacy `theme=light` is ignored so redesign sessions open black.
+  // Mars identity: warm light default (office), dark when user opts in.
+  // Cookie is the only source of truth — no FOUC, no theme thrash.
   const themeCookie = cookies().get('pragati_theme')?.value;
   const initialDark = themeCookie === 'dark';
 

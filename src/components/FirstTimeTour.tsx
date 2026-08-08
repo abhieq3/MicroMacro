@@ -1,93 +1,49 @@
 'use client';
 
 /**
- * First-session onboarding — role-specific steps that teach by doing.
- * IC / lead / admin each get a short checklist + one clear next action.
- * Dismissible forever after first completion or skip.
+ * First-session onboarding — one next action by role.
+ * Teach by doing. Skip forever. No multi-step homework.
  */
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check, X } from 'lucide-react';
+import { ArrowRight, X } from 'lucide-react';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from './PragatiMark';
 
-const STORAGE_KEY = 'pragati-tour-v8';
+const STORAGE_KEY = 'pragati-tour-v9';
 
 type Step = { title: string; body: string; ctaLabel: string; ctaHref: string };
 
-function stepsForRole(role: string): Step[] {
+function stepForRole(role: string): Step {
   const isAdmin = role === 'admin' || role === 'master_admin';
   const isLead = role === 'lead' || isAdmin;
 
   if (isAdmin) {
-    return [
-      {
-        title: 'Create a team',
-        body: 'Teams own projects and people. Start with the group you manage.',
-        ctaLabel: 'Create a team',
-        ctaHref: '/teams',
-      },
-      {
-        title: 'Add people',
-        body: 'Invite teammates so work can be assigned. They only need an invite link.',
-        ctaLabel: 'Open People',
-        ctaHref: '/people',
-      },
-      {
-        title: 'Start a project',
-        body: 'Put work on the board. Add tasks, due dates, and owners.',
-        ctaLabel: 'New project',
-        ctaHref: '/projects/new',
-      },
-    ];
+    return {
+      title: 'Create a team',
+      body: 'Teams own projects and people. Start with the group you manage — everything else hangs off it.',
+      ctaLabel: 'Create a team',
+      ctaHref: '/teams',
+    };
   }
 
   if (isLead) {
-    return [
-      {
-        title: 'Open your projects',
-        body: 'Projects are where work lives. Create one or open an existing board.',
-        ctaLabel: 'Projects',
-        ctaHref: '/projects',
-      },
-      {
-        title: 'Assign a task',
-        body: 'Pick a task, set an owner and date. It appears on their dashboard.',
-        ctaLabel: 'Projects',
-        ctaHref: '/projects',
-      },
-      {
-        title: 'Live in the schedule',
-        body: 'Dashboard Due list + sidebar calendar. Overdue first. Short list, hard dates.',
-        ctaLabel: 'Dashboard',
-        ctaHref: '/',
-      },
-    ];
+    return {
+      title: 'Open your projects',
+      body: 'Projects are where work lives. Put one task on someone with a date. Live in the due list.',
+      ctaLabel: 'Open projects',
+      ctaHref: '/projects',
+    };
   }
 
-  // Individual contributor
-  return [
-    {
-      title: 'See your work',
-      body: 'Assigned tasks show on the dashboard under Priority and Due.',
-      ctaLabel: 'Dashboard',
-      ctaHref: '/',
-    },
-    {
-      title: 'Watch the calendar',
-      body: 'Due dates show as dots on the sidebar calendar. Overdue is red. Click a day for the list.',
-      ctaLabel: 'Dashboard',
-      ctaHref: '/',
-    },
-    {
-      title: 'Finish something',
-      body: 'Open a task, update status, mark done. Keep the loop short.',
-      ctaLabel: 'My Day',
-      ctaHref: '/my-day',
-    },
-  ];
+  return {
+    title: 'See your work',
+    body: 'Assigned tasks show on the dashboard. Open My Day for your private list. Finish one thing today.',
+    ctaLabel: 'Open My Day',
+    ctaHref: '/my-day',
+  };
 }
 
 function roleLabel(role: string): string {
@@ -104,10 +60,9 @@ export function FirstTimeTour({
   role?: string;
 }) {
   const router = useRouter();
-  const steps = stepsForRole(role);
+  const step = stepForRole(role);
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [step, setStep] = useState(0);
 
   useEffect(() => {
     setMounted(true);
@@ -115,163 +70,88 @@ export function FirstTimeTour({
     try {
       if (localStorage.getItem(STORAGE_KEY) === '1') return;
       // Honor prior dismissals so we never re-trap returning users.
-      if (localStorage.getItem('pragati-tour-v7') === '1' || localStorage.getItem('pragati-tour-v6') === '1') {
-        localStorage.setItem(STORAGE_KEY, '1');
-        return;
+      for (const k of ['pragati-tour-v8', 'pragati-tour-v7', 'pragati-tour-v6']) {
+        if (localStorage.getItem(k) === '1') {
+          localStorage.setItem(STORAGE_KEY, '1');
+          return;
+        }
       }
     } catch {
       /* private mode */
     }
-    const t = window.setTimeout(() => setOpen(true), 320);
-    return () => window.clearTimeout(t);
+    setOpen(true);
   }, [alreadySeen]);
 
-  async function finish(go?: string) {
+  async function dismiss(go?: string) {
     setOpen(false);
     try {
       localStorage.setItem(STORAGE_KEY, '1');
+      localStorage.setItem('pragati-tour-v8', '1');
       localStorage.setItem('pragati-tour-v7', '1');
       localStorage.setItem('pragati-tour-v6', '1');
     } catch {
-      /* ignore */
+      /* private mode */
     }
     try {
       await api('/me/tour-seen', { method: 'POST' });
     } catch {
-      /* best-effort */
+      /* non-blocking */
     }
     if (go) router.push(go);
   }
 
-  function next() {
-    if (step < steps.length - 1) {
-      setStep((s) => s + 1);
-      return;
-    }
-    void finish(steps[step].ctaHref);
-  }
-
   if (!mounted || !open) return null;
-
-  const current = steps[step];
-  const progress = ((step + 1) / steps.length) * 100;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-      style={{ background: 'rgba(91, 112, 131, 0.4)' }}
+      className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/45 backdrop-blur-[2px] p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="first-login-title"
+      aria-labelledby="tour-title"
     >
       <div
-        className="w-full max-w-[420px] border border-[#2f3336] bg-black overflow-hidden relative"
+        className="w-full max-w-[400px] bg-white dark:bg-[#0c0a09] border border-[#e7e5e4] dark:border-[#292524] shadow-2xl overflow-hidden"
         style={{ borderRadius: 16 }}
       >
-        {/* Progress bar */}
-        <div className="h-1 w-full bg-[#16181c]">
-          <div
-            className="h-full bg-[var(--mars)] transition-all duration-200"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-
-        <div className="px-5 pt-5 pb-3 border-b border-[#2f3336] flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => void finish()}
-            className="absolute top-4 right-3 p-1.5 text-[#71767b] hover:text-[#e7e9ea] hover:bg-[rgba(231,233,234,0.1)]"
-            aria-label="Close"
-            style={{ borderRadius: 9999 }}
-          >
-            <X size={18} />
-          </button>
-          <PragatiMark size={28} flat />
-          <div className="min-w-0">
-            <span className="brand-wordmark text-[17px] text-[#e7e9ea] block leading-none">Pragati</span>
-            <span className="text-[12px] text-[#71767b] mt-0.5 block">
-              {roleLabel(role)} · step {step + 1} of {steps.length}
-            </span>
-          </div>
-        </div>
-
-        <div className="px-5 py-5">
-          {/* Step dots / checklist */}
-          <ol className="mb-5 space-y-2">
-            {steps.map((s, i) => {
-              const done = i < step;
-              const active = i === step;
-              return (
-                <li
-                  key={s.title}
-                  className={`flex items-center gap-2.5 text-[13px] ${
-                    active ? 'text-[#e7e9ea] font-bold' : done ? 'text-[#00ba7c]' : 'text-[#71767b]'
-                  }`}
+        <div className="h-1 bg-[var(--mars)]" />
+        <div className="p-6">
+          <div className="flex items-start justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <PragatiMark size={36} flat />
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--mars)]">
+                  {roleLabel(role)}
+                </p>
+                <h2
+                  id="tour-title"
+                  className="text-[20px] font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight leading-tight"
                 >
-                  <span
-                    className={`grid h-5 w-5 place-items-center shrink-0 text-[11px] font-bold ${
-                      done
-                        ? 'bg-[#00ba7c] text-black'
-                        : active
-                          ? 'bg-[#e7e9ea] text-black'
-                          : 'border border-[#2f3336] text-[#71767b]'
-                    }`}
-                    style={{ borderRadius: 9999 }}
-                  >
-                    {done ? <Check size={12} strokeWidth={3} /> : i + 1}
-                  </span>
-                  <span className={active ? '' : done ? 'line-through opacity-80' : ''}>{s.title}</span>
-                </li>
-              );
-            })}
-          </ol>
-
-          <h2
-            id="first-login-title"
-            className="text-[20px] font-bold text-[#e7e9ea] tracking-tight"
-          >
-            {current.title}
-          </h2>
-          <p className="mt-2 text-[15px] text-[#71767b] leading-relaxed">{current.body}</p>
-
-          <div className="mt-6 flex flex-col gap-2">
+                  {step.title}
+                </h2>
+              </div>
+            </div>
             <button
               type="button"
-              onClick={() => {
-                if (step < steps.length - 1) {
-                  // Go do the action, keep tour marked seen so they aren't trapped,
-                  // but they land on the right page.
-                  void finish(current.ctaHref);
-                } else {
-                  void finish(current.ctaHref);
-                }
-              }}
-              className="btn-primary w-full justify-center py-3 text-[15px]"
+              onClick={() => dismiss()}
+              className="shrink-0 p-1.5 rounded-full text-[#71767b] hover:bg-[rgba(15,20,25,0.06)] dark:hover:bg-white/10"
+              aria-label="Skip"
             >
-              {current.ctaLabel}
-              <ArrowRight size={16} />
+              <X size={18} />
             </button>
-            {step < steps.length - 1 ? (
-              <button
-                type="button"
-                onClick={next}
-                className="w-full py-2.5 text-[15px] font-bold text-[var(--mars)] hover:underline"
-              >
-                Next tip
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => void finish()}
-                className="w-full py-2.5 text-[15px] font-bold text-[var(--mars)] hover:underline"
-              >
-                Got it
-              </button>
-            )}
+          </div>
+          <p className="text-[15px] text-[#536471] dark:text-[#a8a29e] leading-relaxed">{step.body}</p>
+          <div className="mt-6 flex flex-col sm:flex-row gap-2 sm:items-center">
             <button
               type="button"
-              onClick={() => void finish()}
-              className="w-full py-1.5 text-[13px] text-[#71767b] hover:text-[#e7e9ea]"
+              onClick={() => dismiss(step.ctaHref)}
+              className="btn-primary justify-center px-5 py-2.5 text-[14px] font-bold"
+            >
+              {step.ctaLabel} <ArrowRight size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => dismiss()}
+              className="text-[13px] font-semibold text-[#71767b] hover:text-[#0f1419] dark:hover:text-white px-2 py-2"
             >
               Skip for now
             </button>

@@ -3,7 +3,7 @@ import { Whiteboard } from '@/components/Whiteboard';
 
 /**
  * Private sketch surface — personal, not shared team records.
- * Optional tool for planning; tracked work still lives on projects/tasks.
+ * Think here. Track work on projects and tasks.
  */
 export default function WhiteboardPageClient() {
   return (
@@ -13,7 +13,7 @@ export default function WhiteboardPageClient() {
           Whiteboard
         </h1>
         <p className="text-[13px] text-[#536471] dark:text-[#71767b] mt-0.5">
-          Private. Only you see this. Use it to sketch plans — not to track assigned work.
+          Private. Only you. Sketch until it is simple — then put work on a project.
         </p>
       </div>
       <div className="flex-1 min-h-0">

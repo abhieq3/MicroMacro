@@ -30,6 +30,26 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-08-09',
+    title: 'Jobs pass: restore thinking tools, calm home, freeze identity',
+    tags: ['feature', 'improvement'],
+    highlight: true,
+    body: [
+      'Private Whiteboard is back in the product (nav next to My Day, G→W, mobile menu). Thinking is not optional theater — it was removed too early after users had just gotten it.',
+      'Home always answers the morning: “Do this next” / “Clear this first” when there is open work; “Nothing late. You’re clear.” when the board is healthy — never an empty void. Contributor day-one is one CTA.',
+      'Login: Steve Jobs quotes only (mobile + desktop). First-session tour is one step by role. Product principles rewritten to a single Jobs lens. Mars light default stays; no more theme thrash.',
+    ],
+  },
+  {
+    date: '2026-08-09',
+    title: 'Login quotes: Steve Jobs only',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Login rotates Steve Jobs only — focus, simplicity, quality, shipping, and saying no. No attribution on screen. Per-device ledger reset so the new set cycles cleanly.',
+    ],
+  },
+  {
     date: '2026-07-27',
     title: 'Project detail + first login polish; recurring projects return',
     tags: ['feature', 'improvement'],

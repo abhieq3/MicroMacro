@@ -38,8 +38,8 @@ export const metadata: Metadata = {
 
 export const viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#000000' },
+    { media: '(prefers-color-scheme: light)', color: '#faf8f5' },
+    { media: '(prefers-color-scheme: dark)', color: '#0c0a09' },
   ],
   width: 'device-width',
   initialScale: 1,
@@ -47,9 +47,8 @@ export const viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Dark-first. New cookie name so old light sessions don't stick.
+  // Mars identity: warm light default. Dark only when user opts in.
   const theme = cookies().get('pragati_theme')?.value;
-  // Light default for office environments (like X Default). Opt into dark.
   const dark = theme === 'dark';
 
   return (

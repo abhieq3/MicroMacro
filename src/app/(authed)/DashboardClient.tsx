@@ -374,8 +374,9 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
         <>
           {isNewContributor && <ContributorWelcome name={dash.user.name} />}
 
-          {/* One next action — judgment over inventory counts. */}
-          {doThisFirst && (
+          {/* One next action — always visible when there is open work.
+              A calm day still speaks: never look broken when nothing is late. */}
+          {doThisFirst ? (
             <Link
               href={`/tasks/${doThisFirst.id}`}
               className="mb-4 flex items-center gap-3 border-y border-[#eff3f4] dark:border-[#2f3336] px-0 py-4 hover:bg-[rgba(15,20,25,0.02)] dark:hover:bg-[rgba(231,233,234,0.02)] transition-colors"
@@ -385,10 +386,10 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                   className={`text-[11px] font-bold tracking-wide mb-0.5 ${
                     overdueTasks.some((t) => t.id === doThisFirst.id)
                       ? 'text-[#f4212e]'
-                      : 'text-[#71767b]'
+                      : 'text-[var(--mars)]'
                   }`}
                 >
-                  Do this first
+                  {overdueTasks.some((t) => t.id === doThisFirst.id) ? 'Clear this first' : 'Do this next'}
                 </div>
                 <div className="text-[15px] font-bold text-[#0f1419] dark:text-[#e7e9ea] leading-snug truncate">
                   {doThisFirst.title}
@@ -401,6 +402,28 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               </div>
               <ArrowRight size={18} className="text-[#71767b] shrink-0" />
             </Link>
+          ) : (
+            !isNewContributor && (
+              <div className="mb-4 border-y border-[#eff3f4] dark:border-[#2f3336] px-0 py-4">
+                <div className="text-[11px] font-bold tracking-wide text-[var(--mars)] mb-0.5">
+                  All clear
+                </div>
+                <div className="text-[15px] font-bold text-[#0f1419] dark:text-[#e7e9ea] leading-snug">
+                  Nothing late. You’re clear.
+                </div>
+                <div className="text-[12px] text-[#71767b] mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <Link href="/my-day" className="font-semibold text-[var(--mars)] hover:underline">
+                    My Day
+                  </Link>
+                  <Link href="/projects" className="hover:underline">
+                    Projects
+                  </Link>
+                  <Link href="/whiteboard" className="hover:underline">
+                    Whiteboard
+                  </Link>
+                </div>
+              </div>
+            )
           )}
 
           <FlowSignalStrip data={dash.flowSignal} />
@@ -783,7 +806,7 @@ function SummaryTaskPopup({
   );
 }
 
-/* ── Contributor welcome — day-one empty board ──────────────────────────── */
+/* ── Contributor welcome — day-one empty board (one action) ─────────────── */
 function ContributorWelcome({ name }: { name: string }) {
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   return (
@@ -795,22 +818,8 @@ function ContributorWelcome({ name }: { name: string }) {
           Hi {first}
         </h2>
         <p className="mt-2 text-[15px] text-[#536471] dark:text-[#71767b] leading-relaxed">
-          Nothing assigned yet. When your lead adds work, it shows here under Priority and Due.
+          Nothing assigned yet. When your lead adds work, it lands here — open My Day in the meantime.
         </p>
-        <ul className="mt-4 space-y-2 text-[14px] text-[#0f1419] dark:text-[#e7e9ea]">
-          <li className="flex gap-2">
-            <span className="text-[var(--mars)] font-bold">1.</span>
-            Check Dashboard daily for assigned tasks
-          </li>
-          <li className="flex gap-2">
-            <span className="text-[var(--mars)] font-bold">2.</span>
-            Use My Day for private notes and personal tasks
-          </li>
-          <li className="flex gap-2">
-            <span className="text-[var(--mars)] font-bold">3.</span>
-            Open a task → update status → mark done
-          </li>
-        </ul>
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Link href="/my-day" className="btn-primary px-5 py-2.5 text-[14px]">
             Open My Day <ArrowRight size={15} />

@@ -5,6 +5,7 @@
  *
  *   NEXT_PUBLIC_FOCUS_MODE=1
  *     Core only: Dashboard · Projects · Teams · My Day · admin.
+ *     (Whiteboard stays available — thinking is core, not theater.)
  *
  * Optional surfaces:
  *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0  — hide private sketch board
@@ -26,10 +27,11 @@ function envOff(name: string): boolean {
 export const FOCUS_MODE = envOn('NEXT_PUBLIC_FOCUS_MODE');
 
 /**
- * Whiteboard removed from product nav. Kept off unless explicitly enabled
- * for emergency access (NEXT_PUBLIC_WHITEBOARD_ENABLED=1).
+ * Private whiteboard (personal sketch only — not team records).
+ * On by default. Opt out with NEXT_PUBLIC_WHITEBOARD_ENABLED=0.
+ * Stays on in focus mode: clear thinking is not a secondary module.
  */
-export const WHITEBOARD_ENABLED = envOn('NEXT_PUBLIC_WHITEBOARD_ENABLED') && !FOCUS_MODE;
+export const WHITEBOARD_ENABLED = !envOff('NEXT_PUBLIC_WHITEBOARD_ENABLED');
 
 /**
  * Team workbench modules (tickets, CSV activity / QMS sheets). On by default;

@@ -1,91 +1,82 @@
-# Product principles (Naval lens)
+# Product principles (Jobs lens)
 
 Pragati is a delivery system for serious work (quality / GxP). These principles
-are how we decide what ships. Inspired by Naval Ravikant’s public ideas on
-judgment, leverage, long-term games, and attention — applied to this product.
+are how we decide what ships. One point of view. No rotating founder cosplay.
 
-## 1. Judgment over busyness
+## 1. Start with the customer experience
 
-The product should make **what to do next** obvious. It should never reward a
-full calendar, a dense dashboard, or motion without output.
+A quality lead at 9:00 and an IC with three assigned tasks are the product.
+Work backward from that morning — not from a theme, a feed, or a philosophy book.
 
-- Prefer exceptions (overdue, blocked, slip) over vanity counts.
-- Hide zeros. Collapse finished work.
-- “Busy” is not a status we celebrate.
+- Home must always answer: **what do I do next?**
+- A calm day must still feel intentional: “Nothing late. You’re clear.”
+- Never look broken when the board is healthy.
 
-## 2. Specific knowledge
+## 2. Focus means saying no
 
-We win by serving a real domain (lifecycle, change control, audit), not by
-being a generic task app with more colors.
+Focus is not a denser monochrome UI. Focus is refusing the hundred other good ideas.
 
-- Keep domain depth. Cut generic social/feed theater.
-- Templates and lifecycles encode hard-won process — that is the product.
+- One visual identity (Mars). No palette thrash.
+- One home layout until real usage forces a change.
+- One login voice (Steve Jobs). Optional atmosphere only — never in the work path.
 
-## 3. Leverage
+## 3. Simple is harder than complex
 
-Code and process should multiply a team’s judgment.
+Delete chrome only when hierarchy remains.
 
-- Digests, forecasts, boards, and bird’s-eye exist only if they change decisions.
-- Prefer one clear signal over five overlapping panels.
+- Exceptions first for leads (late, blocked, at risk) — then one next action.
+- Hide vanity inventory (active counts, healthy-%, done·7d theater).
+- Do not hide the *work* itself. Empty ≠ deleted.
 
-## 4. Long-term games with long-term people
+## 4. Design is how it works
 
-Reputation compounds. The audit trail, e-sign, and access control are features,
-not bureaucracy for its own sake.
+Pixels follow behavior.
 
-- Never fake compliance. Never soft-delete truth users need later.
-- Personal spaces stay private. Trust is the product.
+- Speed is a feature (prefetch, progress, light shells).
+- Auth is serious (password change, lockout, PIN after day 3).
+- Domain depth (lifecycle, audit, QMS) beats generic task-app theater.
 
-## 5. Desire is a contract to be unhappy
+## 5. Real artists ship — then freeze
 
-Do not manufacture craving.
+Ship the home run. Then stop redrawing the face.
+
+- Identity and home layout freeze for 30 days after a decision.
+- If users force a revert, keep the restore. Do not re-experiment the same day.
+- Changelog names what was restored and why.
+
+## 6. I’m as proud of what we don’t do
 
 - No confetti status games. Quiet ack for milestones.
-- No pep quotes in the work path. Login wisdom is optional atmosphere only.
-- Install prompts wait until the product has earned a place on the dock.
+- No social feed cosplay. This is not X.
+- No pep quotes inside the work path.
+- Install prompts wait until the product has earned the dock.
+- System plumbing (recurring holders) never pretends to be a project.
 
-## 6. Delete before you optimize
+## 7. First login is one shot
 
-If a surface does not change a decision this week, remove or hide it.
+Day one must feel inevitable.
 
-- Secondary modules stay off until a team opts in.
-- System plumbing (e.g. recurring holders) never pretends to be a project.
-
-## 7. Attention is scarce
-
-Speed is a feature. Waiting without feedback is disrespect.
-
-- Instant progress on navigation. Prefetch. Light loading shells.
-- Prefer calm copy over carnival loading lines.
-
-## 7b. First login is a one-shot
-
-Most first-time users drop after the first session. Day one must feel
-inevitable, not like homework.
-
-- At most one forced step (set password if temp). Then one welcome card with
-  **one** next action by role. Skip forever.
+- At most one forced step (set password if temp).
+- One welcome path by role. Skip forever.
 - No multi-step spotlight tours. No PIN on day one (offer from login 3+).
-- Empty states teach by doing: one CTA, not a three-card syllabus.
 
-## 8. Clear thinking
+## 8. Clear thinking before status
 
 If you cannot put it on a whiteboard, you do not understand it yet.
 
-- Private whiteboard for first principles, unblock, decide, delivery path.
+- Private whiteboard stays in the product for first principles, unblock, decide.
 - Status updates come after thinking, not instead of it.
 
-## 9. Jensen: exceptions first for leaders
+## 9. Quality is the yardstick
 
-A lead’s morning is for unblock, not inventory.
+Be a yardstick of quality. Excellence is expected.
 
-- Surfaces answer: what is late, blocked, or at risk — then one personal next action.
-- Counts of “active projects,” “closed yesterday,” “healthy,” load badges, and
-  done·7d are motion metrics. Prefer delete over dashboarding them.
-- Sound and completion theater default off. The work is the reward.
+- Never fake compliance. Never soft-delete truth users need later.
+- Personal spaces stay private. Trust is the product.
+- Details matter. It’s worth getting the morning board right.
 
 ---
 
-When in doubt: **would Naval keep this, or delete it?** If it exists for
-status, novelty, or fear of looking empty — delete it.
-Would Jensen use it before the first meeting? If no — hide it.
+When in doubt: **would this make a lead’s first ten minutes inevitable?**
+If it exists for novelty, fear of looking empty, or founder cosplay — delete it.
+If we deleted something people used to think — restore it.

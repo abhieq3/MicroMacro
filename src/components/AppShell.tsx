@@ -10,6 +10,7 @@ import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
+import { WHITEBOARD_ENABLED } from '@/lib/features';
 import { PwaProvider } from './PwaProvider';
 import { PwaInstallMenuItem } from './PwaInstall';
 import { NavigationProgress } from './NavigationProgress';
@@ -58,6 +59,7 @@ import {
   UsersRound,
   ShieldCheck,
   NotebookPen,
+  Presentation,
   LogOut,
   Menu,
   X,
@@ -110,10 +112,8 @@ function useDarkMode(initialDark: boolean): [boolean, () => void] {
   const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    // Product is dark-first. Cookie name bumped so old theme=light sessions
-    // don't pin users to the washed-out light UI after the redesign.
+    // Mars identity freeze: light default, dark opt-in. Persist only.
     document.cookie = `pragati_theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
-    // Clear legacy cookie so it can't fight the new default.
     document.cookie = 'theme=; path=/; max-age=0; SameSite=Lax';
   }, [dark]);
   return [dark, () => setDark((d) => !d)];
@@ -225,6 +225,7 @@ export default function AppShell({
       '/teams',
       '/my-day',
       '/settings',
+      ...(WHITEBOARD_ENABLED ? ['/whiteboard'] : []),
       '/people',
       '/audit',
       '/admin',
@@ -338,7 +339,7 @@ export default function AppShell({
   }, [router]);
 
   // ── Global keyboard shortcuts ───────────────────────────────────────────────
-  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day,
+  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, G→W: Whiteboard,
   // ?: shortcuts modal
   // Skipped when focus is on a text input / textarea / contenteditable.
   useEffect(() => {
@@ -387,6 +388,7 @@ export default function AppShell({
           T: '/teams',
           m: '/my-day',
           M: '/my-day',
+          ...(WHITEBOARD_ENABLED ? { w: '/whiteboard', W: '/whiteboard' } : {}),
         };
         if (dest[e.key]) {
           e.preventDefault();
@@ -415,13 +417,22 @@ export default function AppShell({
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
   // user management (create/reset/unlock/delete/promote accounts) is an
   // admin-only surface, appended via adminExtra below.
-  // My Day is pinned above the footer as a personal surface. Shared org
-  // views (Dashboard / Projects / Teams) stay in the main list above.
+  // My Day + private Whiteboard are pinned above the footer as personal
+  // surfaces. Shared org views (Dashboard / Projects / Teams) stay above.
   // Mars-themed nav icons — muted stone inactive, rust active (never pure black fill).
   const ink = dark ? '#ea580c' : '#c2410c';
   const inkMuted = dark ? '#a8a29e' : '#57534e';
   const inkBg = dark ? 'rgba(234,88,12,0.1)' : 'rgba(194,65,12,0.08)';
   const inkBgActive = dark ? 'rgba(234,88,12,0.18)' : 'rgba(194,65,12,0.14)';
+
+  // Personal tool only — not shared team tracking. Sits with My Day.
+  const whiteboardItem: NavItem = {
+    href: '/whiteboard',
+    label: 'Whiteboard',
+    icon: Presentation,
+    iconColor: ink,
+    iconBg: inkBg,
+  };
   const leadNav: NavItem[] = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: ink, iconBg: inkBg },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: ink, iconBg: inkBg },
@@ -725,12 +736,12 @@ export default function AppShell({
         {/* Month calendar with due-date dots — always open when expanded. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* Personal: My Day */}
+        {/* Personal tools: My Day (+ private Whiteboard when enabled). */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
           style={{ borderColor: dark ? '#292524' : '#e7e5e4' }}
         >
-          {[myDayItem].map((n) => {
+          {[myDayItem, ...(WHITEBOARD_ENABLED ? [whiteboardItem] : [])].map((n) => {
             const Icon = n.icon;
             const active = isActive(n.href);
             return (
@@ -1151,6 +1162,16 @@ export default function AppShell({
                 >
                   <UserCircle size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Profile &amp; settings
                 </Link>
+                {WHITEBOARD_ENABLED && (
+                  <Link
+                    href="/whiteboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-3 text-sm font-medium transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
+                    style={{ borderRadius: 4 }}
+                  >
+                    <Presentation size={17} className={dark ? 'text-white/35' : 'text-zinc-400'} /> Whiteboard
+                  </Link>
+                )}
                 {isAdmin && [...adminExtra, ...masterAdminExtra].length > 0 && (
                   <>
                     <div
@@ -1314,6 +1335,7 @@ export default function AppShell({
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
                     { keys: ['G', 'M'], label: 'My Day' },
+                    ...(WHITEBOARD_ENABLED ? [{ keys: ['G', 'W'], label: 'Whiteboard' }] : []),
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (

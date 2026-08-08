@@ -8,7 +8,7 @@ import { BUILTIN_QUOTES, dailyQuoteOffset, readingMs } from '@/lib/quotes';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { AVATAR_FONTS, avatarFg } from '@/components/ui';
 
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v12';
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v13';
 
 function unseenQuoteIndices(count: number): number[] {
   const all = Array.from({ length: count }, (_, i) => i);
@@ -387,7 +387,7 @@ export default function LoginPage() {
                 className="fade-up-2 text-center text-[#71767b] mt-6 leading-relaxed mx-auto tracking-wide"
                 style={{ fontSize: 13, maxWidth: 280 }}
               >
-                Work visible to the whole team.
+                Focus. Ship. Make the work visible.
               </p>
             </div>
 
@@ -404,6 +404,9 @@ export default function LoginPage() {
               <PragatiMark size={48} />
               <div className="brand-wordmark text-[1.75rem] text-[#0f1419] dark:text-white mt-4">Pragati</div>
               <div className="text-xs text-[#71767b] mt-1 tracking-wide">Team work, fully visible</div>
+              <div className="mt-5 w-full max-w-[300px]">
+                <RotatingQuote />
+              </div>
             </div>
 
             <div className="p-0">
