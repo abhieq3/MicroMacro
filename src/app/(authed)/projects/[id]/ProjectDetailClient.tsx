@@ -41,8 +41,8 @@ import {
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 
-import { chimeIfEnabled, playFanfare } from '@/lib/sound';
-import { Celebration } from '@/components/Celebration';
+import { chimeIfEnabled, playFanfare, playVictory } from '@/lib/sound';
+import { Celebration, type CelebrationLevel } from '@/components/Celebration';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import { ExportMenu } from '@/components/ExportMenu';
@@ -661,11 +661,12 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState('');
   const [savingDesc, setSavingDesc] = useState(false);
-  // Milestone ack — only when finishing a task clears a phase or the whole
-  // project. Quiet Jensen toast (no confetti).
-  const [celebration, setCelebration] = useState<{ title: string; subtitle?: string; emoji?: string } | null>(
-    null,
-  );
+  // Milestone ack — phase sparkle or full project confetti when work is truly done.
+  const [celebration, setCelebration] = useState<{
+    title: string;
+    subtitle?: string;
+    level?: CelebrationLevel;
+  } | null>(null);
   // Per-task mini-ack (bottom-right). Distinct from phase/project milestone.
   const [taskPop, setTaskPop] = useState<any | null>(null);
 
@@ -843,9 +844,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     try {
       await api(`/projects/${id}`, { method: 'PATCH', body: { status: newStatus } });
       if (newStatus === 'completed') {
+        playVictory();
         setCelebration({
           title: 'Project complete',
           subtitle: `${project.name} — all work closed.`,
+          level: 'project',
         });
       } else {
         showToast('Project status updated');
@@ -867,9 +870,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     await api(`/projects/${id}`, { method: 'PATCH', body: { status: pendingStatus, password, remarks } });
     setPendingStatus(null);
     if (becameComplete) {
+      playVictory();
       setCelebration({
         title: 'Project complete',
         subtitle: `${project.name} — all work closed.`,
+        level: 'project',
       });
     } else {
       showToast('Project status updated');
@@ -966,9 +971,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     const projected = tasks.map((t: any) => (t.id === taskId ? { ...t, status: 'done' } : t));
     const done = (t: any) => t.status === 'done';
     if (projected.length > 0 && projected.every(done)) {
+      playVictory();
       setCelebration({
         title: 'Project clear',
         subtitle: project?.name || 'Every task closed.',
+        level: 'project',
       });
       return true;
     }
@@ -978,9 +985,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     const phaseTasks = projected.filter((t: any) => (t.phaseId || null) === pid);
     if (phaseTasks.length > 0 && phaseTasks.every(done)) {
       const phaseName = phases.find((p: any) => p.id === pid)?.name;
+      playFanfare();
       setCelebration({
         title: 'Phase clear',
         subtitle: phaseName || 'Phase closed.',
+        level: 'phase',
       });
       return true;
     }
@@ -1006,10 +1015,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         if (!celebrateIfMilestone(taskId)) {
           chimeIfEnabled();
           if (cur) setTaskPop(cur);
-        } else {
-          // Milestone haptic/sound only — opt-in fanfare when sound is on.
-          playFanfare();
         }
+        // Milestone sound/haptic owned by celebrateIfMilestone + Celebration.
       }
       // Optimistic state is already applied by KanbanBoard; reconcile silently.
       load();
@@ -1040,8 +1047,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           chimeIfEnabled();
           const cur = tasks.find((t: any) => t.id === taskId);
           if (cur) setTaskPop(cur);
-        } else {
-          playFanfare();
         }
       }
     } catch (e: any) {
@@ -1211,7 +1216,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         <Celebration
           title={celebration.title}
           subtitle={celebration.subtitle}
-          emoji={celebration.emoji}
+          level={celebration.level || 'phase'}
           onDone={() => setCelebration(null)}
         />
       )}

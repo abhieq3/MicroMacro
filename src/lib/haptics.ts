@@ -1,11 +1,7 @@
 /**
- * Minimal haptic feedback via the Vibration API. Progressive enhancement —
- * supported on most Android browsers, silently ignored on iOS Safari and
- * desktop. Honours a localStorage mute (shared spirit with the sound pref) and
- * the OS "reduce motion" setting, so it never becomes a nuisance.
- *
- * Kept deliberately tiny: a tap for routine confirmations, a richer pattern for
- * milestones. Calls are no-ops on the server.
+ * Haptic feedback via the Vibration API. Progressive enhancement —
+ * works on most Android browsers, silently ignored on iOS Safari and desktop.
+ * Honours localStorage mute and prefers-reduced-motion.
  */
 
 function allowed(): boolean {
@@ -20,7 +16,7 @@ function allowed(): boolean {
   return true;
 }
 
-/** A single light tick — for taps, toggles, drops. */
+/** Single light tick — taps, toggles, kanban drops. */
 export function hapticTap() {
   if (!allowed()) return;
   try {
@@ -30,7 +26,7 @@ export function hapticTap() {
   }
 }
 
-/** A short double-buzz — for a completed task / saved record. */
+/** Short double-buzz — everyday task complete / save. */
 export function hapticSuccess() {
   if (!allowed()) return;
   try {
@@ -40,11 +36,21 @@ export function hapticSuccess() {
   }
 }
 
-/** A celebratory pattern — reserved for milestones (phase / project complete). */
+/** Phase clear — richer pulse (earned, not routine). */
 export function hapticCelebrate() {
   if (!allowed()) return;
   try {
-    navigator.vibrate([18, 50, 24, 50, 38]);
+    navigator.vibrate([16, 45, 22, 45, 36]);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Whole project complete — the big one. Longer, stepped pattern. */
+export function hapticVictory() {
+  if (!allowed()) return;
+  try {
+    navigator.vibrate([20, 40, 20, 40, 28, 50, 45, 70, 70]);
   } catch {
     /* ignore */
   }

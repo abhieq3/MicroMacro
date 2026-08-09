@@ -12,7 +12,7 @@ import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
-import { chimeIfEnabled, playFanfare } from '@/lib/sound';
+import { chimeIfEnabled, playVictory } from '@/lib/sound';
 import {
   ChevronRight,
   Shield,
@@ -32,6 +32,10 @@ import { TaskRecurringCard } from './TaskRecurringCard';
 // TaskCompletePop is only shown on task completion — off the critical render
 // path so deferring it improves FCP/LCP.
 const TaskCompletePop = dynamic(() => import('@/components/TaskCompletePop').then((m) => m.TaskCompletePop), {
+  ssr: false,
+  loading: () => null,
+});
+const Celebration = dynamic(() => import('@/components/Celebration').then((m) => m.Celebration), {
   ssr: false,
   loading: () => null,
 });
@@ -111,10 +115,9 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const [effortOpen, setEffortOpen] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
-  // Mini-celebration shown when the task moves to "done". A small bottom-right
-  // toast — not a confetti overlay — that recognises the *type* of task that
-  // was finished. Stays null until the user actually closes the task.
+  // Everyday close → small toast + sparkle. Whole project clear → big Celebration.
   const [celebrate, setCelebrate] = useState<any | null>(null);
+  const [projectCeleb, setProjectCeleb] = useState<{ title: string; subtitle?: string } | null>(null);
   const { showToast, ToastEl } = useToast();
 
   async function load() {
@@ -241,18 +244,25 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
     try {
       const updated = await api<any>(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus } });
       if (newStatus === 'done' && !wasDone) {
-        // Jensen: ordinary closes = quiet chime; project-clear = rare fanfare (opt-in sound).
-        if (updated?.projectClear) playFanfare();
-        else chimeIfEnabled();
-        setCelebrate({
-          id: task.id,
-          title: task.title,
-          taskType: task.taskType,
-          gxpCritical: task.gxpCritical,
-          priority: task.priority,
-          projectClear: !!updated?.projectClear,
-          projectName: updated?.projectName || task.projectName || null,
-        });
+        if (updated?.projectClear) {
+          // Big moment — full confetti + victory haptic/sound (Celebration owns haptic).
+          playVictory();
+          setProjectCeleb({
+            title: 'Project clear',
+            subtitle: updated?.projectName || task.projectName || 'Every task closed.',
+          });
+        } else {
+          chimeIfEnabled();
+          setCelebrate({
+            id: task.id,
+            title: task.title,
+            taskType: task.taskType,
+            gxpCritical: task.gxpCritical,
+            priority: task.priority,
+            projectClear: false,
+            projectName: null,
+          });
+        }
       }
       load();
     } catch (e: any) {
@@ -363,6 +373,14 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
       {ToastEl}
       <TaskCompletePop task={celebrate} onDone={() => setCelebrate(null)} />
+      {projectCeleb && (
+        <Celebration
+          title={projectCeleb.title}
+          subtitle={projectCeleb.subtitle}
+          level="project"
+          onDone={() => setProjectCeleb(null)}
+        />
+      )}
 
       {/* ── Left: main content ─────────────────────────────────────────── */}
       <div className="lg:col-span-2 space-y-4">

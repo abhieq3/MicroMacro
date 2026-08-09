@@ -548,6 +548,24 @@ body {
     opacity: 1;
   }
 }
+/* Micro sparkles from task-complete toast (--spark-dx set inline). */
+@keyframes task-sparkle-up {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--spark-dx, 0px), -52px) scale(0.2);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .celebration-confetti,
+  .task-sparkle {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+}
 
 /* ── Modal entry — lightweight, no bounce ────────────────────────────────── */
 @keyframes modal-in {
