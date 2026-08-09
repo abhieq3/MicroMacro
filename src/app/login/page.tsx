@@ -528,9 +528,7 @@ export default function LoginPage() {
                 className="fade-up-2 text-center text-white/55 mt-5 leading-relaxed mx-auto"
                 style={{ fontSize: 14, maxWidth: 320 }}
               >
-                A bird&apos;s-eye view of every project,
-                <br />
-                every action, every contributor.
+                Projects. Owners. Due dates.
               </p>
             </div>
 
@@ -557,7 +555,7 @@ export default function LoginPage() {
                 <PragatiMark size={44} />
               </div>
               <div className="brand-wordmark text-[2rem] text-white mt-3 drop-shadow">Pragati</div>
-              <div className="text-sm text-white/70 mt-1">The view from above</div>
+              <div className="text-sm text-white/70 mt-1">Work tracking</div>
               <div className="mt-4 w-full max-w-[300px] bg-white/95 rounded-xl px-3 py-2.5 shadow-lg">
                 <RotatingQuote light />
               </div>
@@ -742,7 +740,7 @@ export default function LoginPage() {
                     {mode === 'login' ? 'Sign in' : 'Set up workspace'}
                   </h2>
                   <p className="text-sm text-slate-500 mt-1.5 leading-snug">
-                    {mode === 'login' ? 'Enter credentials to continue.' : 'Create the first lead account.'}
+                    {mode === 'login' ? 'Username and password.' : 'First lead account.'}
                   </p>
                 </div>
               )}

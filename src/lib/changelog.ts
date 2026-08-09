@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Stabilize UX: short copy, consistent labels, no fluff',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Home, My Day, Team, Task, Login: empty states and headers are factual (Projects, Due, Zero open) — no pep greetings, festival notes, or long helper prose.',
+      'Buttons and placeholders standardized (New project, My Day, Add a task…). Tickets empty state drops emoji. Effort log says hours logged, not “invested”.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Elon purge: foresight & forecast corpses deleted; identity freeze',
     tags: ['improvement'],
     highlight: true,

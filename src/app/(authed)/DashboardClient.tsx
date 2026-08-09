@@ -126,71 +126,6 @@ interface DashResp {
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
-// Festivals worth a warm one-off greeting. Fixed-date national/global days are
-// keyed by MM-DD; movable feasts (Diwali, Holi — lunar) are keyed by full
-// YYYY-MM-DD for the years the app is in active use, since their Gregorian
-// date shifts each year. Pragati is built for an Indian pharma context, so the
-// list leans that way while still covering the universal New Year / Christmas.
-type Festival = { title: string; emoji: string; note: string };
-const FIXED_FESTIVALS: Record<string, Festival> = {
-  '01-01': {
-    title: 'Happy New Year',
-    emoji: '🎆',
-    note: 'A fresh year, a clean slate — let’s make it count.',
-  },
-  '01-26': {
-    title: 'Happy Republic Day',
-    emoji: '🇮🇳',
-    note: 'Compliance and care — values worth celebrating today.',
-  },
-  '08-15': {
-    title: 'Happy Independence Day',
-    emoji: '🇮🇳',
-    note: 'Freedom and discipline, hand in hand. Have a proud day.',
-  },
-  '10-02': {
-    title: 'Gandhi Jayanti',
-    emoji: '🕊️',
-    note: 'Quality is doing it right when no one is watching.',
-  },
-  '12-25': { title: 'Merry Christmas', emoji: '🎄', note: 'Wishing you a warm, restful holiday.' },
-  '12-31': {
-    title: 'Happy New Year’s Eve',
-    emoji: '🥂',
-    note: 'One last push, then a well-earned celebration.',
-  },
-};
-const MOVABLE_FESTIVALS: Record<string, Festival> = {
-  // Diwali
-  '2025-10-21': { title: 'Happy Diwali', emoji: '🪔', note: 'May your year ahead be bright and prosperous.' },
-  '2026-11-08': { title: 'Happy Diwali', emoji: '🪔', note: 'May your year ahead be bright and prosperous.' },
-  '2027-10-29': { title: 'Happy Diwali', emoji: '🪔', note: 'May your year ahead be bright and prosperous.' },
-  // Holi
-  '2025-03-14': { title: 'Happy Holi', emoji: '🎨', note: 'A splash of colour to your day!' },
-  '2026-03-03': { title: 'Happy Holi', emoji: '🎨', note: 'A splash of colour to your day!' },
-  '2027-03-22': { title: 'Happy Holi', emoji: '🎨', note: 'A splash of colour to your day!' },
-};
-function festivalFor(now = new Date()): Festival | null {
-  const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const dd = String(now.getDate()).padStart(2, '0');
-  const ymd = `${now.getFullYear()}-${mm}-${dd}`;
-  return MOVABLE_FESTIVALS[ymd] || FIXED_FESTIVALS[`${mm}-${dd}`] || null;
-}
-
-// A warm, genuine salutation. Festivals take priority; otherwise it's a proper
-// time-of-day greeting (clear and human — not the old "Keep it moving" filler),
-// with light day-of-week flavour so Monday and Friday don't read the same.
-function greeting(now = new Date()): string {
-  const fest = festivalFor(now);
-  if (fest) return `${fest.title}`;
-  const h = now.getHours();
-  if (h < 5) return 'Still up';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  if (h < 21) return 'Good evening';
-  return 'Good evening';
-}
-
 const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
 
 const STATUS_LABEL: Record<string, string> = {
@@ -349,8 +284,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-[1.75rem] sm:text-[1.9rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
-            <span suppressHydrationWarning>
-              {greeting()}, <span className="text-blue-700 dark:text-blue-400">{firstName}.</span>
+            <span className="text-blue-700 dark:text-blue-400" suppressHydrationWarning>
+              {firstName}
             </span>
           </h1>
         </div>
@@ -403,8 +338,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
           )}
           {summaryModal === 'overdue' && (
             <SummaryTaskPopup
-              title="Overdue tasks"
-              subtitle="Work that has crossed its target/due date."
+              title="Overdue"
+              subtitle="Past due date."
               tone="red"
               tasks={overdueTasks}
               onClose={() => setSummaryModal(null)}
@@ -412,8 +347,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
           )}
           {summaryModal === 'blocked' && (
             <SummaryTaskPopup
-              title="Blocked tasks"
-              subtitle="Work waiting on an external dependency or decision."
+              title="Blocked"
+              subtitle="Waiting on a dependency."
               tone="amber"
               tasks={blockedTasks}
               onClose={() => setSummaryModal(null)}
@@ -434,7 +369,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               <div className="flex items-center gap-2 min-w-0">
                 <FolderKanban size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
                 <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
-                  Your team’s projects
+                  Projects
                 </h2>
                 <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
                   {ongoingProjects.length}
@@ -451,13 +386,13 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               <div className="flex items-center gap-2 min-w-0">
                 <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
                 <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
-                  Up Next
+                  Due
                 </h2>
               </div>
               <button
                 type="button"
                 onClick={() => setUpNextExpanded(true)}
-                aria-label="Expand Up Next"
+                aria-label="Expand due list"
                 className="shrink-0 p-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
               >
                 <Maximize2 size={13} />
@@ -809,14 +744,11 @@ function ContributorWelcome({ name }: { name: string }) {
         style={{ background: 'linear-gradient(90deg, #1256B0 0%, #22c55e 100%)' }}
       />
       <div className="p-5">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-          Welcome
-        </p>
-        <h2 className="mt-1 text-base font-black text-slate-800 dark:text-white/85 tracking-tight">
-          Hi, {first}
+        <h2 className="text-base font-black text-slate-800 dark:text-white/85 tracking-tight">
+          {first}
         </h2>
         <p className="mt-1.5 text-[13px] text-slate-500 dark:text-white/40 leading-relaxed">
-          Nothing assigned yet — normal on day one. When your lead adds work, it lands here.
+          No tasks assigned.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <Link
@@ -824,13 +756,13 @@ function ContributorWelcome({ name }: { name: string }) {
             className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold text-white transition-all"
             style={{ background: 'linear-gradient(135deg, #1256B0 0%, #1769C8 100%)' }}
           >
-            Open My Day <ArrowRight size={13} />
+            My Day <ArrowRight size={13} />
           </Link>
           <Link
             href="/projects"
             className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-500 hover:text-blue-600 dark:text-white/40 dark:hover:text-blue-400"
           >
-            Browse projects
+            Projects
           </Link>
         </div>
       </div>
@@ -849,15 +781,15 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
   const next = hasTeam
     ? {
         href: '/projects/new',
-        title: 'Create your first project',
-        body: 'Pick a lifecycle, put it on a team, add one task. The rest follows.',
+        title: 'Add a project',
+        body: 'Team is ready. Create a project and assign work.',
         cta: 'New project',
       }
     : {
         href: '/teams',
-        title: 'Create a team',
-        body: 'Name the group you ship with. Projects and people hang off a team.',
-        cta: 'Create a team',
+        title: 'Add a team',
+        body: 'Create a team, then projects and members.',
+        cta: 'New team',
       };
 
   return (
@@ -871,7 +803,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
       />
       <div className="p-5">
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30">
-          Get started
+          Setup
         </p>
         <div className="mt-3 flex items-center gap-2 flex-wrap">
           {steps.map((s, i) => (
@@ -939,7 +871,7 @@ function ProjectsColumn({
         <div className="flex items-center gap-2 min-w-0">
           <FolderKanban size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
           <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
-            Your team’s projects
+            Projects
           </h2>
           <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
             {projects.length}
@@ -960,15 +892,13 @@ function ProjectsColumn({
         >
           <FolderKanban size={26} className="mx-auto text-slate-300 dark:text-white/20 mb-3" />
           <div className="text-sm font-semibold text-slate-600 dark:text-white/55 mb-1">
-            No ongoing projects
+            No projects
           </div>
           <div className="text-xs text-slate-400 dark:text-white/30 max-w-xs mx-auto leading-relaxed">
-            {isLead
-              ? 'Spin up a project to start tracking work — it will show up here with all its tasks.'
-              : "Once a lead assigns you to a team and a project, it will show up here with the tasks you're on."}
+            {isLead ? 'Create a project to track work here.' : 'No projects in your teams yet.'}
           </div>
           <Link href={isLead ? '/projects/new' : '/my-day'} className="btn-primary text-xs mt-4 inline-flex">
-            {isLead ? '+ New project' : 'Open My Day'}
+            {isLead ? 'New project' : 'My Day'}
           </Link>
         </div>
       ) : (
@@ -1598,7 +1528,7 @@ function UpNextPanel({
           <div className="flex items-center gap-2 min-w-0">
             <TrendingUp size={14} className="text-slate-400 dark:text-white/30 shrink-0" />
             <h2 className="text-xs font-bold uppercase tracking-wider sm:tracking-[0.14em] text-slate-500 dark:text-white/40 truncate">
-              Up Next
+              Due
             </h2>
             <span className="text-[10px] text-slate-300 dark:text-white/20 font-semibold shrink-0 tabular-nums">
               {totalCount}
@@ -1607,7 +1537,7 @@ function UpNextPanel({
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            aria-label="Expand Up Next"
+            aria-label="Expand due list"
             className="shrink-0 p-1 rounded text-slate-400 hover:text-slate-700 dark:text-white/30 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors"
           >
             <Maximize2 size={13} />
@@ -1701,7 +1631,7 @@ function UpNextPanel({
 
   return expanded ? (
     <FullScreenOverlay
-      title="Up Next"
+      title="Due"
       icon={<TrendingUp size={14} className="text-blue-500" />}
       onClose={() => setExpanded(false)}
     >
@@ -1755,7 +1685,7 @@ function ActionGroup({
       {tasks.length === 0 ? (
         <div className="px-4 py-6 text-center">
           <CheckCircle2 size={18} className="mx-auto text-emerald-300 mb-1.5" />
-          <div className="text-[11px] text-slate-400 dark:text-white/25">{emptyHint || 'All clear'}</div>
+          <div className="text-[11px] text-slate-400 dark:text-white/25">{emptyHint || 'None'}</div>
         </div>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-white/[0.05]">

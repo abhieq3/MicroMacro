@@ -376,12 +376,10 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
             )}
           </div>
           <div className="text-sm font-bold text-slate-700 dark:text-white/80 mb-1">
-            {q || team || lc || status ? 'No matching projects' : 'No projects yet'}
+            {q || team || lc || status ? 'No matches' : 'No projects'}
           </div>
           <div className="text-xs text-slate-400 dark:text-white/35 mb-4">
-            {q || team || lc || status
-              ? 'Try a different search or clear the filters below.'
-              : 'Create your first project to get started.'}
+            {q || team || lc || status ? 'Clear filters to see all.' : 'Create a project to track work.'}
           </div>
           {q || team || lc || status ? (
             <button

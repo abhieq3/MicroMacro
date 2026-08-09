@@ -126,7 +126,7 @@ export default function TeamsClient({
           <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-4">
             <UsersIcon size={22} className="text-blue-400" />
           </div>
-          <div className="text-sm font-bold text-slate-700 dark:text-white/80 mb-1">No teams yet</div>
+          <div className="text-sm font-bold text-slate-700 dark:text-white/80 mb-1">No teams</div>
           <div className="text-xs text-slate-400 dark:text-white/35 mb-4">
             {canManage
               ? 'Group people around a shared mission — then attach projects to it.'
@@ -632,7 +632,7 @@ function TeamFormModal({
                     />
                     <ModuleToggle
                       label="Recurring activities"
-                      hint="Scheduled chores that repeat (e.g. monthly downtime) with a checklist that resets each cycle."
+                      hint="Repeating work with a checklist each cycle."
                       checked={recurringEnabled}
                       onChange={setRecurringEnabled}
                     />

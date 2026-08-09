@@ -432,14 +432,14 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             disabled={!canEditBasics}
             onChange={(e) => setTask({ ...task, description: e.target.value })}
             onBlur={(e) => canEditBasics && update({ description: e.target.value })}
-            placeholder="Describe what's expected, references, evidence required…"
+            placeholder="Description, references, evidence…"
           />
         </Card>
         {!isLead && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
             {canEditBasics
-              ? 'You can update status, description, and due date. Assignee and other fields are lead-owned.'
-              : 'Read-only: only the assignee and team leads can edit this task.'}
+              ? 'You can edit status, description, and due date.'
+              : 'Read-only. Assignee or lead can edit.'}
           </div>
         )}
 
@@ -777,7 +777,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               </label>
               <input
                 className="input text-sm"
-                placeholder="e.g. QA/HOD · Specific department · Person's name"
+                placeholder="Who or what is blocking"
                 value={task.pendingWith || ''}
                 disabled={!canEditAll}
                 onChange={(e) => setTask({ ...task, pendingWith: e.target.value })}
@@ -896,11 +896,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                   <div>
                     <div className="text-xs font-semibold text-slate-700 dark:text-white/75">
                       {effortMins > 0
-                        ? `${fmtMins(effortMins)} invested in this task`
-                        : 'No effort logged yet'}
+                        ? `${fmtMins(effortMins)} logged`
+                        : 'No time logged'}
                     </div>
                     <div className="mt-0.5 text-[11px] text-slate-400">
-                      Add time after a focused work block so estimates improve without interrupting the work.
+                      Log hours to track estimate vs actual.
                     </div>
                   </div>
                   <ChevronRight size={15} className="shrink-0 text-slate-400" />

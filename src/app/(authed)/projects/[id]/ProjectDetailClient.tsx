@@ -1843,16 +1843,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           {project.isPersonal && (
             <div className="text-[11px] text-slate-400 font-mono break-all">Personal</div>
           )}
-          {/* Personal projects are a private space — say so, warmly, and meet
-              the owner where they are in the journey. Rule-based, one line. */}
           {project.isPersonal && (
             <p className="text-[11.5px] text-violet-500/90 dark:text-violet-300/70 mt-0.5">
               <Lock size={10} className="inline -mt-0.5 mr-1" />
-              {pct === 0
-                ? 'Private to you. Pick one small task.'
-                : pct < 100
-                  ? `Private to you. ${pct}% done.`
-                  : 'Private to you. Complete.'}
+              Private{pct > 0 ? ` · ${pct}%` : ''}
             </p>
           )}
           {/* Reference number — a single identity line. The system assigns one

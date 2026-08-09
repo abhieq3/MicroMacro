@@ -5,7 +5,6 @@ import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { DigestSetting, type DigestSettingDoc } from '@/models/DigestSetting';
 import { sendEmail, mailerConfigured } from '@/lib/mailer';
-import { resolveIndustry, pickInsight } from '@/lib/insights';
 import { projectRef } from '@/lib/projectRef';
 import { normalizeRole } from '@/lib/auth';
 
@@ -923,11 +922,6 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
   // rows so the digest matches whatever the member changed it to in the app.
   const projRef = new Map<string, string>(projDocs.map((p: any) => [String(p._id), projectRef(p)]));
 
-  // One curated, industry-tuned insight per day, shared across the workspace
-  // (a common "thought for the day"). Single-tenant reads PRAGATI_INDUSTRY;
-  // the multi-tenant path will resolve the tenant's stored niche here.
-  const dailyInsight = pickInsight(resolveIndustry(), 0, now);
-
   for (const r of recipients) {
     const uid = String(r.user._id);
     const raw = tasksByUser.get(uid) || [];
@@ -966,7 +960,6 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       test: opts.test,
       dateLabel,
       winsYesterday: winsByUser.get(uid) || 0,
-      insight: dailyInsight,
       leadershipBrief,
     });
 

@@ -198,7 +198,7 @@ export default async function AdminConsolePage() {
           </div>
           {attention.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-slate-400 dark:text-white/40">
-              All clear — no locked accounts, no pending invites.
+              No locked accounts. No pending invites.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-white/5">

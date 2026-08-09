@@ -774,7 +774,7 @@ export default function TeamDetailPage() {
           >
             {isOwnerOrAdmin && (
               <div className="mb-3 -mt-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2 leading-snug dark:bg-white/[0.03] dark:border-white/10">
-                Membership grants access to every project on this team.
+                Members can access all projects on this team.
               </div>
             )}
             {adding && isOwnerOrAdmin && (
@@ -1060,9 +1060,7 @@ export default function TeamDetailPage() {
                                 : 'No match'}
                         </div>
                         <p className="mt-1 text-xs text-slate-400 max-w-sm mx-auto">
-                          {workFilter === 'open'
-                            ? 'Board is clear. Done history is one filter away.'
-                            : 'Try another filter or clear the search.'}
+                          {workFilter === 'open' ? 'Switch filter for history.' : 'Clear search or change filter.'}
                         </p>
                         {workFilter !== 'all' && (
                           <button

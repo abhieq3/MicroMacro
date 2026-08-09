@@ -61,13 +61,9 @@ interface UserNote {
   updatedAt: string;
 }
 
-/* Quiet greeting — date + name only. Pep lines train status, not focus. */
-function dayGreeting(now = new Date()): string {
-  const h = now.getHours();
-  if (h < 5) return 'Still here';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+/* Name-only header. No time-of-day pep. */
+function dayGreeting(_now = new Date()): string {
+  return 'Today';
 }
 
 function useDateLabel() {
@@ -289,7 +285,7 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
             <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/[0.07] p-6 text-center">
               <FileText size={16} className="mx-auto mb-2 text-slate-300 dark:text-white/15" />
               <div className="text-[11px] text-slate-400 dark:text-white/25">
-                No notes yet. Save anything you want to keep.
+                No notes.
               </div>
             </div>
           )}
@@ -699,14 +695,8 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
             </div>
             <h1 className="text-[1.7rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
               <span suppressHydrationWarning>
-                {dayGreeting()}
-                {firstName ? ', ' : '.'}
+                {firstName || dayGreeting()}
               </span>
-              {firstName && (
-                <span className="text-blue-700 dark:text-blue-400" suppressHydrationWarning>
-                  {firstName}.
-                </span>
-              )}
             </h1>
             {dateLabel && (
               <div className="flex items-center gap-1.5 mt-1.5">
@@ -742,7 +732,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                 <input
                   ref={inputRef}
                   className="flex-1 bg-transparent text-[15px] text-slate-800 dark:text-white/90 placeholder-slate-400 dark:placeholder-white/30 border-0 outline-none py-1 min-w-0"
-                  placeholder="What needs to get done today?"
+                  placeholder="Add a task…"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   autoFocus
@@ -1060,7 +1050,7 @@ function PromoteModal({
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 dark:text-white/35 ml-8">
-                  Turn this thought into project work — or keep it private to you.
+                  Create a project task from this note.
                 </p>
               </div>
               <button
@@ -1224,7 +1214,7 @@ function TodayFromProjects() {
       <div className="flex items-center gap-2 mb-1">
         <FolderKanban size={12} className="text-slate-400 dark:text-white/30 shrink-0" />
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">
-          Today from your projects
+          Due from projects
         </span>
       </div>
       {rows.map((t: any) => (

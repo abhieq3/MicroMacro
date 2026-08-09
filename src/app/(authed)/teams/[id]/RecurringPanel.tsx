@@ -277,8 +277,7 @@ export function RecurringPanel({
               Recurring activities
             </h3>
             <p className="text-[11px] text-slate-400 leading-snug">
-              Scheduled chores that repeat — each occurrence shows on the calendar &amp; dashboard with
-              its checklist.
+              Repeat on a schedule. Each cycle creates a task with checklist.
             </p>
           </div>
         </div>
@@ -363,7 +362,7 @@ export function RecurringPanel({
           {draft.scheduleKind === 'monthly_weekday' ? (
             <div className="rounded-xl border border-violet-200/80 dark:border-violet-500/20 bg-violet-50/40 dark:bg-violet-500/[0.06] p-3 space-y-3">
               <p className="text-[11px] text-violet-700/80 dark:text-violet-300/70 leading-snug">
-                Example: <strong>Last Sunday of each month</strong> — ideal for monthly reviews and downtime windows.
+                e.g. <strong>Last Sunday of each month</strong>
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>

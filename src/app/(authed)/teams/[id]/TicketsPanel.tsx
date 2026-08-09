@@ -396,7 +396,7 @@ export function TicketsPanel({
         <div className="space-y-4">
           <div className="space-y-2">
             {active.length === 0 ? (
-              <div className="text-sm text-slate-400 py-2">Nothing open — queue is clear. 🎉</div>
+              <div className="text-sm text-slate-400 py-2">No open tickets.</div>
             ) : (
               active.map((t) => <Row key={t.id} t={t} />)
             )}
