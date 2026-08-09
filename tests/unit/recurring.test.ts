@@ -8,9 +8,12 @@ import {
   advanceMonthlyWeekday,
   activityCadenceLabel,
   cadenceLabel,
+  catchUpNextDue,
   firstMonthlyWeekdayOnOrAfter,
   monthlyWeekdayCadenceLabel,
   nthWeekdayOfMonth,
+  parseScheduleDate,
+  resolveFirstDue,
 } from '../../src/lib/recurring';
 
 describe('addInterval', () => {
@@ -116,5 +119,77 @@ describe('nthWeekdayOfMonth / monthly weekday', () => {
       activityCadenceLabel({ scheduleKind: 'interval', intervalUnit: 'month', intervalCount: 1 }),
       'Monthly',
     );
+  });
+});
+
+describe('catchUpNextDue / resolveFirstDue', () => {
+  const ymd = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  it('parses date-only strings as local noon', () => {
+    const d = parseScheduleDate('2026-08-30');
+    assert.equal(ymd(d), '2026-08-30');
+    assert.equal(d.getHours(), 12);
+  });
+
+  it('catches a stale last-Sunday cursor from June up to August', () => {
+    // Stale nextDue = last Sunday of June 2026; today = 9 Aug 2026 → Aug 30.
+    const next = catchUpNextDue(
+      {
+        scheduleKind: 'monthly_weekday',
+        weekday: 0,
+        weekdayOrdinal: -1,
+        intervalCount: 1,
+        nextDueDate: new Date(2026, 5, 28, 12, 0, 0),
+      },
+      new Date(2026, 7, 9, 12, 0, 0),
+    );
+    assert.equal(ymd(next), '2026-08-30');
+  });
+
+  it('leaves a future nextDue alone', () => {
+    const next = catchUpNextDue(
+      {
+        scheduleKind: 'monthly_weekday',
+        weekday: 0,
+        weekdayOrdinal: -1,
+        intervalCount: 1,
+        nextDueDate: new Date(2026, 7, 30, 12, 0, 0),
+      },
+      new Date(2026, 7, 9, 12, 0, 0),
+    );
+    assert.equal(ymd(next), '2026-08-30');
+  });
+
+  it('catches up an interval series every 3 months', () => {
+    // next 6 Jan 2026, today 9 Aug 2026 → 6 Oct 2026 (Jan→Apr→Jul→Oct).
+    const next = catchUpNextDue(
+      {
+        scheduleKind: 'interval',
+        intervalUnit: 'month',
+        intervalCount: 3,
+        nextDueDate: new Date(2026, 0, 6, 12, 0, 0),
+      },
+      new Date(2026, 7, 9, 12, 0, 0),
+    );
+    assert.equal(ymd(next), '2026-10-06');
+  });
+
+  it('resolveFirstDue never returns a past last-Sunday', () => {
+    const first = resolveFirstDue(
+      {
+        scheduleKind: 'monthly_weekday',
+        weekday: 0,
+        weekdayOrdinal: -1,
+        intervalCount: 1,
+      },
+      '2026-06-01',
+      new Date(2026, 7, 9, 12, 0, 0),
+    );
+    assert.equal(ymd(first), '2026-08-30');
   });
 });

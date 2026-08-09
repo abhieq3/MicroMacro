@@ -31,6 +31,28 @@ function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
 
+/**
+ * Parse a date for schedule math. Date-only strings (`YYYY-MM-DD` from the
+ * date picker) are pinned to **local noon** so they never shift a calendar day
+ * under UTC storage / IST display. Full ISO timestamps keep their instant.
+ */
+export function parseScheduleDate(input: Date | string): Date {
+  if (input instanceof Date) {
+    return isNaN(input.getTime()) ? new Date() : input;
+  }
+  const s = String(input || '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, d] = s.split('-').map(Number);
+    return localNoon(y, m - 1, d);
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+function dayKey(d: Date): number {
+  return startOfLocalDay(d).getTime();
+}
+
 /** Step a date forward by `count` units. Pure. Month/year arithmetic uses the
  *  native setMonth/setFullYear, so end-of-month edges roll naturally (Jan 31 +
  *  1 month → early Mar), which is fine for these maintenance cadences. */
@@ -90,12 +112,12 @@ export function firstMonthlyWeekdayOnOrAfter(
   weekday: number,
   ordinal: number,
 ): Date {
-  const start = startOfLocalDay(new Date(from));
+  const start = startOfLocalDay(parseScheduleDate(from));
   let y = start.getFullYear();
   let m = start.getMonth();
   for (let i = 0; i < 36; i++) {
     const candidate = nthWeekdayOfMonth(y, m, weekday, ordinal);
-    if (candidate.getTime() >= start.getTime()) return candidate;
+    if (dayKey(candidate) >= dayKey(start)) return candidate;
     m += 1;
     if (m > 11) {
       m = 0;
@@ -112,7 +134,7 @@ export function advanceMonthlyWeekday(
   ordinal: number,
   everyMonths: number,
 ): Date {
-  const from = new Date(fromDue);
+  const from = parseScheduleDate(fromDue);
   const step = Math.max(1, Math.floor(everyMonths || 1));
   let y = from.getFullYear();
   let m = from.getMonth() + step;
@@ -122,7 +144,7 @@ export function advanceMonthlyWeekday(
   }
   for (let i = 0; i < 36; i++) {
     const candidate = nthWeekdayOfMonth(y, m, weekday, ordinal);
-    if (candidate.getTime() > from.getTime()) return candidate;
+    if (dayKey(candidate) > dayKey(from)) return candidate;
     m += step;
     while (m > 11) {
       m -= 12;
@@ -171,16 +193,18 @@ export function activityCadenceLabel(a: {
   return cadenceLabel((a.intervalUnit as RecurrenceUnit) || 'month', a.intervalCount ?? 1);
 }
 
-/** Advance next due from the occurrence just materialised. */
-export function advanceNextDue(activity: {
+type ScheduleFields = {
   scheduleKind?: string | null;
   intervalUnit?: string | null;
   intervalCount?: number | null;
   weekday?: number | null;
   weekdayOrdinal?: number | null;
   nextDueDate: Date | string;
-}): Date {
-  const due = new Date(activity.nextDueDate);
+};
+
+/** Advance next due from the occurrence just materialised. */
+export function advanceNextDue(activity: ScheduleFields): Date {
+  const due = parseScheduleDate(activity.nextDueDate);
   if (activity.scheduleKind === 'monthly_weekday') {
     return advanceMonthlyWeekday(
       due,
@@ -190,6 +214,57 @@ export function advanceNextDue(activity: {
     );
   }
   return addInterval(due, (activity.intervalUnit as RecurrenceUnit) || 'month', activity.intervalCount ?? 1);
+}
+
+/**
+ * Walk the schedule forward until next due is on or after `onOrAfter`
+ * (default: today, local). Fixes stale cursors like "next 28 Jun" while
+ * today is already in August — common when a series was anchored in the past
+ * or an open occurrence blocked the cron from advancing.
+ */
+export function catchUpNextDue(activity: ScheduleFields, onOrAfter: Date | string = new Date()): Date {
+  const floor = startOfLocalDay(parseScheduleDate(onOrAfter));
+  let due = parseScheduleDate(activity.nextDueDate);
+  if (dayKey(due) >= dayKey(floor)) return due;
+
+  // Fast path for monthly weekday: jump straight to the next matching day on
+  // or after the floor, then align to the every-N-months phase by stepping
+  // from the stale cursor when N > 1.
+  if (activity.scheduleKind === 'monthly_weekday') {
+    const every = Math.max(1, Math.floor(activity.intervalCount ?? 1));
+    if (every === 1) {
+      return firstMonthlyWeekdayOnOrAfter(floor, activity.weekday ?? 0, activity.weekdayOrdinal ?? -1);
+    }
+  }
+
+  let guard = 0;
+  while (dayKey(due) < dayKey(floor) && guard++ < 600) {
+    due = advanceNextDue({ ...activity, nextDueDate: due });
+  }
+  return due;
+}
+
+/**
+ * First due date for a new / re-anchored series: snap to the schedule on or
+ * after the anchor, then catch up so we never land a past "next" date.
+ */
+export function resolveFirstDue(
+  activity: Omit<ScheduleFields, 'nextDueDate'> & { scheduleKind?: string | null },
+  anchor: Date | string,
+  onOrAfter: Date | string = new Date(),
+): Date {
+  const start = parseScheduleDate(anchor);
+  let first: Date;
+  if (
+    activity.scheduleKind === 'monthly_weekday' &&
+    typeof activity.weekday === 'number' &&
+    typeof activity.weekdayOrdinal === 'number'
+  ) {
+    first = firstMonthlyWeekdayOnOrAfter(start, activity.weekday, activity.weekdayOrdinal);
+  } else {
+    first = start;
+  }
+  return catchUpNextDue({ ...activity, nextDueDate: first }, onOrAfter);
 }
 
 /** Find (or lazily create) the per-team system project that holds recurring
@@ -219,9 +294,13 @@ export async function ensureRecurringProject(teamId: string, ownerId: string) {
 }
 
 /** Materialise the activity's next occurrence as a Task (checklist → subtasks),
- *  then advance the cadence cursor. Mutates and saves the activity doc. */
+ *  then advance the cadence cursor. Mutates and saves the activity doc.
+ *  Catches up a stale nextDueDate first so we never spawn a long-overdue
+ *  occurrence when the series simply fell behind. */
 export async function generateOccurrence(activity: HydratedDocument<RecurringActivityDoc>) {
-  const due = new Date(activity.nextDueDate);
+  const caught = catchUpNextDue(activity as any, new Date());
+  activity.nextDueDate = caught as any;
+  const due = caught;
   const subtasks = (activity.checklist || []).map((c: any, i: number) => ({
     title: c.title,
     status: 'todo',
@@ -238,7 +317,8 @@ export async function generateOccurrence(activity: HydratedDocument<RecurringAct
     recurringActivityId: activity._id,
   });
   activity.lastOccurrenceTaskId = task._id as any;
-  activity.nextDueDate = advanceNextDue(activity as any) as any;
+  // Advance from the due we just spawned (not a re-read of a stale cursor).
+  activity.nextDueDate = advanceNextDue({ ...(activity as any), nextDueDate: due }) as any;
   await activity.save();
   return task;
 }
@@ -249,9 +329,27 @@ export async function hasOpenOccurrence(activityId: string): Promise<boolean> {
   return !!open;
 }
 
+/** Serialize a calendar day as YYYY-MM-DD (local), then ISO noon UTC-stable for clients. */
+function isoDay(d: any): string | null {
+  if (!d) return null;
+  const x = parseScheduleDate(d);
+  if (isNaN(x.getTime())) return null;
+  // Prefer the local calendar day so "last Sunday = Aug 30" never becomes Aug 29
+  // when the client re-parses a UTC midnight stamp.
+  const y = x.getFullYear();
+  const m = String(x.getMonth() + 1).padStart(2, '0');
+  const day = String(x.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}T12:00:00.000Z`;
+}
+
 export function serializeRecurringActivity(a: any, extras: Record<string, unknown> = {}) {
   const iso = (d: any) => (d ? new Date(d).toISOString() : null);
   const scheduleKind = a.scheduleKind === 'monthly_weekday' ? 'monthly_weekday' : 'interval';
+  // displayNextDue: what the list should show as "next/due" — open occurrence
+  // due if one exists, else the spawn cursor (already catch-up'd by callers).
+  const { openOccurrenceDueDate: openDueRaw, ...restExtras } = extras;
+  const openDue = openDueRaw as string | Date | null | undefined;
+  const displayNext = openDue || a.nextDueDate;
   return {
     id: String(a._id),
     teamId: String(a.teamId),
@@ -267,14 +365,17 @@ export function serializeRecurringActivity(a: any, extras: Record<string, unknow
     weekday: typeof a.weekday === 'number' ? a.weekday : null,
     weekdayOrdinal: typeof a.weekdayOrdinal === 'number' ? a.weekdayOrdinal : null,
     cadence: activityCadenceLabel(a),
-    startDate: iso(a.startDate),
-    nextDueDate: iso(a.nextDueDate),
+    startDate: isoDay(a.startDate),
+    nextDueDate: isoDay(a.nextDueDate),
+    /** Date shown in the list: open occurrence due if present, else nextDueDate. */
+    displayNextDue: isoDay(displayNext),
+    openOccurrenceDueDate: openDue ? isoDay(openDue) : null,
     leadTimeDays: a.leadTimeDays ?? 0,
     active: !!a.active,
     lastOccurrenceTaskId: a.lastOccurrenceTaskId ? String(a.lastOccurrenceTaskId) : null,
     createdBy: a.createdBy ? String(a.createdBy) : null,
     createdByName: a.createdByName || '',
     createdAt: iso(a.createdAt),
-    ...extras,
+    ...restExtras,
   };
 }

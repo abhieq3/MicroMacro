@@ -5,7 +5,12 @@ import { requireUser } from '@/lib/auth';
 import { guardTeamMember, guardTeamOwner } from '@/lib/teamAuth';
 import { handleError, readBody } from '@/lib/http';
 import { RecurringActivityUpdateSchema } from '@/lib/validations';
-import { firstMonthlyWeekdayOnOrAfter, serializeRecurringActivity } from '@/lib/recurring';
+import {
+  catchUpNextDue,
+  parseScheduleDate,
+  resolveFirstDue,
+  serializeRecurringActivity,
+} from '@/lib/recurring';
 import { logOperation } from '@/lib/audit';
 
 export const runtime = 'nodejs';
@@ -68,41 +73,39 @@ export async function PATCH(
     if (body.weekdayOrdinal !== undefined) (activity as any).weekdayOrdinal = body.weekdayOrdinal;
     if (body.leadTimeDays !== undefined) activity.leadTimeDays = body.leadTimeDays;
     if (body.active !== undefined) activity.active = body.active;
-    // Re-anchoring: snap monthly-weekday to the real calendar occurrence.
+
+    const scheduleSnapshot = {
+      scheduleKind: (activity as any).scheduleKind || 'interval',
+      intervalUnit: activity.intervalUnit,
+      intervalCount: activity.intervalCount,
+      weekday: (activity as any).weekday,
+      weekdayOrdinal: (activity as any).weekdayOrdinal,
+    };
+
+    // Re-anchoring: snap to schedule, then catch up so "next" is never past.
     if (body.startDate !== undefined) {
-      const start = new Date(body.startDate);
-      const kind = (activity as any).scheduleKind || 'interval';
-      const due =
-        kind === 'monthly_weekday' &&
-        typeof (activity as any).weekday === 'number' &&
-        typeof (activity as any).weekdayOrdinal === 'number'
-          ? firstMonthlyWeekdayOnOrAfter(
-              start,
-              (activity as any).weekday,
-              (activity as any).weekdayOrdinal,
-            )
-          : start;
+      const due = resolveFirstDue(scheduleSnapshot, body.startDate, new Date());
       activity.startDate = due;
       activity.nextDueDate = due;
     } else if (
-      body.scheduleKind === 'monthly_weekday' ||
+      body.scheduleKind !== undefined ||
       body.weekday !== undefined ||
-      body.weekdayOrdinal !== undefined
+      body.weekdayOrdinal !== undefined ||
+      body.intervalCount !== undefined ||
+      body.intervalUnit !== undefined
     ) {
-      // Pattern changed without a new anchor — re-snap next due from today.
-      const kind = (activity as any).scheduleKind || 'interval';
-      if (
-        kind === 'monthly_weekday' &&
-        typeof (activity as any).weekday === 'number' &&
-        typeof (activity as any).weekdayOrdinal === 'number'
-      ) {
-        const next = firstMonthlyWeekdayOnOrAfter(
-          new Date(),
-          (activity as any).weekday,
-          (activity as any).weekdayOrdinal,
-        );
-        activity.nextDueDate = next;
-      }
+      // Pattern changed without a new anchor — re-snap / catch up from today.
+      activity.nextDueDate = resolveFirstDue(scheduleSnapshot, new Date(), new Date()) as any;
+    } else {
+      // Soft heal: even a metadata-only save shouldn't leave a stale past cursor.
+      activity.nextDueDate = catchUpNextDue(
+        { ...scheduleSnapshot, nextDueDate: activity.nextDueDate },
+        new Date(),
+      ) as any;
+    }
+    // Ensure we never persist a non-date.
+    if (!(activity.nextDueDate instanceof Date) || isNaN(+activity.nextDueDate)) {
+      activity.nextDueDate = parseScheduleDate(new Date()) as any;
     }
     await activity.save();
 

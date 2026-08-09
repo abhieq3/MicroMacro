@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/client/api';
-import { Card, useToast, formatDate } from '@/components/ui';
+import { Card, useToast, formatFullDate, daysUntil } from '@/components/ui';
 import { Select } from '@/components/Select';
 import { DatePicker } from '@/components/DatePicker';
 import { Plus, X, Trash2, Pencil, Repeat, ArrowUpRight, Power } from 'lucide-react';
@@ -29,9 +29,24 @@ interface RecurringActivity {
   cadence: string;
   startDate: string | null;
   nextDueDate: string | null;
+  /** Open occurrence due if any, else nextDueDate — what the list should show. */
+  displayNextDue?: string | null;
+  openOccurrenceDueDate?: string | null;
   leadTimeDays: number;
   active: boolean;
   lastOccurrenceTaskId: string | null;
+}
+
+/** Compact due label: "30 Aug" this year, "28 Jun 2026" otherwise; marks overdue. */
+function formatNextLabel(iso: string | null | undefined): { text: string; overdue: boolean } {
+  if (!iso) return { text: '—', overdue: false };
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return { text: '—', overdue: false };
+  const until = daysUntil(iso);
+  const overdue = until !== null && until < 0;
+  // formatFullDate always includes year — clearer when series spans years.
+  const text = formatFullDate(iso);
+  return { text, overdue };
 }
 
 const UNIT_OPTS = [
@@ -540,11 +555,37 @@ export function RecurringPanel({
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    {memberName(a.assigneeId)}
-                    {a.nextDueDate && ` · next ${formatDate(a.nextDueDate)}`}
-                    {a.checklist.length > 0 &&
-                      ` · ${a.checklist.length} step${a.checklist.length === 1 ? '' : 's'}`}
+                  <div className="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-1">
+                    <span>{memberName(a.assigneeId)}</span>
+                    {(() => {
+                      const open = a.openOccurrenceDueDate;
+                      const following = a.nextDueDate;
+                      const show = a.displayNextDue || open || following;
+                      if (!show) return null;
+                      const { text, overdue } = formatNextLabel(show);
+                      const hasOpen = !!open;
+                      // When an open occurrence is overdue, also surface the
+                      // healed following cycle (e.g. due 28 Jun · next 30 Aug).
+                      let followingNote: string | null = null;
+                      if (hasOpen && following && open && following.slice(0, 10) !== open.slice(0, 10)) {
+                        const f = formatNextLabel(following);
+                        if (!f.overdue) followingNote = `next ${f.text}`;
+                      }
+                      return (
+                        <span className={overdue ? 'text-red-600 font-semibold' : ''}>
+                          · {hasOpen ? 'due' : 'next'} {text}
+                          {overdue ? ' · overdue' : ''}
+                          {followingNote ? (
+                            <span className="text-slate-400 font-normal"> · {followingNote}</span>
+                          ) : null}
+                        </span>
+                      );
+                    })()}
+                    {a.checklist.length > 0 && (
+                      <span>
+                        · {a.checklist.length} step{a.checklist.length === 1 ? '' : 's'}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

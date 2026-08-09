@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
-import { Card, formatDate } from '@/components/ui';
+import { Card, formatFullDate } from '@/components/ui';
 import { Select } from '@/components/Select';
 import { DatePicker } from '@/components/DatePicker';
 import { Pencil, Power, Repeat, X } from 'lucide-react';
@@ -213,7 +213,10 @@ export function TaskRecurringCard({
           <div className="text-[11px] text-slate-500 space-y-0.5 pl-0.5">
             {recurring.nextDueDate && (
               <div>
-                Next due <span className="font-semibold text-slate-700">{formatDate(recurring.nextDueDate)}</span>
+                Next due{' '}
+                <span className="font-semibold text-slate-700">
+                  {formatFullDate(recurring.nextDueDate)}
+                </span>
               </div>
             )}
             {recurring.leadTimeDays > 0 && (
