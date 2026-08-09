@@ -231,12 +231,8 @@ export default function LoginPage() {
     image: '',
   });
   const [pin, setPin] = useState('');
-  // Wrong-PIN shake + success takeover. `unlocked` swaps the PIN pad for a
-  // full-screen welcome veil that stays up while the dashboard route loads,
-  // so the post-PIN moment reads as one continuous transition instead of
-  // "boxes → blank → skeleton".
+  // Wrong-PIN shake only — no full-screen “welcome veil” (ceremony; navigate immediately).
   const [shake, setShake] = useState(false);
-  const [unlocked, setUnlocked] = useState(false);
   const pinInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -318,15 +314,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await api('/auth/unlock', { method: 'POST', body: { pin: pinValue } });
-      // Success: flash the boxes green, then raise the welcome veil and
-      // navigate underneath it. `replace` triggers a soft client-side
-      // navigation; the dashboard route re-renders with the freshly-set auth
-      // cookie. We *don't* call `router.refresh()` here — it triggers a hard
-      // re-render of every server tree which made the post-PIN wait feel
-      // sluggish (1–2s of visual blank). The veil (and then the dashboard's
-      // skeleton) covers the swap.
-      setUnlocked(true);
-      setTimeout(() => router.replace('/'), 450);
+      // Straight to the workspace — same as password sign-in. No black
+      // “Welcome back / Loading workspace” curtain; the dashboard skeleton
+      // is enough if anything still needs to paint.
+      router.replace('/');
     } catch (e: any) {
       setPin('');
       setShake(true);
@@ -654,33 +645,27 @@ export default function LoginPage() {
                         style={{
                           borderRadius: 12,
                           border: `1px solid ${
-                            unlocked
-                              ? '#16a34a'
-                              : shake
-                                ? '#ef4444'
-                                : pin.length === i
-                                  ? '#1565C0'
-                                  : pin.length > i
-                                    ? '#536471'
-                                    : '#e2e8f0'
+                            shake
+                              ? '#ef4444'
+                              : pin.length === i
+                                ? '#1565C0'
+                                : pin.length > i
+                                  ? '#536471'
+                                  : '#e2e8f0'
                           }`,
-                          background: unlocked
-                            ? 'rgba(34,197,94,0.1)'
-                            : shake
-                              ? 'rgba(239,68,68,0.1)'
-                              : pin.length > i
-                                ? 'rgba(255,255,255,0.08)'
-                                : '#ffffff',
+                          background: shake
+                            ? 'rgba(239,68,68,0.1)'
+                            : pin.length > i
+                              ? 'rgba(255,255,255,0.08)'
+                              : '#ffffff',
                           boxShadow:
-                            !unlocked && !shake && pin.length === i
+                            !shake && pin.length === i
                               ? '0 0 0 3px rgba(21,101,192,0.18)'
                               : 'none',
                         }}
                       >
                         {pin.length > i && (
-                          <div
-                            className={`w-2.5 h-2.5 rounded-full ${unlocked ? 'bg-green-600 pin-pop' : 'bg-blue-600'}`}
-                          />
+                          <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
                         )}
                       </div>
                     ))}
@@ -724,7 +709,7 @@ export default function LoginPage() {
                     </div>
                   )}
 
-                  {loading && !unlocked && (
+                  {loading && (
                     <div className="mt-2 fade-in-soft">
                       <BirdsEyeLoader size="sm" inline label="Signing in…" sublabel="" />
                     </div>
@@ -917,25 +902,6 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* ── Post-unlock welcome veil ─────────────────────────────────────
-          Raised the instant the PIN verifies and held while the dashboard
-          route loads underneath, so unlocking reads as one continuous
-          motion: dots pop green → veil rises → workspace appears. */}
-      {unlocked && (
-        <div
-          className="fixed inset-0 z-[80] veil-in flex flex-col items-center justify-center bg-black"
-          aria-live="polite"
-        >
-          <PragatiMark size={56} />
-          <div className="font-display text-2xl font-black text-white tracking-tight mt-8 fade-up-1">
-            Welcome back{deviceName ? `, ${deviceName.split(/\s+/)[0]}` : ''}
-          </div>
-          <div className="text-[13px] text-white/40 mt-2 fade-up-2">Loading workspace…</div>
-          <div className="mt-8 w-36 h-px overflow-hidden bg-slate-200 fade-up-3">
-            <div className="h-full w-1/2 veil-bar bg-white" />
-          </div>
-        </div>
-      )}
     </>
   );
 }
