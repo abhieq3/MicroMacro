@@ -14,7 +14,7 @@ import {
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { UserAvatar } from '@/components/AvatarRegistry';
-import { useIsLead } from '@/components/CurrentUserContext';
+import { useCurrentUser, useIsLead } from '@/components/CurrentUserContext';
 import dynamic from 'next/dynamic';
 import {
   AlertTriangle,
@@ -27,7 +27,18 @@ import {
   ArrowRight,
   Maximize2,
   X,
+  BarChart3,
 } from 'lucide-react';
+// Lazy — contributor activity graph only when a lead opens a member.
+const ActivityGraph = dynamic(
+  () => import('@/components/ActivityGraph').then((m) => m.ActivityGraph),
+  { ssr: false, loading: () => <div className="h-40 rounded-xl bg-slate-50 dark:bg-white/[0.04] animate-pulse" /> },
+);
+function warmActivityGraph(userId: string | undefined, cacheUserId?: string) {
+  void import('@/components/ActivityGraph').then((m) =>
+    m.preloadActivityGraphData({ userId, cacheUserId }),
+  );
+}
 // Lazy — the bird's-eye view is a heavy SVG layout component and most
 // visits won't open it. Keep it out of the dashboard's first paint.
 const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) => m.BirdsEyeView), {
@@ -306,60 +317,46 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   );
 
   /**
-   * One next action — Bezos Bias for Action + Dive Deep.
-   * "Do this first" means work that needs a decision *soon*, not the soonest
-   * due date in the entire backlog (that promoted end-of-month recurring work
-   * over nearer tasks and lied about urgency).
-   *
-   * Tiers: overdue → blocked → due today → due within 7 days (or server
-   * `pressing`) → soft 14-day fallback only if nothing harder exists.
-   * Beyond that: no spotlight (All clear).
+   * Spotlight only when work is actually due or stuck:
+   * overdue → blocked → due today. Nothing else (no “in 29d” inventory).
+   * If none of those apply, render nothing.
    */
-  const ACTION_HORIZON_DAYS = 7;
-  const SOFT_HORIZON_DAYS = 14;
   const doThisFirst = useMemo(() => {
     type Scored = { t: TeamTask; tier: number; d: number; pri: number; dueMs: number };
     const priRank = (p?: string) =>
       ({ critical: 0, high: 1, medium: 2, low: 3 } as Record<string, number>)[p || 'medium'] ?? 2;
 
     const scored: Scored[] = [];
-    for (const t of openTasks) {
-      const due = t.ccTcd || t.dueDate;
+    for (const task of openTasks) {
+      const due = task.ccTcd || task.dueDate;
       const d = daysUntil(due);
-      const overdue = isOverdue(due, t.status);
-      const blocked = t.status === 'blocked';
+      const overdue = isOverdue(due, task.status);
+      const blocked = task.status === 'blocked';
       let tier = 99;
       if (overdue && blocked) tier = 0;
       else if (overdue) tier = 1;
       else if (blocked) tier = 2;
-      else if (d === 0) tier = 3;
-      else if ((d !== null && d > 0 && d <= ACTION_HORIZON_DAYS) || t.pressing) tier = 4;
-      else if (d !== null && d > 0 && d <= SOFT_HORIZON_DAYS) tier = 5;
+      else if (d === 0) tier = 3; // due today only
       if (tier >= 99) continue;
       scored.push({
-        t,
+        t: task,
         tier,
         d: d ?? 9999,
-        pri: priRank(t.priority),
+        pri: priRank(task.priority),
         dueMs: new Date(due || '9999-12-31').getTime(),
       });
     }
     if (scored.length === 0) return null;
-    const hard = scored.filter((s) => s.tier <= 4);
-    const pool = hard.length > 0 ? hard : scored.filter((s) => s.tier <= 5);
-    pool.sort(
-      (a, b) => a.tier - b.tier || a.d - b.d || a.pri - b.pri || a.dueMs - b.dueMs,
-    );
-    return pool[0]?.t ?? null;
+    scored.sort((a, b) => a.tier - b.tier || a.d - b.d || a.pri - b.pri || a.dueMs - b.dueMs);
+    return scored[0]?.t ?? null;
   }, [openTasks]);
 
   const doThisFirstKind = useMemo(() => {
-    if (!doThisFirst) return null as null | 'overdue' | 'blocked' | 'today' | 'next';
+    if (!doThisFirst) return null as null | 'overdue' | 'blocked' | 'today';
     const due = doThisFirst.ccTcd || doThisFirst.dueDate;
     if (isOverdue(due, doThisFirst.status)) return 'overdue';
     if (doThisFirst.status === 'blocked') return 'blocked';
-    if (daysUntil(due) === 0) return 'today';
-    return 'next';
+    return 'today';
   }, [doThisFirst]);
 
   // Expanded project view: everyone sees the whole project's tasks, so an IC
@@ -418,8 +415,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
         <>
           {isNewContributor && <ContributorWelcome name={dash.user.name} />}
 
-          {/* One next action — only when something is truly urgent. */}
-          {doThisFirst ? (
+          {/* Spotlight only when due today / overdue / blocked. */}
+          {doThisFirst && (
             <Link
               href={`/tasks/${doThisFirst.id}`}
               className="mb-4 flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#2a2a28] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
@@ -437,9 +434,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                     ? 'Clear this first'
                     : doThisFirstKind === 'blocked'
                       ? 'Unblock this'
-                      : doThisFirstKind === 'today'
-                        ? 'Do this today'
-                        : 'Do this next'}
+                      : 'Do this today'}
                 </div>
                 <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
                   {doThisFirst.title}
@@ -453,23 +448,6 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               </div>
               <ArrowRight size={16} className="text-slate-300 dark:text-white/25 shrink-0 mt-1" />
             </Link>
-          ) : (
-            !isNewContributor && (
-              <div
-                className="mb-4 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#2a2a28] px-4 py-3.5"
-                style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
-              >
-                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-600 dark:text-emerald-400 mb-1">
-                  All clear
-                </div>
-                <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug">
-                  Nothing late or due this week. You’re clear for the morning.
-                </div>
-                <div className="text-[11px] text-slate-400 dark:text-white/35 mt-1">
-                  Far-out work stays on Projects and My Tasks — it doesn’t steal the top of the day.
-                </div>
-              </div>
-            )
           )}
 
           {/* ── Quick check / Needs attention strip ────────────────────────
@@ -1961,6 +1939,7 @@ function ContributorsPanel({
 }) {
   // Collapsed by default — expand when the lead wants a person-by-person view.
   const [panelOpen, setPanelOpen] = useState(false);
+  const [activityPerson, setActivityPerson] = useState<DashPerson | null>(null);
 
   if (people.length === 0) {
     return (
@@ -2007,9 +1986,45 @@ function ContributorsPanel({
       {panelOpen && (
         <ul className="divide-y divide-slate-50 dark:divide-white/[0.04] border-t border-slate-100 dark:border-white/[0.05]">
           {sorted.map((p) => (
-            <ContributorRow key={p.id} person={p} tasks={tasksByAssignee.get(p.id) || []} />
+            <ContributorRow
+              key={p.id}
+              person={p}
+              tasks={tasksByAssignee.get(p.id) || []}
+              onViewActivity={() => setActivityPerson(p)}
+            />
           ))}
         </ul>
+      )}
+
+      {activityPerson && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45"
+          onClick={() => setActivityPerson(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#1c1917] rounded-2xl shadow-2xl border border-slate-100 dark:border-white/10 p-6 w-full max-w-[820px] max-h-[calc(100vh-2rem)] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-5">
+              <UserAvatar userId={activityPerson.id} name={activityPerson.name} size={44} />
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-black text-slate-900 dark:text-white truncate">
+                  {activityPerson.name}
+                </h3>
+                <div className="text-xs text-slate-400 mt-0.5">Member activity</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivityPerson(null)}
+                className="text-slate-300 hover:text-slate-500 ml-2 mt-0.5"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <ActivityGraph userId={activityPerson.id} name={activityPerson.name} />
+          </div>
+        </div>
       )}
     </section>
   );
@@ -2100,11 +2115,14 @@ function MyFocusPanel({ tasks, projects, myId }: { tasks: TeamTask[]; projects: 
 function ContributorRow({
   person,
   tasks,
+  onViewActivity,
 }: {
   person: DashPerson;
   tasks: TeamTask[];
+  onViewActivity?: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const currentUser = useCurrentUser();
 
   // Overdue first, then in_progress / blocked / review, then due date.
   const STATUS_ORDER: Record<string, number> = {
@@ -2137,6 +2155,23 @@ function ContributorRow({
               <span className="text-xs font-semibold text-slate-800 dark:text-white/75 truncate">
                 {person.name}
               </span>
+              {onViewActivity && (
+                <button
+                  type="button"
+                  onMouseEnter={() => warmActivityGraph(person.id, currentUser?.id)}
+                  onFocus={() => warmActivityGraph(person.id, currentUser?.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    warmActivityGraph(person.id, currentUser?.id);
+                    onViewActivity();
+                  }}
+                  title={`View ${person.name}'s activity`}
+                  aria-label={`View ${person.name}'s activity`}
+                  className="text-slate-400 dark:text-white/30 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shrink-0 p-0.5"
+                >
+                  <BarChart3 size={13} />
+                </button>
+              )}
             </div>
             <div className="text-[10px] text-slate-400 dark:text-white/30 truncate">
               {person.openTasks} open
@@ -2153,8 +2188,10 @@ function ContributorRow({
             </span>
           )}
           <button
+            type="button"
             className="p-0.5 text-emerald-500 hover:text-emerald-600 dark:text-emerald-400 transition-transform"
             style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+            aria-label={open ? 'Collapse' : 'Expand'}
           >
             <ChevronDown size={12} />
           </button>

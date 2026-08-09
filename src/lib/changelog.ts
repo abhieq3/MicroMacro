@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Member activity graph back; spotlight only when due',
+    tags: ['feature', 'fix'],
+    highlight: true,
+    body: [
+      'Individual Contributors: chart icon opens the member activity graph again (same deep-dive as People / team pages).',
+      'Home spotlight only when work is overdue, blocked, or due today — no “Do this next” for far-out tasks, and no empty All clear banner when nothing is due.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Bezos morning: real urgency + hardcore daily brief',
     tags: ['fix', 'improvement'],
     highlight: true,
