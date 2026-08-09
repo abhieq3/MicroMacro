@@ -298,7 +298,9 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   const ongoingProjects = useMemo(
     () =>
       dash.projects.filter(
-        (p) => p.status === 'in_progress' || p.status === 'planning' || p.status === 'on_hold',
+        (p) =>
+          !p.isSystem &&
+          (p.status === 'in_progress' || p.status === 'planning' || p.status === 'on_hold'),
       ),
     [dash],
   );
@@ -1687,7 +1689,7 @@ function UpNextPanel({
               emptyHint={
                 filter === 'untilDate' && !untilDate
                   ? 'Pick a date to see upcoming work.'
-                  : 'Nothing due — all clear.'
+                  : 'Zero exceptions.'
               }
               hideHeader
             />

@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
         .lean(),
       Project.find({ $or: [NOT_PERSONAL, { ownerId: userId }] })
         .select('_id code ccNo name lifecycle status isSystem')
-        .lean(),
+        .lean(), // includes isSystem for task labels; projects list filters them out
       // Summary aggregation
       Task.aggregate([
         { $match: { assigneeId: oid } },
@@ -145,7 +145,10 @@ export async function GET(req: NextRequest) {
     let orgTotals = null;
     if (orgData) {
       const g = orgData[0];
-      const activeCount = allProjects.filter((p) => p.status === 'in_progress').length;
+      // Recurring holders are not "active projects" on the ops glance.
+      const activeCount = allProjects.filter(
+        (p) => p.status === 'in_progress' && !(p as any).isSystem,
+      ).length;
       orgTotals = {
         tasksOpen: g.open[0]?.n ?? 0,
         tasksOverdue: g.overdue[0]?.n ?? 0,
@@ -153,6 +156,10 @@ export async function GET(req: NextRequest) {
         activeProjects: activeCount,
       };
     }
+
+    // Hide isSystem (Recurring Activities boards) from the projects strip —
+    // those live under Teams → Recurring, not as dashboard projects.
+    const visibleProjects = allProjects.filter((p) => !(p as any).isSystem);
 
     return NextResponse.json({
       user: {
@@ -165,13 +172,13 @@ export async function GET(req: NextRequest) {
       summary,
       tasks: taskList,
       subtasks: [], // kept for API compat; subtasks remain separate
-      projects: allProjects.map((p) => ({
+      projects: visibleProjects.map((p) => ({
         id: String(p._id),
         name: p.name,
         code: (p as any).ccNo || p.code,
         status: p.status,
         lifecycle: p.lifecycle,
-        isSystem: !!(p as any).isSystem,
+        isSystem: false,
       })),
       orgTotals,
     });

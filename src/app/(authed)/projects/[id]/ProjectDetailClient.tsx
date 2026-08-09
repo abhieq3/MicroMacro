@@ -45,7 +45,7 @@ import {
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 
-import { chimeIfEnabled, playDropTick } from '@/lib/sound';
+import { chimeIfEnabled, playDropTick, playFanfare } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
 import { useCurrentUser } from '@/components/CurrentUserContext';
@@ -1276,14 +1276,12 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState('');
   const [savingDesc, setSavingDesc] = useState(false);
-  // Milestone celebration — set when finishing a task closes out its phase or
-  // the whole project. The Celebration overlay fires a fanfare + confetti.
+  // Milestone ack — only when finishing a task clears a phase or the whole
+  // project. Quiet Jensen toast (no confetti).
   const [celebration, setCelebration] = useState<{ title: string; subtitle?: string; emoji?: string } | null>(
     null,
   );
-  // Per-task mini-celebration toast (bottom-right). Distinct from `celebration`
-  // (which is the full-screen phase/project milestone) — this pops on every
-  // individual task close and reads its type so the line feels personalised.
+  // Per-task mini-ack (bottom-right). Distinct from phase/project milestone.
   const [taskPop, setTaskPop] = useState<any | null>(null);
 
   async function load() {
@@ -1578,12 +1576,14 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // Returns true when a milestone celebration was triggered (so the caller can
   // skip the routine completion chime and let the fanfare carry the moment).
   function celebrateIfMilestone(taskId: string): boolean {
+    // System recurring boards never "complete" as a project — perpetual cadence.
+    if (project?.isSystem) return false;
     const projected = tasks.map((t: any) => (t.id === taskId ? { ...t, status: 'done' } : t));
     const done = (t: any) => t.status === 'done';
     if (projected.length > 0 && projected.every(done)) {
       setCelebration({
-        title: 'Project complete',
-        subtitle: `${project?.name || 'Project'} — every task closed.`,
+        title: 'Project clear',
+        subtitle: project?.name || 'Every task closed.',
       });
       return true;
     }
@@ -1594,8 +1594,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     if (phaseTasks.length > 0 && phaseTasks.every(done)) {
       const phaseName = phases.find((p: any) => p.id === pid)?.name;
       setCelebration({
-        title: 'Phase complete',
-        subtitle: phaseName ? `“${phaseName}” closed.` : 'Phase closed.',
+        title: 'Phase clear',
+        subtitle: phaseName || 'Phase closed.',
       });
       return true;
     }
@@ -1618,11 +1618,12 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         await api(`/projects/${id}/reorder-tasks`, { method: 'POST', body: { orderedIds } });
       }
       if (toStatus === 'done' && wasNotDone) {
-        // The mini-pop replaces the dry toast for individual closes; the full
-        // milestone fanfare supersedes it when a phase/project closes out.
         if (!celebrateIfMilestone(taskId)) {
           chimeIfEnabled();
           if (cur) setTaskPop(cur);
+        } else {
+          // Milestone haptic/sound only — opt-in fanfare when sound is on.
+          playFanfare();
         }
       }
       // Optimistic state is already applied by KanbanBoard; reconcile silently.
@@ -1654,6 +1655,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           chimeIfEnabled();
           const cur = tasks.find((t: any) => t.id === taskId);
           if (cur) setTaskPop(cur);
+        } else {
+          playFanfare();
         }
       }
     } catch (e: any) {

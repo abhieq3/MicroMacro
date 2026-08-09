@@ -1052,16 +1052,16 @@ export default function TeamDetailPage() {
                         </div>
                         <div className="text-sm font-semibold text-slate-700 dark:text-white/80">
                           {workFilter === 'open'
-                            ? 'All clear — no open work'
+                            ? 'Zero open'
                             : workFilter === 'overdue'
-                              ? 'No overdue tasks'
+                              ? 'Zero overdue'
                               : workFilter === 'done'
                                 ? 'No completed tasks in view'
-                                : 'No tasks match'}
+                                : 'No match'}
                         </div>
                         <p className="mt-1 text-xs text-slate-400 max-w-sm mx-auto">
                           {workFilter === 'open'
-                            ? 'Switch to Done to review history, or open Projects to plan the next cycle.'
+                            ? 'Board is clear. Done history is one filter away.'
                             : 'Try another filter or clear the search.'}
                         </p>
                         {workFilter !== 'all' && (

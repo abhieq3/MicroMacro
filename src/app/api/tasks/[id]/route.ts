@@ -203,7 +203,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const proj = await Project.findById((fresh as any)?.projectId)
-      .select('isPersonal code')
+      .select('isPersonal code isSystem name')
       .lean();
     if (
       !isPrivateTask &&
@@ -221,9 +221,30 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       });
     }
 
+    // Jensen milestone: only when the last open task on a *real* project
+    // closes. System (recurring) boards never count — they are perpetual.
+    let projectClear = false;
+    let projectName: string | null = null;
+    if (body.status === 'done' && current.status !== 'done' && (fresh as any)?.projectId) {
+      const isSys = !!(proj as any)?.isSystem;
+      if (!isSys) {
+        const stillOpen = await Task.exists({
+          projectId: (fresh as any).projectId,
+          status: { $ne: 'done' },
+        });
+        projectClear = !stillOpen;
+        projectName = (proj as any)?.name || null;
+      }
+    }
+
     void bustDashboardCache(user!.sub, user!.role);
     void bustProjectsPageCache(user!.sub, user!.role);
-    return NextResponse.json(taskS(fresh));
+    return NextResponse.json({
+      ...taskS(fresh),
+      ...(body.status === 'done' && current.status !== 'done'
+        ? { projectClear, projectName }
+        : {}),
+    });
   } catch (e) {
     return handleError(e);
   }

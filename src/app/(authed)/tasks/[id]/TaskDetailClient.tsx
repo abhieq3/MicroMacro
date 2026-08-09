@@ -12,7 +12,7 @@ import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
-import { chimeIfEnabled } from '@/lib/sound';
+import { chimeIfEnabled, playFanfare } from '@/lib/sound';
 import {
   ChevronRight,
   Shield,
@@ -239,17 +239,19 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
     setSavingStatus(true);
     setTask((t: any) => ({ ...t, status: newStatus }));
     try {
-      await api(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus } });
+      const updated = await api<any>(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus } });
       if (newStatus === 'done' && !wasDone) {
-        chimeIfEnabled();
-        // The mini-pop replaces the dry "Task marked done ✓" toast — it reads
-        // the task's type and priority so the message feels personal.
+        // Jensen: ordinary closes = quiet chime; project-clear = rare fanfare (opt-in sound).
+        if (updated?.projectClear) playFanfare();
+        else chimeIfEnabled();
         setCelebrate({
           id: task.id,
           title: task.title,
           taskType: task.taskType,
           gxpCritical: task.gxpCritical,
           priority: task.priority,
+          projectClear: !!updated?.projectClear,
+          projectName: updated?.projectName || task.projectName || null,
         });
       }
       load();

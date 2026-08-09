@@ -246,8 +246,11 @@ async function computeLeadDashboardData(jwtUser: {
   const ownerName = new Map(owners.map((u) => [String(u._id), u.name]));
   const projStats = new Map(projectTaskAgg.map((s: any) => [String(s._id), s]));
 
+  // Recurring Activities boards (isSystem) are infrastructure for Teams →
+  // Recurring — not first-class work projects. Keep their *tasks* in Due / My
+  // Tasks (real chores), but never list the holder as a dashboard project card.
   const projectList = projects
-    // Recurring Activities holders (isSystem) show as projects again — badge in UI.
+    .filter((p) => !(p as any).isSystem)
     .map((p) => {
     const s: any = projStats.get(String(p._id)) ?? { total: 0, done: 0, overdue: 0, lastCompletedAt: null };
     const open = s.total - s.done;
