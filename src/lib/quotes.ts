@@ -1,18 +1,16 @@
 /**
  * Login quotes — library + live-feed merge + client helpers.
  *
- * Built-in set: 250 lines from Elon & the founders / books he recommends,
- * tuned to Pragati (ship, own, delete, clarity, quality).
- *
- * Live updates: optional `QUOTES_FEED_URL` JSON feed is fetched server-side
- * and merged by stable id. New lines appear on the login page without a
- * redeploy. Devices track seen ids so quotes never repeat until the pool
- * is exhausted.
+ * Built-in: 250 founders lines (data.ts).
+ * Live feed (always on): public/quotes-feed.json in this repo — edit & push.
+ * Optional external: QUOTES_FEED_URL (JSON) merges on top without a redeploy.
  */
 
 export type { Quote } from './quotes/data';
 export { BUILTIN_QUOTES, BUILTIN_QUOTE_VERSION } from './quotes/data';
 
+import { readFile } from 'fs/promises';
+import path from 'path';
 import type { Quote } from './quotes/data';
 import { BUILTIN_QUOTES, BUILTIN_QUOTE_VERSION } from './quotes/data';
 
@@ -29,7 +27,6 @@ function normalizeQuote(raw: any, fallbackId: string): Quote | null {
   if (!text || text.length < 8 || text.length > 400) return null;
   const author = String(raw?.author || raw?.by || 'Unknown').trim().slice(0, 80) || 'Unknown';
   const idRaw = String(raw?.id || '').trim();
-  // Prefer stable remote ids; otherwise hash-ish slug from text.
   const id =
     idRaw ||
     fallbackId ||
@@ -40,18 +37,23 @@ function normalizeQuote(raw: any, fallbackId: string): Quote | null {
   return { id, text, author, authorKey: raw?.authorKey ? String(raw.authorKey) : 'other' };
 }
 
-/** Merge builtin + remote; remote wins on same id; de-dupe by normalized text. */
-export function mergeQuoteLibraries(builtin: Quote[], remote: Quote[]): Quote[] {
+/** Merge libraries; later sources win on same id; de-dupe by normalized text. */
+export function mergeQuoteLibraries(...lists: Quote[][]): Quote[] {
   const byId = new Map<string, Quote>();
   const textSeen = new Set<string>();
-  const push = (q: Quote) => {
-    const key = q.text.trim().toLowerCase();
-    if (textSeen.has(key)) return;
-    textSeen.add(key);
-    byId.set(q.id, q);
-  };
-  for (const q of builtin) push(q);
-  for (const q of remote) push(q);
+  for (const list of lists) {
+    for (const q of list) {
+      const key = q.text.trim().toLowerCase();
+      if (textSeen.has(key) && !byId.has(q.id)) continue;
+      if (textSeen.has(key) && byId.has(q.id)) {
+        byId.set(q.id, q);
+        continue;
+      }
+      if (textSeen.has(key)) continue;
+      textSeen.add(key);
+      byId.set(q.id, q);
+    }
+  }
   return [...byId.values()];
 }
 
@@ -65,30 +67,51 @@ export function parseRemoteQuotes(body: any): Quote[] {
   return out;
 }
 
-// In-memory cache for the remote feed (server only).
-let feedCache: { at: number; quotes: Quote[] } | null = null;
-const FEED_TTL_MS = 60 * 60 * 1000; // 1 hour
+let fileFeedCache: { at: number; quotes: Quote[] } | null = null;
+let urlFeedCache: { at: number; quotes: Quote[] } | null = null;
+const FEED_TTL_MS = 15 * 60 * 1000; // 15 min — pick up push edits reasonably fast
 
-export async function loadRemoteQuotes(): Promise<Quote[]> {
+/** Always-on feed: public/quotes-feed.json (shipped with the app). */
+async function loadFileFeed(): Promise<Quote[]> {
+  const now = Date.now();
+  if (fileFeedCache && now - fileFeedCache.at < FEED_TTL_MS) return fileFeedCache.quotes;
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'quotes-feed.json');
+    const raw = await readFile(filePath, 'utf8');
+    const quotes = parseRemoteQuotes(JSON.parse(raw));
+    fileFeedCache = { at: now, quotes };
+    return quotes;
+  } catch (e) {
+    console.warn('[quotes] public/quotes-feed.json unavailable', e);
+    return fileFeedCache?.quotes || [];
+  }
+}
+
+/** Optional external feed (no redeploy when this URL’s JSON changes). */
+async function loadUrlFeed(): Promise<Quote[]> {
   const url = (process.env.QUOTES_FEED_URL || '').trim();
   if (!url) return [];
   const now = Date.now();
-  if (feedCache && now - feedCache.at < FEED_TTL_MS) return feedCache.quotes;
+  if (urlFeedCache && now - urlFeedCache.at < FEED_TTL_MS) return urlFeedCache.quotes;
   try {
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
-      // Next.js: revalidate-friendly; also works outside Next with plain fetch.
-      next: { revalidate: 3600 },
+      next: { revalidate: 900 },
     } as RequestInit);
     if (!res.ok) throw new Error(`feed ${res.status}`);
     const body = await res.json();
     const quotes = parseRemoteQuotes(body);
-    feedCache = { at: now, quotes };
+    urlFeedCache = { at: now, quotes };
     return quotes;
   } catch (e) {
-    console.warn('[quotes] live feed unavailable', e);
-    return feedCache?.quotes || [];
+    console.warn('[quotes] QUOTES_FEED_URL unavailable', e);
+    return urlFeedCache?.quotes || [];
   }
+}
+
+export async function loadRemoteQuotes(): Promise<Quote[]> {
+  const [fileFeed, urlFeed] = await Promise.all([loadFileFeed(), loadUrlFeed()]);
+  return mergeQuoteLibraries(fileFeed, urlFeed);
 }
 
 export async function getQuotesPayload(): Promise<QuotesPayload> {
@@ -97,7 +120,7 @@ export async function getQuotesPayload(): Promise<QuotesPayload> {
   return {
     quotes,
     version: remote.length
-      ? `${BUILTIN_QUOTE_VERSION}+remote${remote.length}`
+      ? `${BUILTIN_QUOTE_VERSION}+live${remote.length}`
       : BUILTIN_QUOTE_VERSION,
     source: remote.length ? 'merged' : 'builtin',
     builtinCount: BUILTIN_QUOTES.length,
