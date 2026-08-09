@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Spotlight is due-today or overdue only',
+    tags: ['fix'],
+    highlight: true,
+    body: [
+      'Home spotlight never uses leverage/pressing/stalled scores. It appears only when a task is overdue or due on today’s calendar day — far-out work (e.g. 30 Aug monthly) is hidden from the top card entirely.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Member activity graph back; spotlight only when due',
     tags: ['feature', 'fix'],
     highlight: true,

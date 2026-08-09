@@ -317,46 +317,45 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   );
 
   /**
-   * Spotlight only when work is actually due or stuck:
-   * overdue → blocked → due today. Nothing else (no “in 29d” inventory).
-   * If none of those apply, render nothing.
+   * Spotlight ONLY when the activity is due now:
+   *   1) overdue  → "Clear this first"
+   *   2) due today (calendar day) → "Do this today"
+   * Never: far-out dates, pressing/leverage scores, stalled flags, soft horizons.
+   * If nothing is due today and nothing is overdue → render nothing.
    */
   const doThisFirst = useMemo(() => {
-    type Scored = { t: TeamTask; tier: number; d: number; pri: number; dueMs: number };
     const priRank = (p?: string) =>
       ({ critical: 0, high: 1, medium: 2, low: 3 } as Record<string, number>)[p || 'medium'] ?? 2;
 
-    const scored: Scored[] = [];
+    type Row = { t: TeamTask; overdue: boolean; pri: number; dueMs: number };
+    const rows: Row[] = [];
     for (const task of openTasks) {
       const due = task.ccTcd || task.dueDate;
+      if (!due) continue; // no date → not "due"
       const d = daysUntil(due);
       const overdue = isOverdue(due, task.status);
-      const blocked = task.status === 'blocked';
-      let tier = 99;
-      if (overdue && blocked) tier = 0;
-      else if (overdue) tier = 1;
-      else if (blocked) tier = 2;
-      else if (d === 0) tier = 3; // due today only
-      if (tier >= 99) continue;
-      scored.push({
+      // Strict gate: only overdue or due *today*. Future dates never qualify.
+      if (!overdue && d !== 0) continue;
+      rows.push({
         t: task,
-        tier,
-        d: d ?? 9999,
+        overdue,
         pri: priRank(task.priority),
-        dueMs: new Date(due || '9999-12-31').getTime(),
+        dueMs: new Date(due).getTime(),
       });
     }
-    if (scored.length === 0) return null;
-    scored.sort((a, b) => a.tier - b.tier || a.d - b.d || a.pri - b.pri || a.dueMs - b.dueMs);
-    return scored[0]?.t ?? null;
+    if (rows.length === 0) return null;
+    rows.sort((a, b) => {
+      // Overdue before due-today, then priority, then earliest date.
+      if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+      return a.pri - b.pri || a.dueMs - b.dueMs;
+    });
+    return rows[0]!.t;
   }, [openTasks]);
 
   const doThisFirstKind = useMemo(() => {
-    if (!doThisFirst) return null as null | 'overdue' | 'blocked' | 'today';
+    if (!doThisFirst) return null as null | 'overdue' | 'today';
     const due = doThisFirst.ccTcd || doThisFirst.dueDate;
-    if (isOverdue(due, doThisFirst.status)) return 'overdue';
-    if (doThisFirst.status === 'blocked') return 'blocked';
-    return 'today';
+    return isOverdue(due, doThisFirst.status) ? 'overdue' : 'today';
   }, [doThisFirst]);
 
   // Expanded project view: everyone sees the whole project's tasks, so an IC
@@ -425,16 +424,12 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               <div className="min-w-0 flex-1">
                 <div
                   className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
-                    doThisFirstKind === 'overdue' || doThisFirstKind === 'blocked'
+                    doThisFirstKind === 'overdue'
                       ? 'text-red-600 dark:text-red-400'
                       : 'text-blue-600 dark:text-blue-400'
                   }`}
                 >
-                  {doThisFirstKind === 'overdue'
-                    ? 'Clear this first'
-                    : doThisFirstKind === 'blocked'
-                      ? 'Unblock this'
-                      : 'Do this today'}
+                  {doThisFirstKind === 'overdue' ? 'Clear this first' : 'Do this today'}
                 </div>
                 <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
                   {doThisFirst.title}
