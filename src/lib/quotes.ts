@@ -1,166 +1,109 @@
 /**
- * Login lines — Jeff Bezos + Amazon’s 16 Leadership Principles, rewritten
- * in plain language and aimed at Pragati: visible work, owners, dates, and
- * shipping quality together.
+ * Login quotes — library + live-feed merge + client helpers.
  *
- * No name is shown on screen. Bump the ledger key on the login page when
- * you re-curate this list.
+ * Built-in set: 250 lines from Elon & the founders / books he recommends,
+ * tuned to Pragati (ship, own, delete, clarity, quality).
+ *
+ * Live updates: optional `QUOTES_FEED_URL` JSON feed is fetched server-side
+ * and merged by stable id. New lines appear on the login page without a
+ * redeploy. Devices track seen ids so quotes never repeat until the pool
+ * is exhausted.
  */
 
-export interface Quote {
-  text: string;
-  author: string;
+export type { Quote } from './quotes/data';
+export { BUILTIN_QUOTES, BUILTIN_QUOTE_VERSION } from './quotes/data';
+
+import type { Quote } from './quotes/data';
+import { BUILTIN_QUOTES, BUILTIN_QUOTE_VERSION } from './quotes/data';
+
+export type QuotesPayload = {
+  quotes: Quote[];
+  version: string;
+  source: 'builtin' | 'merged';
+  builtinCount: number;
+  remoteCount: number;
+};
+
+function normalizeQuote(raw: any, fallbackId: string): Quote | null {
+  const text = String(raw?.text || raw?.quote || '').trim();
+  if (!text || text.length < 8 || text.length > 400) return null;
+  const author = String(raw?.author || raw?.by || 'Unknown').trim().slice(0, 80) || 'Unknown';
+  const idRaw = String(raw?.id || '').trim();
+  // Prefer stable remote ids; otherwise hash-ish slug from text.
+  const id =
+    idRaw ||
+    fallbackId ||
+    `r_${text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .slice(0, 48)}`;
+  return { id, text, author, authorKey: raw?.authorKey ? String(raw.authorKey) : 'other' };
 }
 
-const E = 'bezos';
+/** Merge builtin + remote; remote wins on same id; de-dupe by normalized text. */
+export function mergeQuoteLibraries(builtin: Quote[], remote: Quote[]): Quote[] {
+  const byId = new Map<string, Quote>();
+  const textSeen = new Set<string>();
+  const push = (q: Quote) => {
+    const key = q.text.trim().toLowerCase();
+    if (textSeen.has(key)) return;
+    textSeen.add(key);
+    byId.set(q.id, q);
+  };
+  for (const q of builtin) push(q);
+  for (const q of remote) push(q);
+  return [...byId.values()];
+}
 
-export const BUILTIN_QUOTES: Quote[] = [
-  // ── Jeff Bezos (documented public lines, kept short) ─────────────────
-  {
-    text: 'Start with the customer and work backwards — not with the process, and not with the tool.',
-    author: E,
-  },
-  {
-    text: 'It’s always Day 1. Stay curious, move fast, and don’t protect yesterday’s habits.',
-    author: E,
-  },
-  {
-    text: 'If you double the number of experiments you do per year, you’re going to double your inventiveness.',
-    author: E,
-  },
-  {
-    text: 'We are stubborn on vision. We are flexible on details.',
-    author: E,
-  },
-  {
-    text: 'A company shouldn’t get addicted to being shiny, because shiny doesn’t last.',
-    author: E,
-  },
-  {
-    text: 'There are two kinds of decisions: those you can reverse, and those you can’t. Most work decisions are reversible — so decide and move.',
-    author: E,
-  },
-  {
-    text: 'If you’re good at course correcting, being wrong may be less costly than you think — while being slow is going to be expensive for sure.',
-    author: E,
-  },
-  {
-    text: 'The best customer service is if the customer doesn’t need to call you, doesn’t need to talk to you. It just works.',
-    author: E,
-  },
-  {
-    text: 'I knew that if I failed I wouldn’t regret that — but I knew the one thing I might regret is not trying.',
-    author: E,
-  },
-  {
-    text: 'Focus on the things that don’t change. Customers will always want better quality, faster delivery, and clearer ownership.',
-    author: E,
-  },
+export function parseRemoteQuotes(body: any): Quote[] {
+  const list = Array.isArray(body) ? body : Array.isArray(body?.quotes) ? body.quotes : [];
+  const out: Quote[] = [];
+  list.forEach((raw: any, i: number) => {
+    const q = normalizeQuote(raw, `remote_${i + 1}`);
+    if (q) out.push(q);
+  });
+  return out;
+}
 
-  // ── 16 Leadership Principles — plain language, product-relevant ──────
-  // 1. Customer Obsession
-  {
-    text: 'Customer Obsession: Care about the person who uses the work. Start with their need, then design the plan backwards.',
-    author: E,
-  },
-  // 2. Ownership
-  {
-    text: 'Ownership: Act like you own the outcome. Don’t say “that’s not my task” when the board still shows risk.',
-    author: E,
-  },
-  // 3. Invent and Simplify
-  {
-    text: 'Invent and Simplify: Find a simpler way. If a status meeting can be a clear board, prefer the board.',
-    author: E,
-  },
-  // 4. Are Right, A Lot
-  {
-    text: 'Are Right, A Lot: Seek truth over ego. Check the data on the board before you defend a plan.',
-    author: E,
-  },
-  // 5. Learn and Be Curious
-  {
-    text: 'Learn and Be Curious: Ask why a task slipped. Curiosity fixes more problems than blame.',
-    author: E,
-  },
-  // 6. Hire and Develop the Best
-  {
-    text: 'Hire and Develop the Best: Grow people by giving clear work, real ownership, and honest feedback.',
-    author: E,
-  },
-  // 7. Insist on the Highest Standards
-  {
-    text: 'Highest Standards: Don’t ship “good enough” when quality is the product. Raise the bar, then help the team clear it.',
-    author: E,
-  },
-  // 8. Think Big
-  {
-    text: 'Think Big: Aim for the whole delivery, not one busy day. Bold goals need clear steps on the board.',
-    author: E,
-  },
-  // 9. Bias for Action
-  {
-    text: 'Bias for Action: Speed matters. When the decision is reversible, pick a direction and update the status.',
-    author: E,
-  },
-  // 10. Frugality
-  {
-    text: 'Frugality: Do more with less. Cut busywork so energy goes to the work that ships.',
-    author: E,
-  },
-  // 11. Earn Trust
-  {
-    text: 'Earn Trust: Be honest about dates and blockers. Trust grows when the board matches reality.',
-    author: E,
-  },
-  // 12. Dive Deep
-  {
-    text: 'Dive Deep: Stay connected to the details. Leads who never open the tasks get surprised by the late list.',
-    author: E,
-  },
-  // 13. Have Backbone; Disagree and Commit
-  {
-    text: 'Disagree and Commit: Debate the plan openly — then commit. Half-support after a decision wastes the team.',
-    author: E,
-  },
-  // 14. Deliver Results
-  {
-    text: 'Deliver Results: Focus on finished work, not motion. Done with quality beats busy with status.',
-    author: E,
-  },
-  // 15. Strive to be Earth’s Best Employer (modern principle — team version)
-  {
-    text: 'Best Employer: Build a place where people can do their best work — clear goals, fair load, respect for time.',
-    author: E,
-  },
-  // 16. Success and Scale Bring Broad Responsibility
-  {
-    text: 'Broad Responsibility: As the team grows, so does the duty to be clear, fair, and careful with shared systems.',
-    author: E,
-  },
+// In-memory cache for the remote feed (server only).
+let feedCache: { at: number; quotes: Quote[] } | null = null;
+const FEED_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-  // ── Extra plain lines that map Bezos ideas → Pragati daily use ───────
-  {
-    text: 'Make the work visible. If everyone can see the board, most status meetings aren’t needed.',
-    author: E,
-  },
-  {
-    text: 'One owner. One date. One next action. Ambiguity is expensive.',
-    author: E,
-  },
-  {
-    text: 'Exceptions first: clear what’s late or blocked before you celebrate what’s fine.',
-    author: E,
-  },
-  {
-    text: 'Write it down. A shared board beats a private memory every time.',
-    author: E,
-  },
-  {
-    text: 'Long-term thinking: ship work that still makes sense next quarter, not only this morning.',
-    author: E,
-  },
-];
+export async function loadRemoteQuotes(): Promise<Quote[]> {
+  const url = (process.env.QUOTES_FEED_URL || '').trim();
+  if (!url) return [];
+  const now = Date.now();
+  if (feedCache && now - feedCache.at < FEED_TTL_MS) return feedCache.quotes;
+  try {
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      // Next.js: revalidate-friendly; also works outside Next with plain fetch.
+      next: { revalidate: 3600 },
+    } as RequestInit);
+    if (!res.ok) throw new Error(`feed ${res.status}`);
+    const body = await res.json();
+    const quotes = parseRemoteQuotes(body);
+    feedCache = { at: now, quotes };
+    return quotes;
+  } catch (e) {
+    console.warn('[quotes] live feed unavailable', e);
+    return feedCache?.quotes || [];
+  }
+}
+
+export async function getQuotesPayload(): Promise<QuotesPayload> {
+  const remote = await loadRemoteQuotes();
+  const quotes = mergeQuoteLibraries(BUILTIN_QUOTES, remote);
+  return {
+    quotes,
+    version: remote.length
+      ? `${BUILTIN_QUOTE_VERSION}+remote${remote.length}`
+      : BUILTIN_QUOTE_VERSION,
+    source: remote.length ? 'merged' : 'builtin',
+    builtinCount: BUILTIN_QUOTES.length,
+    remoteCount: remote.length,
+  };
+}
 
 /** Deterministic daily offset so SSR and first paint match. */
 export function dailyQuoteOffset(count: number): number {
@@ -173,5 +116,5 @@ export function dailyQuoteOffset(count: number): number {
 /** Rough reading time in ms for a quote line. */
 export function readingMs(text: string): number {
   const words = Math.max(8, text.trim().split(/\s+/).length);
-  return Math.min(12000, Math.max(4500, words * 420));
+  return Math.min(14000, Math.max(5000, words * 400));
 }

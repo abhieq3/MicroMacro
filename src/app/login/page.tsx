@@ -4,73 +4,128 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { BirdsEyeLoader } from '@/components/BirdsEyeLoader';
-import { BUILTIN_QUOTES, dailyQuoteOffset, readingMs } from '@/lib/quotes';
+import {
+  BUILTIN_QUOTES,
+  dailyQuoteOffset,
+  readingMs,
+  type Quote,
+  type QuotesPayload,
+} from '@/lib/quotes';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { AVATAR_FONTS, avatarFg } from '@/components/ui';
 
-const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v14';
+/** Ledger of quote *ids* this device has already shown — survives feed growth. */
+const QUOTES_SEEN_KEY = 'pragati_quotes_seen_v15_ids';
 
-function unseenQuoteIndices(count: number): number[] {
-  const all = Array.from({ length: count }, (_, i) => i);
+function loadSeenIds(): Set<string> {
   try {
-    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
-    const valid = new Set(seen.filter((n) => Number.isInteger(n) && n >= 0 && n < count));
-    const unseen = all.filter((i) => !valid.has(i));
-    if (unseen.length > 0) return unseen;
-    localStorage.removeItem(QUOTES_SEEN_KEY);
-    return all;
+    const raw = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
+    if (!Array.isArray(raw)) return new Set();
+    return new Set(raw.filter((x) => typeof x === 'string' && x.length > 0));
   } catch {
-    return all;
+    return new Set();
   }
 }
 
-function markQuoteSeen(i: number) {
+function markQuoteIdSeen(id: string) {
   try {
-    const seen: number[] = JSON.parse(localStorage.getItem(QUOTES_SEEN_KEY) || '[]');
-    if (!seen.includes(i)) localStorage.setItem(QUOTES_SEEN_KEY, JSON.stringify([...seen, i]));
+    const seen = loadSeenIds();
+    if (seen.has(id)) return;
+    seen.add(id);
+    localStorage.setItem(QUOTES_SEEN_KEY, JSON.stringify([...seen]));
   } catch {
     /* private mode */
   }
 }
 
-function pickUnseen(count: number, exclude?: number): number {
-  if (count <= 0) return 0;
-  const unseen = unseenQuoteIndices(count).filter((x) => x !== exclude);
-  const pool =
-    unseen.length > 0 ? unseen : Array.from({ length: count }, (_, x) => x).filter((x) => x !== exclude);
-  if (pool.length === 0) return exclude ?? 0;
-  return pool[Math.floor(Math.random() * pool.length)];
+function pickUnseenId(quotes: Quote[], excludeId?: string): string {
+  if (!quotes.length) return '';
+  const seen = loadSeenIds();
+  let pool = quotes.filter((q) => !seen.has(q.id) && q.id !== excludeId);
+  if (pool.length === 0) {
+    // Full cycle complete — reset ledger and start again (never same as last).
+    try {
+      localStorage.removeItem(QUOTES_SEEN_KEY);
+    } catch {
+      /* */
+    }
+    pool = quotes.filter((q) => q.id !== excludeId);
+  }
+  if (pool.length === 0) return quotes[0].id;
+  return pool[Math.floor(Math.random() * pool.length)].id;
 }
 
-function RotatingQuote() {
-  const [i, setI] = useState(() => dailyQuoteOffset(BUILTIN_QUOTES.length));
+function RotatingQuote({ light = false }: { light?: boolean }) {
+  const [quotes, setQuotes] = useState<Quote[]>(BUILTIN_QUOTES);
+  const [id, setId] = useState(() => {
+    const i = dailyQuoteOffset(BUILTIN_QUOTES.length);
+    return BUILTIN_QUOTES[i]?.id || BUILTIN_QUOTES[0]?.id || '';
+  });
   const [show, setShow] = useState(true);
+
+  // Live library: builtin first paint, then merge remote feed via /api/quotes.
   useEffect(() => {
-    const first = pickUnseen(BUILTIN_QUOTES.length);
-    markQuoteSeen(first);
-    setI(first);
+    let cancelled = false;
+    fetch('/api/quotes')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: QuotesPayload | null) => {
+        if (cancelled || !d?.quotes?.length) return;
+        setQuotes(d.quotes);
+      })
+      .catch(() => {
+        /* offline — keep builtin */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  // First client pick: unseen on this device.
   useEffect(() => {
-    if (BUILTIN_QUOTES.length < 2) return;
-    const dwell = readingMs(BUILTIN_QUOTES[i % BUILTIN_QUOTES.length]?.text || '');
+    if (!quotes.length) return;
+    const first = pickUnseenId(quotes);
+    if (first) {
+      markQuoteIdSeen(first);
+      setId(first);
+    }
+  }, [quotes]);
+
+  useEffect(() => {
+    if (quotes.length < 2 || !id) return;
+    const current = quotes.find((q) => q.id === id) || quotes[0];
+    const dwell = readingMs(current?.text || '');
     const t = setTimeout(() => {
       setShow(false);
-      const next = pickUnseen(BUILTIN_QUOTES.length, i);
-      markQuoteSeen(next);
+      const next = pickUnseenId(quotes, id);
+      markQuoteIdSeen(next);
       setTimeout(() => {
-        setI(next);
+        setId(next);
         setShow(true);
       }, 350);
     }, dwell);
     return () => clearTimeout(t);
-  }, [i]);
-  const q = BUILTIN_QUOTES[i % BUILTIN_QUOTES.length];
+  }, [id, quotes]);
+
+  const q = quotes.find((x) => x.id === id) || quotes[0];
+  if (!q) return null;
+
   return (
     <div
-      style={{ fontSize: 13, transition: 'opacity 0.35s ease', opacity: show ? 1 : 0, minHeight: 40 }}
-      className="text-white/50 max-w-[320px] mx-auto leading-snug text-center"
+      style={{ fontSize: 13, transition: 'opacity 0.35s ease', opacity: show ? 1 : 0, minHeight: 48 }}
+      className={`max-w-[340px] mx-auto leading-snug text-center ${
+        light ? 'text-slate-600' : 'text-white/55'
+      }`}
     >
-      “{q.text}”
+      <div className={light ? 'text-slate-700' : 'text-white/70'}>“{q.text}”</div>
+      {q.author && (
+        <div
+          className={`mt-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+            light ? 'text-slate-400' : 'text-white/35'
+          }`}
+        >
+          {q.author}
+        </div>
+      )}
     </div>
   );
 }
@@ -513,7 +568,7 @@ export default function LoginPage() {
               <div className="brand-wordmark text-[2rem] text-white mt-3 drop-shadow">Pragati</div>
               <div className="text-sm text-white/70 mt-1">The view from above</div>
               <div className="mt-4 w-full max-w-[300px] bg-white/95 rounded-xl px-3 py-2.5 shadow-lg">
-                <RotatingQuote />
+                <RotatingQuote light />
               </div>
             </div>
 
