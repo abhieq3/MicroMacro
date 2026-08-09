@@ -31,6 +31,18 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Elon purge: foresight & forecast corpses deleted; identity freeze',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Removed Delivery Foresight and project finish-date forecast end-to-end (engine, APIs, components, tests). Digest no longer carries pace lines.',
+      'Dropped Work Mixer shadow payload from the dashboard (scoring for open-work leverage stays). Post-PIN full-screen loading veil already gone.',
+      'Docs: PRODUCT_PRINCIPLES, IDENTITY_FREEZE, PURGE_LOG — mission is exceptions, owners, dates. No theme/quote thrash for 30 days.',
+    ],
+  },
+
+  {
+    date: '2026-08-09',
     title: 'Remove Foresight, Install app, and calendar subscribe from profile',
     tags: ['improvement'],
     highlight: true,

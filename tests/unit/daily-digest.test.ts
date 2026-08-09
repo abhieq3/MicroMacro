@@ -243,17 +243,17 @@ describe('renderDigestEmail', () => {
     assert.ok(!out.subject.includes('ugly, truncated'));
   });
 
-  it('never renders foresight / pace lines (removed product-wide)', () => {
+  it('renders exceptions without predictive pace theater', () => {
     const calm = renderDigestEmail({
       name: 'Sam',
       sections: { overdue: [], today: [], soon: [], projectUpdates: [] },
       projectName: () => null,
       appUrl: '',
       dateLabel: 'Monday, 8 June',
-      foresightLine: 'Foresight: on pace to clear your plate by ~Jun 20.',
     });
     assert.ok(!calm.html.includes('on pace to clear'));
     assert.ok(!calm.html.includes('Pace —'));
+    assert.ok(!calm.html.includes('Foresight'));
 
     const pressured = renderDigestEmail({
       name: 'Sam',
@@ -276,10 +276,10 @@ describe('renderDigestEmail', () => {
       projectName: () => 'Alpha',
       appUrl: '',
       dateLabel: 'Monday, 8 June',
-      foresightLine: 'Foresight: on pace to clear your plate by ~Jun 20.',
     });
+    assert.ok(pressured.html.includes('Late thing'));
     assert.ok(!pressured.html.includes('Pace —'));
-    assert.ok(!pressured.html.includes('on pace to clear'));
+    assert.ok(!pressured.html.includes('Foresight'));
   });
 
   it('never renders insight / momentum fluff', () => {

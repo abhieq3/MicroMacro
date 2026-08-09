@@ -329,11 +329,6 @@ export interface RenderInput {
   /** Optional curated industry insight (see lib/insights) — the continuous
    *  "thought worth a minute" feed, tuned to the workspace's niche. */
   insight?: { tag: string; title: string; body: string } | null;
-  /** One personal, computed Delivery-Foresight line (see lib/ai/
-   *  deliveryForesight) — the forward-looking counterpart to the task list:
-   *  "on pace to clear by ~Jun 20" / "X is trending to miss — start it today".
-   *  Null when the person has too little history to forecast. */
-  foresightLine?: string | null;
   leadershipBrief?: {
     headline: string;
     team?: {
@@ -450,7 +445,7 @@ export function renderWelcomeEmail(input: {
  *
  *  Design intent (Jensen): exceptions first, one personal move, no fluff.
  *  Lead: team pulse before personal priority. No motivational quotes.
- *  Foresight only when there is real pressure. Value first, inventory second. */
+ *  Value first, inventory second. No foresight / pace theater. */
 export function renderDigestEmail(input: RenderInput): { subject: string; html: string; text: string } {
   const {
     name,
@@ -463,7 +458,6 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     winsYesterday = 0,
     role,
     leadershipBrief,
-    foresightLine,
   } = input;
   // insight intentionally unused — motivational cards were cut.
   void input.insight;
@@ -649,27 +643,11 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     ? `<a href="${appUrl}/settings#daily-email" style="color:#64748b;text-decoration:underline;">daily-email settings</a>`
     : 'daily-email settings';
 
-  // Foresight only when there is real pressure (personal overdue or team exceptions).
-  const teamOverdueCount = leadershipBrief?.team
-    ? leadershipBrief.team.overdueByMember.reduce((s, m) => s + m.count, 0)
-    : 0;
-  const hasPressure =
-    sections.overdue.length > 0 ||
-    (leadershipBrief?.team &&
-      (leadershipBrief.team.blocked.length > 0 ||
-        teamOverdueCount > 0 ||
-        leadershipBrief.team.signoffsPending > 0)) ||
-    (leadershipBrief?.workspace && leadershipBrief.workspace.overdueTotal > 0);
-  // Foresight UI removed product-wide — never inject pace lines into email.
-  void foresightLine;
-  void hasPressure;
-  const foresightHtml = '';
-
   // Lead/admin: team first, then YOU. IC: YOU first (no leadership block).
   const bodyCore =
     isLead || isAdmin
-      ? `${leadershipHtml}${focusHtml}${foresightHtml}${sectionsHtml}`
-      : `${focusHtml}${foresightHtml}${sectionsHtml}${leadershipHtml}`;
+      ? `${leadershipHtml}${focusHtml}${sectionsHtml}`
+      : `${focusHtml}${sectionsHtml}${leadershipHtml}`;
 
   const html = `<!doctype html><html><body style="margin:0;background:#f1f5f9;padding:24px 12px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
@@ -950,9 +928,6 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
   // the multi-tenant path will resolve the tenant's stored niche here.
   const dailyInsight = pickInsight(resolveIndustry(), 0, now);
 
-  // Delivery Foresight removed from product surfaces and digests.
-  const foresightByUser = new Map<string, string>();
-
   for (const r of recipients) {
     const uid = String(r.user._id);
     const raw = tasksByUser.get(uid) || [];
@@ -967,10 +942,7 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       })),
     };
 
-    // The brief goes out EVERY day — even with nothing due. An empty plate is
-    // itself signal ("you're clear — here's the leverage move"), and it still
-    // carries the momentum line, the foresight read, the leadership pulse and
-    // the day's insight, so the higher-level view always lands. (No empty-skip.)
+    // Brief goes out every day — empty plate is signal ("you're clear").
 
     const role = normalizeRole((r.user as any).role);
     let leadershipBrief: RenderInput['leadershipBrief'] = null;
@@ -996,7 +968,6 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       winsYesterday: winsByUser.get(uid) || 0,
       insight: dailyInsight,
       leadershipBrief,
-      foresightLine: foresightByUser.get(uid) || null,
     });
 
     const res = await sendEmail({ to: r.email, toName: (r.user as any).name, subject, html, text });

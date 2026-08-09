@@ -1,58 +1,45 @@
-# Product principles (Bezos lens)
+# Product principles (first principles)
 
-Pragati is a delivery system for serious work (quality / GxP). Decisions follow
-Jeff Bezos’s hard-core operating ideas — customer-backwards, Day 1, ownership,
-high standards, bias for action, dive deep, disagree and commit, deliver results.
+Pragati is a **delivery system for serious work** (quality / GxP).  
+Customer: the person who must clear real exceptions before 09:15.
 
-## 1. Customer Obsession (work backwards)
+When in doubt: **would this help a lead kill the real fire this morning?**  
+If it exists for novelty, vanity, or fear of looking empty — **delete it**.
 
-The customer is the person who must ship quality work at 9:00 — lead or IC.
+## Mission
 
-- Home answers: **what needs a decision now?**
-- Never invent urgency. Far-out work stays on the board; it does not steal the top of the day.
-- Daily email is a one-minute memo, not a newsletter.
+Track team work: **projects, tasks, owners, due dates**.  
+Shared board must match reality.
 
-## 2. Ownership
+## The only loops that matter
 
-- Assignees can finish their own work (status).
-- Leads own reassignment, compliance, and unblock.
-- The board must match reality — Earn Trust.
+1. **Morning** — overdue → blocked → due today → act  
+2. **Delivery** — open task → finish with quality  
+3. **Lead** — who is late, who is blocked, export for the meeting  
 
-## 3. Invent and Simplify
+Everything else is optional chrome or a feature flag.
 
-- Prefer a clear exceptions list over five overlapping panels.
-- Delete vanity inventory (busy counts, motion theater).
-- One visual brand. One home layout. Freeze thrash.
+## Operating rules
 
-## 4. Are Right, A Lot / Dive Deep
+1. **Delete before you optimize.** Dead UI means dead code too.  
+2. **No invented urgency.** Far-out work stays on the board; it does not steal the top of the day.  
+3. **One owner. One date. One next action.**  
+4. **Assignees finish their own work** (status). Leads own reassignment and compliance.  
+5. **Celebrate finished work quietly.** Done with quality beats busy with status.  
+6. **One visual identity.** Classic blue `#1565C0` → forest `#2E7D32`. No theme thrash.  
+7. **Exceptions first** on digests and home. Empty healthy days: *Zero exceptions* / all clear.  
+8. **Recurring is a schedule**, not a fake project on the dashboard.  
+9. **Automate last** (digest, recurring cron). Do not automate theater.  
 
-- “Do this first” uses real urgency tiers: overdue → blocked → today → this week.
-- A task due in three weeks is not the morning priority.
-- Leads see team exceptions before personal chores.
+## Explicit non-goals (frozen)
 
-## 5. Bias for Action
+- Delivery Foresight / pace predictions  
+- Work Mixer shadow prioritization product  
+- Project finish-date forecast chips  
+- Full-screen login welcome veils  
+- Identity / quote system as a weekly workstream  
 
-- Reversible decisions: act, update status, move on.
-- Prefetch and speed are features.
-- Digest subject must be scannable in the inbox list.
+## References
 
-## 6. Highest Standards
-
-- Quality paths stay honest (audit trail, no fake e-sign).
-- Empty healthy days say “All clear,” not a fake spotlight.
-
-## 7. Deliver Results
-
-- Celebrate finished work quietly.
-- Done with quality beats busy with status.
-- Long-term: compounding clarity of ownership and dates.
-
-## 8. Disagree and Commit / Day 1
-
-- When we reverse a bad redesign, we reverse it fully and freeze.
-- Stay Day 1: fix the morning loop, don’t protect yesterday’s chrome.
-
----
-
-When in doubt: **would this help a lead clear the real fire before 9:15?**
-If it exists for novelty, vanity, or fear of looking empty — delete it.
+- `docs/IDENTITY_FREEZE.md` — brand + layout freeze  
+- `docs/PURGE_LOG.md` — what we deleted and why  

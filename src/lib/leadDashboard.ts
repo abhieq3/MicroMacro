@@ -9,13 +9,7 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { computeFlowStrip, type FlowSignalPayload } from '@/lib/flow/computeStrip';
 import { getFlowConfig, isUiEnabled, isPilotTeamVisible } from '@/lib/flow/config';
 import { cached, cacheBust } from '@/lib/cache';
-import {
-  buildWorkMixerFromDashboardData,
-  scoreWorkCandidate,
-  classifyWorkCandidate,
-  taskToCandidate,
-  type WorkMixerResult,
-} from '@/lib/workMixer';
+import { scoreWorkCandidate, classifyWorkCandidate, taskToCandidate } from '@/lib/workMixer';
 import { normalizeRole } from '@/lib/auth';
 import { buildDeliveryProfiles, buildOpenLoad, scoreSlipRisk } from '@/lib/ai/slipRisk';
 
@@ -52,18 +46,11 @@ export interface LeadDashboardData {
   /** Bounded fact-based "Needs attention" strip payload — server-computed so
    *  the browser never sees raw signals. Null when nothing surfaces. */
   flowSignal?: FlowSignalPayload | null;
-  /** Optional internal Work Mixer output (shadow mode). Present ONLY when
-   *  WORK_MIXER_ENABLED=true; absent (undefined) by default, so existing
-   *  consumers are unaffected. Never used to render UI in Phase 1. */
-  workMixer?: WorkMixerResult | null;
 }
 
 /**
  * Public entry point — used by both the API route and the server-rendered
- * dashboard page. Read-through cached per viewer (see DASHBOARD_TTL_SECONDS):
- * a hit returns the rollup without touching MongoDB; a miss (or a disabled /
- * unreachable cache) computes fresh via the pure fetcher below. Fully
- * transparent — when Upstash isn't configured this is just a direct call.
+ * dashboard page. Read-through cached per viewer (see DASHBOARD_TTL_SECONDS).
  */
 export async function getLeadDashboardData(jwtUser: {
   sub: string;
@@ -71,27 +58,9 @@ export async function getLeadDashboardData(jwtUser: {
   email: string;
   role: string;
 }): Promise<LeadDashboardData> {
-  const data = await cached(dashboardCacheKey(jwtUser.sub, jwtUser.role), DASHBOARD_TTL_SECONDS, () =>
+  return cached(dashboardCacheKey(jwtUser.sub, jwtUser.role), DASHBOARD_TTL_SECONDS, () =>
     computeLeadDashboardData(jwtUser),
   );
-
-  // ── Work Mixer (shadow mode, default OFF) ─────────────────────────────────
-  // When WORK_MIXER_ENABLED=true, derive a bounded, deterministically-ranked
-  // prioritisation view from the data ALREADY in memory — no new queries, no
-  // DB, no Redis. It is attached as an optional, non-breaking field and is not
-  // rendered anywhere in Phase 1. Computed AFTER the cache so the cached payload
-  // (and every existing consumer) is byte-identical when the flag is off, and
-  // wrapped so a bug in the mixer can never break the real dashboard.
-  if (process.env.WORK_MIXER_ENABLED === 'true') {
-    try {
-      const workMixer = buildWorkMixerFromDashboardData(data, { now: new Date() });
-      return { ...data, workMixer };
-    } catch {
-      return data;
-    }
-  }
-
-  return data;
 }
 
 // Pure data fetcher — the actual MongoDB work. Centralising it lets the App
