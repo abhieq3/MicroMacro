@@ -243,7 +243,7 @@ describe('renderDigestEmail', () => {
     assert.ok(!out.subject.includes('ugly, truncated'));
   });
 
-  it('renders foresight only when there is pressure, not as a card', () => {
+  it('never renders foresight / pace lines (removed product-wide)', () => {
     const calm = renderDigestEmail({
       name: 'Sam',
       sections: { overdue: [], today: [], soon: [], projectUpdates: [] },
@@ -253,6 +253,7 @@ describe('renderDigestEmail', () => {
       foresightLine: 'Foresight: on pace to clear your plate by ~Jun 20.',
     });
     assert.ok(!calm.html.includes('on pace to clear'));
+    assert.ok(!calm.html.includes('Pace —'));
 
     const pressured = renderDigestEmail({
       name: 'Sam',
@@ -277,9 +278,8 @@ describe('renderDigestEmail', () => {
       dateLabel: 'Monday, 8 June',
       foresightLine: 'Foresight: on pace to clear your plate by ~Jun 20.',
     });
-    assert.match(pressured.html, /Pace —/);
-    assert.match(pressured.html, /on pace to clear your plate by ~Jun 20\./);
-    assert.ok(!pressured.html.includes('#faf5ff'));
+    assert.ok(!pressured.html.includes('Pace —'));
+    assert.ok(!pressured.html.includes('on pace to clear'));
   });
 
   it('never renders insight / momentum fluff', () => {
