@@ -379,11 +379,11 @@ export function closingLine(now: Date = new Date()): string {
   return CLOSING_LINES[day % CLOSING_LINES.length];
 }
 
-/** The single highest-leverage item: the stalest overdue, else the top
- *  due-today by priority. This is what the email leads with — one decision,
- *  not a wall of rows. */
+/** The single next action: stalest overdue, else top due-today by priority,
+ *  else soonest "coming up" only if it is already in the soon bucket
+ *  (Bias for Action — never lead with far-future inventory). */
 export function pickFocus(sections: DigestSections): DigestTask | null {
-  return sections.overdue[0] || sections.today[0] || null;
+  return sections.overdue[0] || sections.today[0] || sections.soon[0] || null;
 }
 
 
@@ -403,42 +403,43 @@ export function renderWelcomeEmail(input: {
   insight?: { tag: string; title: string; body: string } | null;
 }): { subject: string; html: string; text: string } {
   const first = (input.name || '').trim().split(/\s+/)[0] || 'there';
-  const subject = `Your daily brief is on, ${first}`;
+  const subject = `Pragati · Daily brief on · ${first}`;
+  void input.insight;
 
   const cta = input.appUrl
-    ? `<a href="${input.appUrl}" style="display:inline-block;background:#1565C0;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;padding:11px 20px;">Open Pragati</a>`
+    ? `<a href="${input.appUrl}" style="display:inline-block;background:#1565C0;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;padding:11px 20px;">Open board</a>`
     : '';
 
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;background:#f1f5f9;padding:24px 12px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">
-  <tr><td style="height:4px;background:#1565C0;background:linear-gradient(90deg,#1565C0,#43A047);font-size:0;line-height:0;">&nbsp;</td></tr>
-  <tr><td style="padding:30px 28px 24px;">
-    <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#1565C0;margin:0 0 16px;">Pragati</div>
-    <h1 style="margin:0 0 14px;font-size:21px;line-height:1.35;color:#0f172a;">Your morning brief is on.</h1>
-    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">The best morning ritual we know of is also the simplest: <strong>do your highest-priority work first</strong> — same way, every day, before the day starts doing you. The brief exists to serve exactly that.</p>
-    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">Each morning at <strong>${escapeHtml(
+  <tr><td style="height:4px;background:linear-gradient(90deg,#1565C0,#43A047);font-size:0;line-height:0;">&nbsp;</td></tr>
+  <tr><td style="padding:28px 28px 22px;">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#1565C0;margin:0 0 14px;">Pragati · Day 1</div>
+    <h1 style="margin:0 0 12px;font-size:20px;line-height:1.35;color:#0f172a;">Your daily brief is on.</h1>
+    <p style="margin:0 0 12px;font-size:14px;color:#334155;line-height:1.65;"><strong>One email. Exceptions first. One next move.</strong> No vanity metrics. No pep talk.</p>
+    <p style="margin:0 0 12px;font-size:14px;color:#334155;line-height:1.65;">Every morning at <strong>${escapeHtml(
       input.hourLabel,
-    )}</strong>: one email. The task that matters most on top, the rest in order, overdue first. Read it in a minute, pick the main thing, start.</p>
-    <p style="margin:0 0 22px;font-size:14px;color:#64748b;line-height:1.65;">Keep the main thing the main thing. Everything else is just email — including this one.</p>
+    )}</strong> you get: team fire (if any), then your one highest-urgency task, then overdue / due today / coming up. Read it in under a minute. Act. Move on.</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.65;">If this lands, tomorrow’s brief lands. If it doesn’t, fix delivery before trusting the board.</p>
     ${cta ? `<div style="margin:0 0 4px;">${cta}</div>` : ''}
   </td></tr>
-  <tr><td style="padding:0 28px 28px;border-top:1px solid #f1f5f9;">
-    <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;line-height:1.55;">Nothing to set up. Switch it off any time in <strong>Settings → Daily task email</strong>.</p>
+  <tr><td style="padding:0 28px 24px;border-top:1px solid #f1f5f9;">
+    <p style="margin:14px 0 0;font-size:12px;color:#94a3b8;line-height:1.55;">Off any time: <strong>Settings → Daily task email</strong>.</p>
   </td></tr>
 </table>
 </td></tr></table>
 </body></html>`;
 
   const text = [
-    'Your morning brief is on.',
+    'Pragati · Your daily brief is on.',
     '',
-    'The best morning ritual we know of is also the simplest: do your highest-priority work first — same way, every day, before the day starts doing you. The brief exists to serve exactly that.',
-    `Each morning at ${input.hourLabel}: one email. The task that matters most on top, the rest in order, overdue first. Read it in a minute, pick the main thing, start.`,
-    'Keep the main thing the main thing. Everything else is just email — including this one.',
-    input.appUrl ? `\nOpen Pragati: ${input.appUrl}` : '',
-    'Switch it off any time in Settings → Daily task email.',
+    'One email. Exceptions first. One next move. No vanity metrics. No pep talk.',
+    `Every morning at ${input.hourLabel}: team fire (if any), then your one highest-urgency task, then overdue / due today / coming up.`,
+    'If this lands, tomorrow’s brief lands.',
+    input.appUrl ? `\nOpen board: ${input.appUrl}` : '',
+    'Off any time: Settings → Daily task email.',
   ]
     .filter((l) => l !== undefined)
     .join('\n');
@@ -483,9 +484,9 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     personalBits.push(`${sections.soon.length} due soon`);
   }
 
-  // Subject: short counts. Leads/admins get team/workspace first so the inbox
-  // list answers "is anything on fire?" before personal chores.
-  let subjectCore = personalBits.join(' · ') || 'all clear';
+  // Subject — Bezos inbox scan: one line, exceptions first, no fluff.
+  // Format: "Pragati · Mon · 2 overdue · 1 due today" or "Pragati · Mon · All clear"
+  let subjectCore = personalBits.join(' · ') || 'All clear';
   if (leadershipBrief?.team) {
     const teamOverdue = leadershipBrief.team.overdueByMember.reduce((s, m) => s + m.count, 0);
     const teamBits: string[] = [];
@@ -507,7 +508,8 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
           ? `Workspace: ${w.risky.length} to watch`
           : 'Workspace: clear';
   }
-  const subject = `${test ? '[Test] ' : ''}Your ${weekday} brief — ${subjectCore}`;
+  const shortDay = weekday.slice(0, 3);
+  const subject = `${test ? '[Test] ' : ''}Pragati · ${shortDay} · ${subjectCore}`;
 
   const rest = {
     overdue: sections.overdue.filter((t) => t !== focus),
@@ -592,9 +594,35 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
         </div>`;
   }
 
+  // Opening: one truth sentence — first line of a Bezos narrative memo.
+  const isEmpty = !digestHasContent(sections) && !leadershipBrief?.team && !leadershipBrief?.workspace;
+  const openingTruth = leadershipBrief?.headline
+    ? leadershipBrief.headline
+    : sections.overdue.length || sections.today.length
+      ? [
+          sections.overdue.length ? `${sections.overdue.length} overdue` : '',
+          sections.today.length ? `${sections.today.length} due today` : '',
+        ]
+          .filter(Boolean)
+          .join(' · ') + '. Start with the worst exception.'
+      : isEmpty
+        ? 'All clear — nothing overdue or due today.'
+        : sections.soon.length
+          ? `${sections.soon.length} coming up soon. Nothing burning this morning.`
+          : 'All clear.';
+  const openingHtml = `<p style="margin:0 0 16px;font-size:14px;color:#0f172a;font-weight:600;line-height:1.5;">${escapeHtml(openingTruth)}</p>`;
+
+  const focusLabel =
+    focus?.bucket === 'overdue'
+      ? 'You — clear this first'
+      : focus?.bucket === 'today'
+        ? 'You — do this today'
+        : focus
+          ? 'You — do this next'
+          : '';
   const focusHtml = focus
     ? `<div style="margin:0 0 20px;border:1px solid ${focus.bucket === 'overdue' ? '#fecaca' : '#bfdbfe'};border-left:4px solid ${focus.bucket === 'overdue' ? '#dc2626' : '#1565C0'};border-radius:12px;padding:14px 16px;background:${focus.bucket === 'overdue' ? '#fff7f7' : '#f8fbff'};">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">You — do this first</div>
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">${focusLabel}</div>
         <div style="font-size:16px;font-weight:700;color:#0f172a;line-height:1.35;">${
           appUrl
             ? `<a href="${appUrl}/tasks/${focus.id}" style="color:#0f172a;text-decoration:none;">${escapeHtml(focus.title)}</a>`
@@ -620,12 +648,6 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   const manage = appUrl
     ? `<a href="${appUrl}/settings#daily-email" style="color:#64748b;text-decoration:underline;">daily-email settings</a>`
     : 'daily-email settings';
-
-  // Empty-state must keep "all clear" for unit tests / empty-skip contracts.
-  const isEmpty = !digestHasContent(sections) && !leadershipBrief?.team && !leadershipBrief?.workspace;
-  const openingHtml = isEmpty
-    ? `<p style="margin:0 0 16px;font-size:13.5px;color:#475569;line-height:1.55;">All clear.</p>`
-    : '';
 
   // Foresight only when there is real pressure (personal overdue or team exceptions).
   const teamOverdueCount = leadershipBrief?.team
@@ -691,7 +713,15 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   }
   if (focus) {
     const pn = projLabel(focus.projectId);
-    lines.push('YOU — DO THIS FIRST', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
+    const head =
+      focus.bucket === 'overdue'
+        ? 'YOU — CLEAR THIS FIRST'
+        : focus.bucket === 'today'
+          ? 'YOU — DO THIS TODAY'
+          : 'YOU — DO THIS NEXT';
+    lines.push(head, `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
+  } else {
+    lines.push('YOU — ALL CLEAR', '  Nothing overdue or due today.', '');
   }
   if (foresightLine && hasPressure) {
     lines.push('PACE', `  ${foresightLine.replace(/^Foresight:\s*/i, '')}`, '');

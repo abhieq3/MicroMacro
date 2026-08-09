@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Bezos morning: real urgency + hardcore daily brief',
+    tags: ['fix', 'improvement'],
+    highlight: true,
+    body: [
+      '“Do this first” no longer picks the soonest due date in the entire backlog (that promoted end-of-month recurring work). Urgency tiers: overdue → blocked → due today → within 7 days. Beyond that: All clear.',
+      'Daily email is a Bezos-style narrative memo: scannable subject (Pragati · Mon · exceptions), one truth sentence, team fire then one next move, no pep talk. Product principles rewritten to Bezos operating ideas.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Tab icons fixed; login quotes: Bezos + 16 Leadership Principles',
     tags: ['improvement'],
     highlight: true,

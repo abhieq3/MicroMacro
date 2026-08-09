@@ -256,7 +256,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   // component (router.refresh) is the cheapest way to pull fresh rollups when
   // the tab regains focus, on a gentle interval, and on app-wide change events.
   useLiveRefresh(() => router.refresh());
-  const [summaryModal, setSummaryModal] = useState<null | 'overdue'>(null);
+  const [summaryModal, setSummaryModal] = useState<null | 'overdue' | 'blocked'>(null);
   // Bird's-eye view — the lead's whole workspace as a packed tree. Opened
   // from the small compass icon in the greeting row.
   const [birdsEyeOpen, setBirdsEyeOpen] = useState(false);
@@ -300,16 +300,67 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
     [openTasks],
   );
 
-  // One next action — soonest overdue, else soonest due open work. Jensen: exceptions first.
+  const blockedTasks = useMemo(
+    () => openTasks.filter((t) => t.status === 'blocked'),
+    [openTasks],
+  );
+
+  /**
+   * One next action — Bezos Bias for Action + Dive Deep.
+   * "Do this first" means work that needs a decision *soon*, not the soonest
+   * due date in the entire backlog (that promoted end-of-month recurring work
+   * over nearer tasks and lied about urgency).
+   *
+   * Tiers: overdue → blocked → due today → due within 7 days (or server
+   * `pressing`) → soft 14-day fallback only if nothing harder exists.
+   * Beyond that: no spotlight (All clear).
+   */
+  const ACTION_HORIZON_DAYS = 7;
+  const SOFT_HORIZON_DAYS = 14;
   const doThisFirst = useMemo(() => {
-    const pool = overdueTasks.length > 0 ? overdueTasks : openTasks;
-    if (pool.length === 0) return null;
-    return [...pool].sort((a, b) => {
-      const da = new Date(a.ccTcd || a.dueDate || '9999').getTime();
-      const db = new Date(b.ccTcd || b.dueDate || '9999').getTime();
-      return da - db;
-    })[0];
-  }, [overdueTasks, openTasks]);
+    type Scored = { t: TeamTask; tier: number; d: number; pri: number; dueMs: number };
+    const priRank = (p?: string) =>
+      ({ critical: 0, high: 1, medium: 2, low: 3 } as Record<string, number>)[p || 'medium'] ?? 2;
+
+    const scored: Scored[] = [];
+    for (const t of openTasks) {
+      const due = t.ccTcd || t.dueDate;
+      const d = daysUntil(due);
+      const overdue = isOverdue(due, t.status);
+      const blocked = t.status === 'blocked';
+      let tier = 99;
+      if (overdue && blocked) tier = 0;
+      else if (overdue) tier = 1;
+      else if (blocked) tier = 2;
+      else if (d === 0) tier = 3;
+      else if ((d !== null && d > 0 && d <= ACTION_HORIZON_DAYS) || t.pressing) tier = 4;
+      else if (d !== null && d > 0 && d <= SOFT_HORIZON_DAYS) tier = 5;
+      if (tier >= 99) continue;
+      scored.push({
+        t,
+        tier,
+        d: d ?? 9999,
+        pri: priRank(t.priority),
+        dueMs: new Date(due || '9999-12-31').getTime(),
+      });
+    }
+    if (scored.length === 0) return null;
+    const hard = scored.filter((s) => s.tier <= 4);
+    const pool = hard.length > 0 ? hard : scored.filter((s) => s.tier <= 5);
+    pool.sort(
+      (a, b) => a.tier - b.tier || a.d - b.d || a.pri - b.pri || a.dueMs - b.dueMs,
+    );
+    return pool[0]?.t ?? null;
+  }, [openTasks]);
+
+  const doThisFirstKind = useMemo(() => {
+    if (!doThisFirst) return null as null | 'overdue' | 'blocked' | 'today' | 'next';
+    const due = doThisFirst.ccTcd || doThisFirst.dueDate;
+    if (isOverdue(due, doThisFirst.status)) return 'overdue';
+    if (doThisFirst.status === 'blocked') return 'blocked';
+    if (daysUntil(due) === 0) return 'today';
+    return 'next';
+  }, [doThisFirst]);
 
   // Expanded project view: everyone sees the whole project's tasks, so an IC
   // can see the path of work around their own assignments — not just their
@@ -367,8 +418,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
         <>
           {isNewContributor && <ContributorWelcome name={dash.user.name} />}
 
-          {/* One next action — judgment over inventory counts. */}
-          {doThisFirst && (
+          {/* One next action — only when something is truly urgent. */}
+          {doThisFirst ? (
             <Link
               href={`/tasks/${doThisFirst.id}`}
               className="mb-4 flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#2a2a28] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
@@ -377,12 +428,18 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               <div className="min-w-0 flex-1">
                 <div
                   className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
-                    overdueTasks.some((t) => t.id === doThisFirst.id)
+                    doThisFirstKind === 'overdue' || doThisFirstKind === 'blocked'
                       ? 'text-red-600 dark:text-red-400'
                       : 'text-blue-600 dark:text-blue-400'
                   }`}
                 >
-                  Do this first
+                  {doThisFirstKind === 'overdue'
+                    ? 'Clear this first'
+                    : doThisFirstKind === 'blocked'
+                      ? 'Unblock this'
+                      : doThisFirstKind === 'today'
+                        ? 'Do this today'
+                        : 'Do this next'}
                 </div>
                 <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
                   {doThisFirst.title}
@@ -391,10 +448,28 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                   {doThisFirst.projectName || doThisFirst.projectCode || 'Task'}
                   {(doThisFirst.ccTcd || doThisFirst.dueDate) &&
                     ` · ${formatDate(doThisFirst.ccTcd || doThisFirst.dueDate)}`}
+                  {doThisFirst.assigneeName ? ` · ${doThisFirst.assigneeName}` : ''}
                 </div>
               </div>
               <ArrowRight size={16} className="text-slate-300 dark:text-white/25 shrink-0 mt-1" />
             </Link>
+          ) : (
+            !isNewContributor && (
+              <div
+                className="mb-4 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#2a2a28] px-4 py-3.5"
+                style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
+              >
+                <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-600 dark:text-emerald-400 mb-1">
+                  All clear
+                </div>
+                <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug">
+                  Nothing late or due this week. You’re clear for the morning.
+                </div>
+                <div className="text-[11px] text-slate-400 dark:text-white/35 mt-1">
+                  Far-out work stays on Projects and My Tasks — it doesn’t steal the top of the day.
+                </div>
+              </div>
+            )
           )}
 
           {/* ── Quick check / Needs attention strip ────────────────────────
@@ -403,22 +478,41 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
           <FlowSignalStrip data={dash.flowSignal} />
 
           {/* Exception chips only — hide zeros, no vanity inventory. */}
-          {overdueTasks.length > 0 && (
+          {(overdueTasks.length > 0 || blockedTasks.length > 0) && (
             <div className="flex flex-wrap gap-2 mb-5">
-              <SummaryChip
-                label="Overdue"
-                value={overdueTasks.length}
-                accent="red"
-                onClick={() => setSummaryModal('overdue')}
-              />
+              {overdueTasks.length > 0 && (
+                <SummaryChip
+                  label="Overdue"
+                  value={overdueTasks.length}
+                  accent="red"
+                  onClick={() => setSummaryModal('overdue')}
+                />
+              )}
+              {blockedTasks.length > 0 && (
+                <SummaryChip
+                  label="Blocked"
+                  value={blockedTasks.length}
+                  accent="amber"
+                  onClick={() => setSummaryModal('blocked')}
+                />
+              )}
             </div>
           )}
-          {summaryModal && (
+          {summaryModal === 'overdue' && (
             <SummaryTaskPopup
               title="Overdue tasks"
               subtitle="Work that has crossed its target/due date."
               tone="red"
               tasks={overdueTasks}
+              onClose={() => setSummaryModal(null)}
+            />
+          )}
+          {summaryModal === 'blocked' && (
+            <SummaryTaskPopup
+              title="Blocked tasks"
+              subtitle="Work waiting on an external dependency or decision."
+              tone="amber"
+              tasks={blockedTasks}
               onClose={() => setSummaryModal(null)}
             />
           )}
@@ -616,7 +710,7 @@ function SummaryChip({
 }: {
   label: string;
   value: number;
-  accent: 'blue' | 'red' | 'slate' | 'green';
+  accent: 'blue' | 'red' | 'slate' | 'green' | 'amber';
   href?: string;
   onClick?: () => void;
 }) {
@@ -625,6 +719,7 @@ function SummaryChip({
     red: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400',
     slate: 'bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-white/55',
     green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    amber: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400',
   }[accent];
   const className = `inline-flex items-center gap-1.5 h-8 px-3 rounded-lg transition-all hover:brightness-95 hover:shadow-sm ${styles}`;
   const content = (
@@ -699,7 +794,7 @@ function SummaryTaskPopup({
   title: string;
   subtitle: string;
   tasks: TeamTask[];
-  tone: 'blue' | 'red';
+  tone: 'blue' | 'red' | 'amber';
   onClose: () => void;
 }) {
   const sorted = [...tasks].sort((a, b) => {
@@ -710,16 +805,22 @@ function SummaryTaskPopup({
   const icon =
     tone === 'red' ? (
       <AlertTriangle size={14} className="text-red-500" />
+    ) : tone === 'amber' ? (
+      <AlertTriangle size={14} className="text-amber-500" />
     ) : (
       <CheckCircle2 size={14} className="text-blue-500" />
     );
+  const banner =
+    tone === 'red'
+      ? 'border-red-100 bg-red-50 text-red-700'
+      : tone === 'amber'
+        ? 'border-amber-100 bg-amber-50 text-amber-800'
+        : 'border-blue-100 bg-blue-50 text-blue-700';
 
   return (
     <FullScreenOverlay title={title} icon={icon} onClose={onClose}>
       <div className="px-5 pb-5">
-        <div
-          className={`mb-3 rounded-xl border px-3 py-2.5 ${tone === 'red' ? 'border-red-100 bg-red-50 text-red-700' : 'border-blue-100 bg-blue-50 text-blue-700'}`}
-        >
+        <div className={`mb-3 rounded-xl border px-3 py-2.5 ${banner}`}>
           <div className="text-xs font-bold">
             {sorted.length} task{sorted.length === 1 ? '' : 's'}
           </div>

@@ -1,82 +1,58 @@
-# Product principles (Jobs lens)
+# Product principles (Bezos lens)
 
-Pragati is a delivery system for serious work (quality / GxP). These principles
-are how we decide what ships. One point of view. No rotating founder cosplay.
+Pragati is a delivery system for serious work (quality / GxP). Decisions follow
+Jeff Bezos’s hard-core operating ideas — customer-backwards, Day 1, ownership,
+high standards, bias for action, dive deep, disagree and commit, deliver results.
 
-## 1. Start with the customer experience
+## 1. Customer Obsession (work backwards)
 
-A quality lead at 9:00 and an IC with three assigned tasks are the product.
-Work backward from that morning — not from a theme, a feed, or a philosophy book.
+The customer is the person who must ship quality work at 9:00 — lead or IC.
 
-- Home must always answer: **what do I do next?**
-- A calm day must still feel intentional: “Nothing late. You’re clear.”
-- Never look broken when the board is healthy.
+- Home answers: **what needs a decision now?**
+- Never invent urgency. Far-out work stays on the board; it does not steal the top of the day.
+- Daily email is a one-minute memo, not a newsletter.
 
-## 2. Focus means saying no
+## 2. Ownership
 
-Focus is not a denser monochrome UI. Focus is refusing the hundred other good ideas.
+- Assignees can finish their own work (status).
+- Leads own reassignment, compliance, and unblock.
+- The board must match reality — Earn Trust.
 
-- One visual identity (classic blue→forest brand). No palette thrash.
-- One home layout until real usage forces a change.
-- One login voice (Steve Jobs). Optional atmosphere only — never in the work path.
+## 3. Invent and Simplify
 
-## 3. Simple is harder than complex
+- Prefer a clear exceptions list over five overlapping panels.
+- Delete vanity inventory (busy counts, motion theater).
+- One visual brand. One home layout. Freeze thrash.
 
-Delete chrome only when hierarchy remains.
+## 4. Are Right, A Lot / Dive Deep
 
-- Exceptions first for leads (late, blocked, at risk) — then one next action.
-- Hide vanity inventory (active counts, healthy-%, done·7d theater).
-- Do not hide the *work* itself. Empty ≠ deleted.
+- “Do this first” uses real urgency tiers: overdue → blocked → today → this week.
+- A task due in three weeks is not the morning priority.
+- Leads see team exceptions before personal chores.
 
-## 4. Design is how it works
+## 5. Bias for Action
 
-Pixels follow behavior.
+- Reversible decisions: act, update status, move on.
+- Prefetch and speed are features.
+- Digest subject must be scannable in the inbox list.
 
-- Speed is a feature (prefetch, progress, light shells).
-- Auth is serious (password change, lockout, PIN after day 3).
-- Domain depth (lifecycle, audit, QMS) beats generic task-app theater.
+## 6. Highest Standards
 
-## 5. Real artists ship — then freeze
+- Quality paths stay honest (audit trail, no fake e-sign).
+- Empty healthy days say “All clear,” not a fake spotlight.
 
-Ship the home run. Then stop redrawing the face.
+## 7. Deliver Results
 
-- Identity and home layout freeze for 30 days after a decision.
-- If users force a revert, keep the restore. Do not re-experiment the same day.
-- Changelog names what was restored and why.
+- Celebrate finished work quietly.
+- Done with quality beats busy with status.
+- Long-term: compounding clarity of ownership and dates.
 
-## 6. I’m as proud of what we don’t do
+## 8. Disagree and Commit / Day 1
 
-- No confetti status games. Quiet ack for milestones.
-- No social feed cosplay. This is not X.
-- No pep quotes inside the work path.
-- Install prompts wait until the product has earned the dock.
-- System plumbing (recurring holders) never pretends to be a project.
-
-## 7. First login is one shot
-
-Day one must feel inevitable.
-
-- At most one forced step (set password if temp).
-- One welcome path by role. Skip forever.
-- No multi-step spotlight tours. No PIN on day one (offer from login 3+).
-
-## 8. Clear thinking before status
-
-If you cannot put it on a whiteboard, you do not understand it yet.
-
-- Private whiteboard stays in the product for first principles, unblock, decide.
-- Status updates come after thinking, not instead of it.
-
-## 9. Quality is the yardstick
-
-Be a yardstick of quality. Excellence is expected.
-
-- Never fake compliance. Never soft-delete truth users need later.
-- Personal spaces stay private. Trust is the product.
-- Details matter. It’s worth getting the morning board right.
+- When we reverse a bad redesign, we reverse it fully and freeze.
+- Stay Day 1: fix the morning loop, don’t protect yesterday’s chrome.
 
 ---
 
-When in doubt: **would this make a lead’s first ten minutes inevitable?**
-If it exists for novelty, fear of looking empty, or founder cosplay — delete it.
-If we deleted something people used to think — restore it.
+When in doubt: **would this help a lead clear the real fire before 9:15?**
+If it exists for novelty, vanity, or fear of looking empty — delete it.

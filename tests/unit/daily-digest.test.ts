@@ -157,8 +157,8 @@ describe('renderDigestEmail', () => {
     assert.match(out.html, /Fix &lt;A&gt; &amp; B/); // escaped in HTML
     assert.match(out.text, /Fix <A> & B/); // raw in plain text
     assert.match(out.html, /https:\/\/x\.test\/tasks\/t1/);
-    assert.match(out.html, /You — do this first/);
-    assert.match(out.text, /YOU — DO THIS FIRST/);
+    assert.match(out.html, /You — do this today/);
+    assert.match(out.text, /YOU — DO THIS TODAY/);
     // No motivational fluff
     assert.ok(!out.html.includes('Momentum'));
     assert.ok(!out.html.includes('Ship something'));
@@ -172,7 +172,7 @@ describe('renderDigestEmail', () => {
       appUrl: '',
       dateLabel: 'Monday, 8 June',
     });
-    assert.match(out.subject, /all clear/);
+    assert.match(out.subject, /[Aa]ll clear/);
     assert.match(out.html, /all clear/i);
   });
 
@@ -203,7 +203,7 @@ describe('renderDigestEmail', () => {
     assert.ok(!out.html.includes('Sign-offs'));
     // Team block should appear before personal focus in the HTML
     const teamIdx = out.html.indexOf('>Team<');
-    const youIdx = out.html.indexOf('You — do this first');
+    const youIdx = out.html.indexOf('You — do this today');
     assert.ok(teamIdx >= 0 && youIdx > teamIdx, 'team before personal');
   });
 
