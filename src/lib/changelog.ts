@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Complete reliability pass: lazy Kanban, mobile density, People panel',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Project Kanban lives in its own lazy module — phase view no longer pays for drag-drop on first paint.',
+      'Home: People (contributors) desktop-only; Due rows denser on mobile. Task sticky status + unified dashboard API remain.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Reliability pass: one dashboard API, mobile task status bar',
     tags: ['improvement'],
     body: [

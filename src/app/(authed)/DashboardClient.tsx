@@ -1680,16 +1680,13 @@ function ActionGroup({
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-white/35">
               {title}
             </span>
-            {count > 0 && (
-              <span className="text-[9px] font-bold text-slate-300 dark:text-white/20">nearest first</span>
-            )}
           </div>
-          <span className="text-[10px] font-bold text-slate-400 dark:text-white/25">{count}</span>
+          <span className="text-[10px] font-bold text-slate-400 dark:text-white/25 tabular-nums">{count}</span>
         </div>
       )}
       {tasks.length === 0 ? (
-        <div className="px-4 py-6 text-center">
-          <CheckCircle2 size={18} className="mx-auto text-emerald-300 mb-1.5" />
+        <div className="px-3 py-4 sm:px-4 sm:py-6 text-center">
+          <CheckCircle2 size={16} className="mx-auto text-emerald-300 mb-1" />
           <div className="text-[11px] text-slate-400 dark:text-white/25">{emptyHint || 'None'}</div>
         </div>
       ) : (
@@ -1728,7 +1725,7 @@ function ActionGroup({
                 <Link
                   href={`/tasks/${t.id}`}
                   prefetch
-                  className={`flex items-center gap-3 px-4 py-2.5 transition-colors group fluid-press ${
+                  className={`flex items-center gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-2.5 transition-colors group fluid-press ${
                     isOverdue
                       ? 'hover:bg-red-50/40 dark:hover:bg-red-500/[0.05]'
                       : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'
@@ -1746,14 +1743,10 @@ function ActionGroup({
                       )}
                       {t.assigneeName && (
                         <>
-                          <span className="text-slate-200 dark:text-white/15">·</span>
-                          <span className="truncate max-w-[120px]">{t.assigneeName}</span>
-                        </>
-                      )}
-                      {due && (
-                        <>
-                          <span className="text-slate-200 dark:text-white/15">·</span>
-                          <span>{formatDate(due)}</span>
+                          <span className="text-slate-200 dark:text-white/15 hidden sm:inline">·</span>
+                          <span className="truncate max-w-[100px] sm:max-w-[120px] hidden sm:inline">
+                            {t.assigneeName}
+                          </span>
                         </>
                       )}
                       {t.slipRisk && dueIn !== null && dueIn >= 0 && (
@@ -1761,7 +1754,7 @@ function ActionGroup({
                           <span className="text-slate-200 dark:text-white/15">·</span>
                           <span
                             className="font-bold text-orange-600 dark:text-orange-400 cursor-help"
-                            title={`Early warning: ${t.slipRisk.reason}`}
+                            title={t.slipRisk.reason}
                           >
                             may slip
                           </span>
@@ -1769,7 +1762,7 @@ function ActionGroup({
                       )}
                     </div>
                   </div>
-                  <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${pill.cls}`}>
+                  <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md tabular-nums ${pill.cls}`}>
                     {pill.label}
                   </span>
                 </Link>
@@ -1797,39 +1790,26 @@ function ContributorsPanel({
   people: DashPerson[];
   tasksByAssignee: Map<string, TeamTask[]>;
 }) {
-  // Collapsed by default — expand when the lead wants a person-by-person view.
+  // Desktop: collapsed by default. Mobile: stay collapsed (extra density).
   const [panelOpen, setPanelOpen] = useState(false);
   const [activityPerson, setActivityPerson] = useState<DashPerson | null>(null);
 
-  if (people.length === 0) {
-    return (
-      <section
-        className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
-        style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
-      >
-        <PanelHeader
-          icon={<UsersIcon size={13} />}
-          tint={PANEL_TINTS.violet}
-          title="Individual Contributors"
-        />
-      </section>
-    );
-  }
+  if (people.length === 0) return null;
 
-  // Exceptions first: overdue load, then open work — not motion scores.
+  // Exceptions first: overdue load, then open work.
   const sorted = [...people].sort(
     (a, b) => b.overdueCount - a.overdueCount || b.openTasks - a.openTasks,
   );
 
   return (
     <section
-      className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+      className="hidden md:block bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
       <PanelHeader
         icon={<UsersIcon size={13} />}
         tint={PANEL_TINTS.violet}
-        title="Individual Contributors"
+        title="People"
         count={people.length}
         onClick={() => setPanelOpen((o) => !o)}
         trailing={

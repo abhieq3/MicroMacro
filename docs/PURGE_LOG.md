@@ -27,12 +27,20 @@
 | Bird’s-eye | Power export tool; not the morning path |
 | Digest cron | High leverage if exceptions-first |
 
-## Next purge candidates (not this commit)
+## Follow-ups completed
 
-- Merge `/api/dashboard` + lead-dashboard dual path  
-- Split `ProjectDetailClient` / `DashboardClient` god files  
+- `/api/dashboard` aliases lead-dashboard payload  
+- Kanban extracted + lazy-loaded from project detail  
+- Mobile task sticky status; Due list denser on small screens  
+- Contributors panel desktop-only (hidden on mobile)  
+
+## Still optional later
+
 - Trim lifecycle templates  
 - Confirm ICS/install API dead ends  
+- Further split DashboardClient panels into files  
+
+
 
 ## Rule
 
