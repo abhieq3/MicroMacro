@@ -47,7 +47,12 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 });
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
-import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
+// Flow strip is secondary; keep first paint light.
+const FlowSignalStrip = dynamic(
+  () => import('@/components/FlowSignalStrip').then((m) => m.FlowSignalStrip),
+  { ssr: false, loading: () => null },
+);
+import type { FlowSignalPayload } from '@/components/FlowSignalStrip';
 // The Morning Brief stays available through its other channels (push, email,
 // calendar feed) — the dashboard card was removed by owner decision: the
 // Up Next panel and the summary chips already answer "what's on today" here.

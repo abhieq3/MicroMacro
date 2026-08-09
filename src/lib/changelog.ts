@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Reliability pass: one dashboard API, mobile task status bar',
+    tags: ['improvement'],
+    body: [
+      '/api/dashboard now serves the same payload as lead-dashboard — no dual query shape. Task detail gets a sticky status bar on mobile so status changes without scrolling the sidebar.',
+      'Project empty states shortened. Flow signal strip lazy-loaded on home.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Stabilize UX: short copy, consistent labels, no fluff',
     tags: ['improvement'],
     highlight: true,

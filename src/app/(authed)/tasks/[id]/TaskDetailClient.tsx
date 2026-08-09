@@ -678,9 +678,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               </button>
             </div>
           ) : (
-            <div className="text-xs text-slate-400 italic">
-              Only the assignee and team leads can comment on this task.
-            </div>
+            <div className="text-xs text-slate-400 italic">Assignee or lead can comment.</div>
           )}
         </Card>
       </div>
@@ -689,10 +687,8 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
       <div className="space-y-4">
         <Card title="Properties">
           <div className="space-y-3 text-sm">
-            {/* Status — visual button flow. Contributors who are not the
-                assignee see a read-only status badge instead of the
-                clickable flow (the API would 403 them anyway). */}
-            <div>
+            {/* Status — full list on desktop; mobile uses sticky bar below. */}
+            <div className="hidden sm:block">
               <label className="label">Status</label>
               {!canEditStatus ? (
                 <div className="mt-1">
@@ -756,6 +752,22 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 </div>
               )}
             </div>
+            {/* Mobile: compact status chip (full control is sticky bar). */}
+            <div className="sm:hidden">
+              <label className="label">Status</label>
+              <div className="mt-1">
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: STATUS_META[task.status]?.dot || '#94a3b8' }}
+                  />
+                  {STATUS_META[task.status]?.label || String(task.status || '').replace(/_/g, ' ')}
+                  {savingStatus && (
+                    <span className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                  )}
+                </span>
+              </div>
+            </div>
             <div>
               <label className="label">Assignee</label>
               <UserPicker
@@ -772,8 +784,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                a department). Editable by the assignee or a lead. */}
             <div>
               <label className="label flex items-center gap-1">
-                <Clock size={11} /> Waiting on{' '}
-                <span className="text-slate-300 font-normal normal-case">(if stuck)</span>
+                <Clock size={11} /> Waiting on
               </label>
               <input
                 className="input text-sm"
@@ -1097,16 +1108,51 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         )}
 
         {canSignoff && (
-          <Card title="Formal Sign-off">
-            <p className="text-xs text-slate-500 mb-3">
-              This task requires a formal sign-off. Review the evidence and approve below.
-            </p>
+          <Card title="Sign-off">
             <button className="btn-primary w-full justify-center text-sm" onClick={signoff}>
-              Approve & Sign off
+              Approve
             </button>
           </Card>
         )}
       </div>
+
+      {/* Mobile: sticky status control — finish work without scrolling the sidebar. */}
+      {canEditStatus && (
+        <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#1a1a18]/95 backdrop-blur-md px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(15,23,42,0.08)]">
+          <div className="flex gap-1 overflow-x-auto max-w-6xl mx-auto">
+            {STATUSES.map((s) => {
+              const meta = STATUS_META[s];
+              const active = task.status === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={savingStatus}
+                  onClick={() => updateStatus(s)}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold border transition-colors ${
+                    active
+                      ? 'border-transparent text-slate-900 dark:text-white'
+                      : 'border-transparent text-slate-500 bg-slate-50 dark:bg-white/[0.04]'
+                  }`}
+                  style={
+                    active
+                      ? {
+                          background: `${meta.ring}88`,
+                          border: `1px solid ${meta.ring}`,
+                        }
+                      : undefined
+                  }
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.dot }} />
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {/* Spacer so sticky bar never covers last content on mobile. */}
+      {canEditStatus && <div className="sm:hidden h-16" aria-hidden />}
     </div>
   );
 }

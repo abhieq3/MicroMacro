@@ -2396,9 +2396,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           ))}
         </div>
         {tasks.length === 0 && canManage && (
-          <p className="text-[12px] text-slate-400 dark:text-white/35">
-            Add the first task in a phase below — then the board fills itself.
-          </p>
+          <p className="text-[12px] text-slate-400 dark:text-white/35">Add a task below.</p>
         )}
       </div>
 
@@ -2409,14 +2407,14 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             <Card>
               <div className="py-6 px-2 text-center max-w-md mx-auto">
                 <div className="text-sm font-bold text-slate-700 dark:text-white/70 mb-1">
-                  {project.isSystem ? 'No open occurrences yet' : 'No phases yet'}
+                  {project.isSystem ? 'No open occurrences' : 'No phases'}
                 </div>
                 <p className="text-xs text-slate-400 dark:text-white/35 leading-relaxed">
                   {project.isSystem
-                    ? 'When a recurring activity is due, its task will appear on this board. Manage the cadence from the team Recurring tab.'
+                    ? 'Occurrences appear when due. Manage schedule on Teams → Recurring.'
                     : canManage
-                      ? 'Lifecycle templates add phases on create. Put open work in Unphased below, or open Kanban to add tasks.'
-                      : 'Your lead will structure this project. Check back soon.'}
+                      ? 'Use Unphased below or Kanban to add tasks.'
+                      : 'No structure yet.'}
                 </p>
                 {project.isSystem && project.teamId && (
                   <Link
