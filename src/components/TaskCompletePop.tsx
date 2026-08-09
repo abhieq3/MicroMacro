@@ -74,7 +74,7 @@ export function TaskCompletePop({
     if (!task) return;
     if (task.projectClear) hapticVictory();
     else hapticSuccess();
-    const ms = task.projectClear || task.clearedLastOverdue ? 2400 : 1500;
+    const ms = task.projectClear || task.clearedLastOverdue ? 2800 : 1700;
     const t = setTimeout(() => onDone(), ms);
     return () => clearTimeout(t);
   }, [task, onDone]);
@@ -82,15 +82,15 @@ export function TaskCompletePop({
   const microSparkles = useMemo(() => {
     if (!task || typeof window === 'undefined') return [];
     if (prefersReducedMotion()) return [];
-    const n = task.projectClear ? 14 : 7;
+    const n = task.projectClear ? 22 : 12;
     return Array.from({ length: n }, (_, i) => ({
       id: i,
-      left: 8 + Math.random() * 84,
-      delay: Math.random() * 0.2,
-      duration: 0.7 + Math.random() * 0.55,
-      size: 3 + Math.random() * 4,
+      left: 4 + Math.random() * 92,
+      delay: Math.random() * 0.28,
+      duration: 0.85 + Math.random() * 0.7,
+      size: 4 + Math.random() * 5,
       color: SPARKLE_COLORS[i % SPARKLE_COLORS.length],
-      dx: (Math.random() - 0.5) * 40,
+      dx: (Math.random() - 0.5) * 56,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task?.id, task?.projectClear]);

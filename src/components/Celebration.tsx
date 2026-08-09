@@ -6,12 +6,9 @@ import { Check, PartyPopper, Sparkles } from 'lucide-react';
 import { hapticCelebrate, hapticVictory } from '@/lib/haptics';
 
 /**
- * Milestone celebration — earned, not constant.
- *
- * - phase: medium toast + sparkle burst + celebrate haptic
- * - project: full-screen confetti rain + centered card + victory haptic
- *
- * Respects prefers-reduced-motion (no particles, quiet card only).
+ * Milestone celebration — earned, not constant. Tuned hard:
+ * - phase: dense side confetti + celebrate haptic
+ * - project: two-wave full-screen confetti + center card + victory haptic
  */
 
 export type CelebrationLevel = 'phase' | 'project';
@@ -25,9 +22,10 @@ type Particle = {
   color: string;
   rotate: number;
   shape: 'rect' | 'circle' | 'diamond';
+  wave: number;
 };
 
-const PHASE_COLORS = ['#1565C0', '#2E7D32', '#10b981', '#34d399', '#60a5fa', '#fbbf24'];
+const PHASE_COLORS = ['#1565C0', '#2E7D32', '#10b981', '#34d399', '#60a5fa', '#fbbf24', '#22d3ee'];
 const PROJECT_COLORS = [
   '#1565C0',
   '#2E7D32',
@@ -39,6 +37,8 @@ const PROJECT_COLORS = [
   '#a78bfa',
   '#fb7185',
   '#22d3ee',
+  '#facc15',
+  '#4ade80',
 ];
 
 function prefersReducedMotion(): boolean {
@@ -49,16 +49,17 @@ function prefersReducedMotion(): boolean {
   }
 }
 
-function makeParticles(count: number, colors: string[]): Particle[] {
+function makeParticles(count: number, colors: string[], wave = 0, delayBase = 0): Particle[] {
   return Array.from({ length: count }, (_, i) => ({
-    id: i,
+    id: wave * 1000 + i,
     left: Math.random() * 100,
-    delay: Math.random() * 0.45,
-    duration: 1.6 + Math.random() * 1.8,
-    size: 5 + Math.random() * 7,
+    delay: delayBase + Math.random() * 0.55,
+    duration: 1.9 + Math.random() * 2.2,
+    size: 6 + Math.random() * 10,
     color: colors[i % colors.length],
     rotate: Math.random() * 360,
     shape: (['rect', 'circle', 'diamond'] as const)[i % 3],
+    wave,
   }));
 }
 
@@ -78,14 +79,21 @@ export function Celebration({
   duration?: number;
 }) {
   const isProject = level === 'project';
-  const holdMs = duration ?? (isProject ? 4200 : 2800);
+  const holdMs = duration ?? (isProject ? 5600 : 3400);
   const [mounted, setMounted] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   const particles = useMemo(() => {
     if (typeof window === 'undefined') return [] as Particle[];
     if (prefersReducedMotion()) return [];
-    return makeParticles(isProject ? 72 : 28, isProject ? PROJECT_COLORS : PHASE_COLORS);
+    if (isProject) {
+      // Two waves — first dump, second delayed burst so it stays on screen longer.
+      return [
+        ...makeParticles(95, PROJECT_COLORS, 0, 0),
+        ...makeParticles(55, PROJECT_COLORS, 1, 0.85),
+      ];
+    }
+    return makeParticles(48, PHASE_COLORS, 0, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isProject, title]);
 
@@ -113,28 +121,32 @@ export function Celebration({
       aria-live="polite"
     >
       <div
-        className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-xl ${
+        className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 shadow-2xl ${
           isProject
-            ? 'border-emerald-300/80 dark:border-emerald-400/30 bg-white/95 dark:bg-[#1f1f1d]/95 backdrop-blur-md'
-            : 'border-emerald-200/90 dark:border-emerald-500/25 bg-white dark:bg-[#262624]'
+            ? 'border-emerald-300/90 dark:border-emerald-400/40 bg-white/97 dark:bg-[#1f1f1d]/97 backdrop-blur-md ring-2 ring-emerald-400/25'
+            : 'border-emerald-200/90 dark:border-emerald-500/30 bg-white dark:bg-[#262624] ring-1 ring-emerald-400/15'
         }`}
         style={{
-          animation: reduceMotion ? undefined : 'celebration-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both',
+          animation: reduceMotion
+            ? undefined
+            : isProject
+              ? 'celebration-pop-hard 0.55s cubic-bezier(0.22, 1, 0.36, 1) both'
+              : 'celebration-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both',
         }}
       >
         <span
           className={`mt-0.5 grid place-items-center rounded-full shrink-0 ${
             isProject
-              ? 'h-11 w-11 bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-md shadow-emerald-500/30'
-              : 'h-8 w-8 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-200'
+              ? 'h-12 w-12 bg-gradient-to-br from-emerald-400 via-teal-500 to-blue-600 text-white shadow-lg shadow-emerald-500/40'
+              : 'h-9 w-9 bg-emerald-100 dark:bg-emerald-500/25 text-emerald-800 dark:text-emerald-200'
           }`}
         >
-          {isProject ? <PartyPopper size={20} strokeWidth={2.2} /> : <Sparkles size={15} strokeWidth={2.4} />}
+          {isProject ? <PartyPopper size={22} strokeWidth={2.2} /> : <Sparkles size={16} strokeWidth={2.4} />}
         </span>
         <div className="min-w-0 flex-1">
           <div
             className={`font-bold text-slate-900 dark:text-white/95 leading-snug tracking-tight ${
-              isProject ? 'text-[16px]' : 'text-[13px]'
+              isProject ? 'text-[17px]' : 'text-[14px]'
             }`}
           >
             {title}
@@ -142,16 +154,16 @@ export function Celebration({
           {subtitle && (
             <div
               className={`text-slate-500 dark:text-white/50 mt-0.5 leading-snug ${
-                isProject ? 'text-[13px]' : 'text-[12px]'
+                isProject ? 'text-[13.5px]' : 'text-[12px]'
               }`}
             >
               {subtitle}
             </div>
           )}
           {isProject && (
-            <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300/90">
-              <Check size={12} strokeWidth={2.5} />
-              Every task closed
+            <div className="mt-2.5 inline-flex items-center gap-1.5 text-[11.5px] font-bold text-emerald-700 dark:text-emerald-300">
+              <Check size={13} strokeWidth={2.5} />
+              Every task closed — project clear
             </div>
           )}
         </div>
@@ -168,17 +180,17 @@ export function Celebration({
           return (
             <span
               key={p.id}
-              className="celebration-confetti absolute top-[-12px] block"
+              className="celebration-confetti absolute top-[-16px] block"
               style={{
                 left: `${p.left}%`,
                 width: p.size,
-                height: p.shape === 'rect' ? p.size * 0.45 : p.size,
+                height: p.shape === 'rect' ? p.size * 0.42 : p.size,
                 background: p.color,
                 borderRadius,
                 transform: p.shape === 'diamond' ? `rotate(45deg)` : `rotate(${p.rotate}deg)`,
                 animation: `confetti-fall ${p.duration}s linear ${p.delay}s both`,
-                opacity: 0.92,
-                boxShadow: isProject ? `0 0 6px ${p.color}55` : undefined,
+                opacity: 0.95,
+                boxShadow: `0 0 ${isProject ? 8 : 5}px ${p.color}66`,
               }}
             />
           );
@@ -195,7 +207,7 @@ export function Celebration({
           style={{
             background: reduceMotion
               ? 'transparent'
-              : 'radial-gradient(ellipse at center, rgba(16,185,129,0.12) 0%, transparent 65%)',
+              : 'radial-gradient(ellipse at center, rgba(16,185,129,0.22) 0%, rgba(21,101,192,0.08) 45%, transparent 70%)',
           }}
         >
           <div className="pointer-events-auto w-full flex justify-center">{card}</div>

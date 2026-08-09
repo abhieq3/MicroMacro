@@ -20,37 +20,40 @@ function allowed(): boolean {
 export function hapticTap() {
   if (!allowed()) return;
   try {
-    navigator.vibrate(10);
+    navigator.vibrate(12);
   } catch {
     /* ignore */
   }
 }
 
-/** Short double-buzz — everyday task complete / save. */
+/** Everyday task complete — clear double-buzz. */
 export function hapticSuccess() {
   if (!allowed()) return;
   try {
-    navigator.vibrate([14, 40, 22]);
+    navigator.vibrate([22, 35, 32]);
   } catch {
     /* ignore */
   }
 }
 
-/** Phase clear — richer pulse (earned, not routine). */
+/** Phase clear — punchy triple pulse. */
 export function hapticCelebrate() {
   if (!allowed()) return;
   try {
-    navigator.vibrate([16, 45, 22, 45, 36]);
+    navigator.vibrate([28, 40, 35, 40, 45, 50, 55]);
   } catch {
     /* ignore */
   }
 }
 
-/** Whole project complete — the big one. Longer, stepped pattern. */
+/**
+ * Whole project complete — hard, stepped victory pattern.
+ * Long enough to feel like a real finish (Android Vibration API).
+ */
 export function hapticVictory() {
   if (!allowed()) return;
   try {
-    navigator.vibrate([20, 40, 20, 40, 28, 50, 45, 70, 70]);
+    navigator.vibrate([35, 35, 35, 35, 45, 40, 55, 45, 70, 50, 90, 60, 110]);
   } catch {
     /* ignore */
   }

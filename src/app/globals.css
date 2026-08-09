@@ -523,14 +523,14 @@ body {
 /* ── Celebration animations ───────────────────────────────────────────────── */
 @keyframes confetti-fall {
   0% {
-    transform: translateY(0) rotateZ(0deg);
+    transform: translateY(0) rotateZ(0deg) scale(1);
     opacity: 1;
   }
-  80% {
+  70% {
     opacity: 1;
   }
   100% {
-    transform: translateY(105vh) rotateZ(600deg);
+    transform: translateY(110vh) rotateZ(780deg) scale(0.85);
     opacity: 0;
   }
 }
@@ -548,6 +548,24 @@ body {
     opacity: 1;
   }
 }
+/* Harder project-complete card entrance. */
+@keyframes celebration-pop-hard {
+  0% {
+    transform: scale(0.4) translateY(28px);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.1) translateY(-8px);
+    opacity: 1;
+  }
+  78% {
+    transform: scale(0.97) translateY(2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
 /* Micro sparkles from task-complete toast (--spark-dx set inline). */
 @keyframes task-sparkle-up {
   0% {
@@ -555,7 +573,7 @@ body {
     opacity: 1;
   }
   100% {
-    transform: translate(var(--spark-dx, 0px), -52px) scale(0.2);
+    transform: translate(var(--spark-dx, 0px), -68px) scale(0.15);
     opacity: 0;
   }
 }
