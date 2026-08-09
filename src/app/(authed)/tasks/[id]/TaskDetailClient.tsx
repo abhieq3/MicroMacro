@@ -27,6 +27,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { FlowSignalTaskStrip } from '@/components/FlowSignalTaskStrip';
+import { TaskRecurringCard } from './TaskRecurringCard';
 
 // TaskCompletePop is only shown on task completion — off the critical render
 // path so deferring it improves FCP/LCP.
@@ -398,6 +399,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             {task.taskType && task.taskType !== 'task' && (
               <span className="text-xs font-medium text-slate-600 bg-slate-100 dark:bg-white/5 dark:text-white/60 px-2 py-0.5 rounded capitalize">
                 {TASK_TYPE_LABELS[task.taskType] ?? task.taskType.replace(/_/g, ' ')}
+              </span>
+            )}
+            {task.recurringActivityId && (
+              <span className="text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25 px-2 py-0.5 rounded">
+                Recurring{task.recurring?.cadence ? ` · ${task.recurring.cadence}` : ''}
               </span>
             )}
           </div>
@@ -837,6 +843,18 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             </div>
           </div>
         </Card>
+
+        {/* Recurring series schedule — only on occurrence tasks. Leads can
+            change cadence (incl. last Sunday of month) without leaving detail. */}
+        {task.recurringActivityId && (
+          <TaskRecurringCard
+            initial={task.recurring || null}
+            teamId={teamId || task.projectTeamId || null}
+            canEdit={isLead || isAdmin}
+            onToast={(msg, kind) => showToast(msg, kind === 'err' ? 'err' : 'ok')}
+            onUpdated={(r) => setTask((t: any) => (t ? { ...t, recurring: r } : t))}
+          />
+        )}
 
         {/* ── Effort ─────────────────────────────────────────────────────
            Estimate vs. logged time. The estimate is lead-set; logged time

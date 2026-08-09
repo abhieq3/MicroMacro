@@ -2,9 +2,11 @@ import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { User } from '@/models/User';
+import { RecurringActivity } from '@/models/RecurringActivity';
 import { task as taskS, date as toIso } from '@/lib/serialize';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { projectRef } from '@/lib/projectRef';
+import { serializeRecurringActivity } from '@/lib/recurring';
 
 /**
  * Assemble the full task-detail payload for `id`, scoped to the viewer.
@@ -34,7 +36,7 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       .lean();
     if (!proj) return null;
 
-    const [project, assignee, qa, commentUsers, flowConfirmer] = await Promise.all([
+    const [project, assignee, qa, commentUsers, flowConfirmer, recurringDoc] = await Promise.all([
       Project.findById((t as any).projectId)
         .select('code ccNo name teamId')
         .lean(),
@@ -55,6 +57,9 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
         ? User.findById((t as any).flowPendingConfirmedByUserId)
             .select('name')
             .lean()
+        : Promise.resolve(null),
+      (t as any).recurringActivityId
+        ? RecurringActivity.findById((t as any).recurringActivityId).lean()
         : Promise.resolve(null),
     ]);
     const uMap = new Map(commentUsers.map((u) => [String(u._id), u.name]));
@@ -88,6 +93,9 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       }),
       comments,
       effortLog,
+      // Full schedule definition so the task detail page can show/edit cadence
+      // (e.g. last Sunday of each month) without a second round-trip.
+      recurring: recurringDoc ? serializeRecurringActivity(recurringDoc) : null,
     };
   } catch (e) {
     // Never crash the page — log and let the client refetch surface the real

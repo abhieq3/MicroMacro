@@ -191,6 +191,8 @@ export function task(t: any, extras: Any = {}) {
     pendingWith: t.pendingWith || '',
     privateToUserId: id(t.privateToUserId),
     isPrivate: !!t.privateToUserId,
+    // Present when this task is an occurrence of a team recurring activity.
+    recurringActivityId: id(t.recurringActivityId),
     aiTriage: t.aiTriage
       ? {
           severity: t.aiTriage.severity,

@@ -2,13 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { RecurringActivity } from '@/models/RecurringActivity';
 import { requireUser } from '@/lib/auth';
-import { guardTeamOwner } from '@/lib/teamAuth';
+import { guardTeamMember, guardTeamOwner } from '@/lib/teamAuth';
 import { handleError, readBody } from '@/lib/http';
 import { RecurringActivityUpdateSchema } from '@/lib/validations';
 import { firstMonthlyWeekdayOnOrAfter, serializeRecurringActivity } from '@/lib/recurring';
 import { logOperation } from '@/lib/audit';
 
 export const runtime = 'nodejs';
+
+// Read one recurring activity (any team member). Used from task detail so the
+// schedule can be inspected without listing the whole team series.
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string; raId: string } },
+) {
+  try {
+    const { error, user } = await requireUser(req);
+    if (error) return error;
+    await connectDB();
+    const denied = await guardTeamMember(params.id, String(user.sub), user.role);
+    if (denied) return denied;
+
+    const activity = await RecurringActivity.findOne({ _id: params.raId, teamId: params.id }).lean();
+    if (!activity) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return NextResponse.json(serializeRecurringActivity(activity));
+  } catch (e) {
+    return handleError(e);
+  }
+}
 
 // Edit a recurring activity (lead/admin). Changes apply to FUTURE occurrences
 // only — occurrences already materialised are independent tasks and are left
