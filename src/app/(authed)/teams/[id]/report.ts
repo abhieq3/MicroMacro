@@ -1,400 +1,405 @@
-// Client-side team report generator (#9).
-//
-// Builds a self-contained, presentation-ready HTML document from data already
-// loaded on the team detail page (team meta, per-project + per-member progress,
-// and the full task board) and triggers a download. Self-contained HTML keeps
-// it "presentable" — it opens cleanly in any browser, prints straight to PDF,
-// and drops into a meeting deck — without pulling in a heavy PDF dependency.
+// Client-side team report — executive PDF (print) + spreadsheet CSV.
+// Built for a 1:1 with a lead: exceptions first, owners, next 14 days, then backlog.
 
-function esc(s: any): string {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+import {
+  bar,
+  byTcd,
+  csvCell,
+  csvEscapeBom,
+  distBar,
+  dueDaysFromNow,
+  esc,
+  fmtDate,
+  fmtDateTime,
+  isTaskOverdue,
+  kpi,
+  openPrintableReport,
+  PRIORITY_LABEL,
+  ragPill,
+  STATUS_LABEL,
+  statusDot,
+  targetOf,
+  triggerDownload,
+  wrapReportHtml,
+} from '@/lib/reports/reportShell';
 
-function fmtDate(d: any): string {
-  if (!d) return '—';
-  const dt = new Date(d);
-  return Number.isNaN(dt.getTime())
-    ? '—'
-    : dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-// Whole-calendar-day difference in local time (mirrors `daysUntil` in the app's
-// shared ui helpers): a date-only due stored at UTC midnight still resolves to
-// the right local day, so "due today" reads as 0 — never overdue. Kept local so
-// this report generator stays self-contained.
-function dueDaysFromNow(d: any): number | null {
-  if (!d) return null;
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return null;
-  const dueDay = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
-  const t = new Date();
-  const today = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
-  return Math.round((dueDay - today) / 86400000);
-}
-function isTaskOverdue(target: any, status: any): boolean {
-  if (status === 'done') return false;
-  const d = dueDaysFromNow(target);
-  return d !== null && d < 0;
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  todo: 'To do',
-  in_progress: 'In progress',
-  review: 'Review',
-  blocked: 'Blocked',
-  done: 'Done',
-};
-const STATUS_COLOR: Record<string, string> = {
-  todo: '#94a3b8',
-  in_progress: '#3b82f6',
-  review: '#8b5cf6',
-  blocked: '#ef4444',
-  done: '#22c55e',
-};
-
-function bar(pct: number): string {
-  const clamped = Math.max(0, Math.min(100, pct));
-  const color = clamped >= 90 ? '#22c55e' : clamped >= 60 ? '#3b82f6' : clamped >= 30 ? '#f59e0b' : '#94a3b8';
-  return `<div class="bar"><div class="bar-fill" style="width:${clamped}%;background:${color}"></div></div>`;
+function functionLabel(fn: string): string {
+  const map: Record<string, string> = {
+    general: 'General',
+    ctb: 'Change the Business',
+    rtb: 'Run the Business',
+    csv_validation: 'CSV / Validation',
+    data_integrity: 'Data Integrity',
+    pharmacovigilance: 'Pharmacovigilance',
+    lab_informatics: 'Lab Informatics',
+    audit: 'Audit',
+    training: 'Training',
+  };
+  return map[fn] || fn || '';
 }
 
 export function buildTeamReportHtml(team: any, progress: any, board: any[], exportedBy = ''): string {
-  const generated = new Date().toLocaleString();
-  const projects: any[] = progress?.projects || team?.projects || [];
+  const generated = fmtDateTime();
+  // Prefer live team.projects (codes/names); progress.projects for task counts when present.
+  const progressById = new Map<string, any>(
+    (progress?.projects || []).map((p: any) => [String(p.id || p._id || p.code), p]),
+  );
+  const projects: any[] = (team?.projects || progress?.projects || [])
+    .filter((p: any) => !p.isSystem)
+    .map((p: any) => {
+      const extra = progressById.get(String(p.id)) || progressById.get(String(p.code)) || {};
+      return {
+        ...p,
+        taskCount: p.taskCount ?? extra.taskCount ?? 0,
+        tasksDone: p.tasksDone ?? extra.tasksDone ?? 0,
+      };
+    });
   const members: any[] = progress?.members || team?.members || [];
   const tasks: any[] = board || [];
 
   const now = new Date();
-  const soonCutoff = new Date(now.getTime() + 14 * 86400000); // next 14 days
+  const soonCutoff = new Date(now.getTime() + 14 * 86400000);
 
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter((t) => t.status === 'done').length;
-  const overdueTasks = tasks.filter((t) => isTaskOverdue(t.dueDate, t.status));
+  const openTasks = tasks.filter((t) => t.status !== 'done');
+  const overdueTasks = tasks.filter((t) => isTaskOverdue(targetOf(t), t.status));
   const overdue = overdueTasks.length;
-  const blocked = tasks.filter((t) => t.status === 'blocked').length;
+  const blockedTasks = tasks.filter((t) => t.status === 'blocked');
+  const blocked = blockedTasks.length;
   const overallPct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
-  const activeProjects = projects.filter((p) => p.status !== 'completed' && p.status !== 'cancelled').length;
+  const activeProjects = projects.filter(
+    (p) => p.status !== 'completed' && p.status !== 'cancelled',
+  ).length;
 
-  // Upcoming deadlines — open tasks due within the next 14 days. This is the
-  // forward-looking list a lead actually drives the meeting from.
-  const upcomingTasks = tasks
-    .filter(
-      (t) =>
-        t.status !== 'done' && t.dueDate && new Date(t.dueDate) >= now && new Date(t.dueDate) <= soonCutoff,
-    )
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  const upcomingTasks = openTasks
+    .filter((t) => {
+      const d = targetOf(t);
+      if (!d) return false;
+      const dt = new Date(d);
+      return dt >= now && dt <= soonCutoff;
+    })
+    .sort(byTcd);
 
-  // Per-project signal roll-up (keyed by project code) so the Projects table
-  // can show health, overdue and blocked at a glance across many projects.
-  const projStats = new Map<string, { overdue: number; blocked: number; dueSoon: number }>();
+  // Per-project roll-up by project id (prefer) then code.
+  const projStats = new Map<string, { overdue: number; blocked: number; dueSoon: number; open: number }>();
   for (const t of tasks) {
-    const key = t.projectCode || t.projectName || '—';
-    const s = projStats.get(key) || { overdue: 0, blocked: 0, dueSoon: 0 };
-    if (isTaskOverdue(t.dueDate, t.status)) s.overdue++;
+    const key = t.projectId || t.projectCode || t.projectName || '—';
+    const s = projStats.get(key) || { overdue: 0, blocked: 0, dueSoon: 0, open: 0 };
+    if (t.status !== 'done') s.open++;
+    if (isTaskOverdue(targetOf(t), t.status)) s.overdue++;
     if (t.status === 'blocked') s.blocked++;
-    if (t.status !== 'done' && t.dueDate && new Date(t.dueDate) >= now && new Date(t.dueDate) <= soonCutoff)
-      s.dueSoon++;
-    projStats.set(key, s);
+    const d = targetOf(t);
+    if (t.status !== 'done' && d) {
+      const dt = new Date(d);
+      if (dt >= now && dt <= soonCutoff) s.dueSoon++;
+    }
+    projStats.set(String(key), s);
+    if (t.projectCode) projStats.set(t.projectCode, s);
   }
-  // Health from the signals: a simple, explainable RAG rule.
-  function projHealth(code: string, pct: number): { label: string; color: string; bg: string } {
-    const s = projStats.get(code) || { overdue: 0, blocked: 0, dueSoon: 0 };
-    if (s.overdue >= 3 || (s.overdue >= 1 && s.blocked >= 1))
-      return { label: 'Critical', color: '#b91c1c', bg: '#fef2f2' };
-    if (s.overdue >= 1 || s.blocked >= 1) return { label: 'At risk', color: '#b45309', bg: '#fffbeb' };
-    return { label: 'On track', color: '#15803d', bg: '#f0fdf4' };
+
+  function projHealth(p: any): { label: string; tone: 'ok' | 'warn' | 'bad' } {
+    const s =
+      projStats.get(String(p.id)) ||
+      projStats.get(p.code || p.name || '—') || { overdue: 0, blocked: 0, dueSoon: 0, open: 0 };
+    if (s.overdue >= 3 || (s.overdue >= 1 && s.blocked >= 1)) return { label: 'Critical', tone: 'bad' };
+    if (s.overdue >= 1 || s.blocked >= 1) return { label: 'At risk', tone: 'warn' };
+    if (p.status === 'completed' || (p.taskCount > 0 && p.tasksDone >= p.taskCount))
+      return { label: 'Complete', tone: 'ok' };
+    return { label: 'On track', tone: 'ok' };
   }
+
   const atRiskProjects = projects.filter((p) => {
-    const s = projStats.get(p.code || p.name || '—') || { overdue: 0, blocked: 0, dueSoon: 0 };
-    return s.overdue >= 1 || s.blocked >= 1;
+    const h = projHealth(p);
+    return h.tone === 'warn' || h.tone === 'bad';
   }).length;
 
-  // Status distribution for the visual breakdown bar.
-  const order = ['todo', 'in_progress', 'review', 'blocked', 'done'];
-  const counts: Record<string, number> = {};
-  for (const s of order) counts[s] = 0;
-  for (const t of tasks) counts[t.status] = (counts[t.status] || 0) + 1;
-  const distSegments = order
-    .filter((s) => counts[s] > 0)
-    .map(
-      (s) =>
-        `<div class="seg" title="${STATUS_LABEL[s]}: ${counts[s]}" style="flex:${counts[s]};background:${STATUS_COLOR[s]}"></div>`,
-    )
-    .join('');
-  const distLegend = order
-    .map(
-      (s) =>
-        `<span class="lg"><i style="background:${STATUS_COLOR[s]}"></i>${STATUS_LABEL[s]} <b>${counts[s]}</b></span>`,
-    )
-    .join('');
+  const overallTone: 'ok' | 'warn' | 'bad' =
+    overdue >= 5 || blocked >= 3 ? 'bad' : overdue > 0 || blocked > 0 || atRiskProjects > 0 ? 'warn' : 'ok';
+  const overallLabel =
+    overallTone === 'bad' ? 'Needs intervention' : overallTone === 'warn' ? 'Watch list' : 'On track';
 
-  // ── Executive summary auto-narrative — the line a lead reads aloud. ──
+  // Executive narrative — what a lead reads aloud in 20 seconds.
   const summaryBits: string[] = [];
   summaryBits.push(
-    `The team is <b>${overallPct}%</b> complete across <b>${projects.length}</b> project${projects.length === 1 ? '' : 's'} (${activeProjects} active).`,
+    `<b>${esc(team?.name || 'Team')}</b> is <b>${overallPct}%</b> complete across <b>${projects.length}</b> project${projects.length === 1 ? '' : 's'} (${activeProjects} active).`,
   );
   if (overdue > 0)
     summaryBits.push(
-      `<b style="color:#b91c1c">${overdue} task${overdue === 1 ? '' : 's'} overdue</b> and need attention.`,
+      `<b style="color:#b91c1c">${overdue} overdue</b> task${overdue === 1 ? '' : 's'} require a decision.`,
     );
-  else summaryBits.push(`Nothing is overdue — the team is on schedule.`);
+  else summaryBits.push(`<b style="color:#15803d">Zero overdue</b> — schedule is clean.`);
   if (blocked > 0) summaryBits.push(`<b style="color:#b91c1c">${blocked} blocked</b>.`);
   if (atRiskProjects > 0)
     summaryBits.push(
-      `<b style="color:#b45309">${atRiskProjects} project${atRiskProjects === 1 ? '' : 's'} at risk.</b>`,
+      `<b style="color:#b45309">${atRiskProjects} project${atRiskProjects === 1 ? '' : 's'} at risk</b>.`,
     );
   if (upcomingTasks.length > 0)
     summaryBits.push(
       `<b>${upcomingTasks.length}</b> deadline${upcomingTasks.length === 1 ? '' : 's'} in the next 14 days.`,
     );
 
+  // Decisions needed = overdue + blocked, unique, sorted by age / severity.
+  const decisionItems = [...openTasks]
+    .filter((t) => t.status === 'blocked' || isTaskOverdue(targetOf(t), t.status))
+    .sort((a, b) => {
+      const aB = a.status === 'blocked' ? 0 : 1;
+      const bB = b.status === 'blocked' ? 0 : 1;
+      if (aB !== bB) return aB - bB;
+      return byTcd(a, b);
+    });
+
+  const decisionRows = decisionItems
+    .map((t) => {
+      const target = targetOf(t);
+      const days = dueDaysFromNow(target);
+      const late =
+        days !== null && days < 0
+          ? `${Math.abs(days)}d late`
+          : t.status === 'blocked'
+            ? 'Blocked'
+            : '—';
+      const why =
+        t.status === 'blocked'
+          ? t.pendingWith
+            ? `Blocked · waiting on ${t.pendingWith}`
+            : 'Blocked'
+          : isTaskOverdue(target, t.status)
+            ? 'Overdue'
+            : '';
+      return `<tr>
+      <td><strong>${esc(t.title || '')}</strong>
+        <div class="muted" style="font-size:10.5px;margin-top:2px">${esc(t.projectCode || '')}${t.priority && t.priority !== 'medium' ? ` · ${esc(PRIORITY_LABEL[t.priority] || t.priority)}` : ''}</div>
+      </td>
+      <td>${esc(t.assigneeName || 'Unassigned')}</td>
+      <td>${statusDot(t.status)}</td>
+      <td class="num" style="color:#b91c1c;font-weight:700">${esc(late)}</td>
+      <td>${esc(why)}</td>
+    </tr>`;
+    })
+    .join('');
+
+  // Owner accountability — who holds open / overdue work.
+  const byOwner = new Map<string, { name: string; open: number; overdue: number; blocked: number }>();
+  for (const t of tasks) {
+    if (t.status === 'done') continue;
+    const id = t.assigneeId || '__unassigned';
+    const name = t.assigneeName || 'Unassigned';
+    const row = byOwner.get(id) || { name, open: 0, overdue: 0, blocked: 0 };
+    row.open++;
+    if (isTaskOverdue(targetOf(t), t.status)) row.overdue++;
+    if (t.status === 'blocked') row.blocked++;
+    byOwner.set(id, row);
+  }
+  // Merge analytics progress when available
+  const ownerRows = [...byOwner.values()]
+    .sort((a, b) => b.overdue - a.overdue || b.open - a.open)
+    .map((m) => {
+      const pctProg = members.find((x: any) => x.name === m.name);
+      const assigned = pctProg?.assigned ?? m.open;
+      const done = pctProg?.done ?? 0;
+      const pct = assigned ? Math.round((done / assigned) * 100) : 0;
+      return `<tr>
+      <td><strong>${esc(m.name)}</strong></td>
+      <td class="num" style="text-align:right">${m.open}</td>
+      <td class="num" style="text-align:right;${m.overdue ? 'color:#b91c1c;font-weight:800' : ''}">${m.overdue || '—'}</td>
+      <td class="num" style="text-align:right;${m.blocked ? 'color:#b91c1c;font-weight:800' : ''}">${m.blocked || '—'}</td>
+      <td style="width:120px">${bar(pct)}</td>
+      <td class="num" style="text-align:right;font-weight:800">${pct}%</td>
+    </tr>`;
+    })
+    .join('');
+
   const projectRows = projects
     .map((p) => {
       const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
-      const code = p.code || p.name || '—';
-      const s = projStats.get(code) || { overdue: 0, blocked: 0, dueSoon: 0 };
-      const h = projHealth(code, pct);
+      const s =
+        projStats.get(String(p.id)) ||
+        projStats.get(p.code || p.name || '—') || { overdue: 0, blocked: 0, dueSoon: 0, open: 0 };
+      const h = projHealth(p);
       return `<tr>
-      <td><strong>${esc(p.code || '')}</strong> ${esc(p.name || '')}</td>
-      <td><span class="pill" style="background:${h.bg};color:${h.color};font-weight:700">${h.label}</span></td>
-      <td style="text-align:right">${esc(p.tasksDone ?? 0)}/${esc(p.taskCount ?? 0)}</td>
-      <td style="text-align:right;${s.overdue ? 'color:#b91c1c;font-weight:700' : 'color:#94a3b8'}">${s.overdue || '—'}</td>
-      <td style="text-align:right;${s.blocked ? 'color:#b91c1c;font-weight:700' : 'color:#94a3b8'}">${s.blocked || '—'}</td>
-      <td style="width:140px">${bar(pct)}</td>
-      <td style="text-align:right;font-weight:700">${pct}%</td>
+      <td>
+        <strong>${esc(p.ccNo || p.code || '')}</strong>
+        <div>${esc(p.name || '')}</div>
+      </td>
+      <td>${ragPill(h.label, h.tone)}</td>
+      <td class="num" style="text-align:right">${esc(p.tasksDone ?? 0)}/${esc(p.taskCount ?? 0)}</td>
+      <td class="num" style="text-align:right;${s.overdue ? 'color:#b91c1c;font-weight:800' : 'color:#94a3b8'}">${s.overdue || '—'}</td>
+      <td class="num" style="text-align:right;${s.blocked ? 'color:#b91c1c;font-weight:800' : 'color:#94a3b8'}">${s.blocked || '—'}</td>
+      <td class="num" style="text-align:right;color:#64748b">${s.dueSoon || '—'}</td>
+      <td style="width:110px">${bar(pct)}</td>
+      <td class="num" style="text-align:right;font-weight:800">${pct}%</td>
     </tr>`;
     })
     .join('');
 
-  // Upcoming deadlines rows — the next-14-days action list.
   const upcomingRows = upcomingTasks
     .map((t) => {
-      const days = Math.ceil((new Date(t.dueDate).getTime() - now.getTime()) / 86400000);
-      const when = days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`;
+      const days = dueDaysFromNow(targetOf(t));
+      const when =
+        days === null ? '' : days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`;
       return `<tr>
-      <td>${esc(t.title || '')}</td>
+      <td><strong>${esc(t.title || '')}</strong></td>
       <td>${esc(t.projectCode || '')}</td>
       <td>${esc(t.assigneeName || 'Unassigned')}</td>
-      <td><span class="dot" style="background:${STATUS_COLOR[t.status] || '#94a3b8'}"></span>${esc(STATUS_LABEL[t.status] || t.status || '')}</td>
-      <td style="font-weight:600;${days <= 2 ? 'color:#b45309' : ''}">${fmtDate(t.dueDate)} <span class="muted">· ${when}</span></td>
+      <td>${statusDot(t.status)}</td>
+      <td class="num" style="font-weight:700;${days !== null && days <= 2 ? 'color:#b45309' : ''}">${fmtDate(targetOf(t))} <span class="muted">· ${when}</span></td>
     </tr>`;
     })
     .join('');
 
-  const memberRows = members
-    .map((m) => {
-      const pct = m.assigned ? Math.round((m.done / m.assigned) * 100) : 0;
-      return `<tr>
-      <td>${esc(m.name || '')}${m.title ? ` <span class="muted">· ${esc(m.title)}</span>` : ''}</td>
-      <td style="text-align:right">${esc(m.assigned ?? 0)}</td>
-      <td style="text-align:right">${esc(m.done ?? 0)}</td>
-      <td style="text-align:right;${(m.overdue ?? 0) > 0 ? 'color:#b91c1c;font-weight:700' : ''}">${esc(m.overdue ?? 0)}</td>
-      <td style="width:140px">${bar(pct)}</td>
-      <td style="text-align:right;font-weight:700">${pct}%</td>
-    </tr>`;
-    })
-    .join('');
-
-  // Overdue / at-risk section — the meeting's action list.
-  const overdueRows = overdueTasks
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-    .map(
-      (t) => `<tr>
-      <td>${esc(t.title || '')}</td>
-      <td>${esc(t.projectCode || '')}</td>
-      <td>${esc(t.assigneeName || 'Unassigned')}</td>
-      <td style="color:#b91c1c;font-weight:600">${fmtDate(t.dueDate)}</td>
-    </tr>`,
-    )
-    .join('');
-
-  // All tasks grouped by project for a clean, readable backlog.
+  // Backlog: open first by TCD, then done (collapsed note).
+  const openSorted = [...openTasks].sort(byTcd);
   const byProject = new Map<string, any[]>();
-  for (const t of tasks) {
-    const key = t.projectCode || t.projectName || 'Unassigned';
+  for (const t of openSorted) {
+    const key = t.projectCode || t.projectName || 'Other';
     if (!byProject.has(key)) byProject.set(key, []);
     byProject.get(key)!.push(t);
   }
-  const groupedTasks = [...byProject.entries()]
+  const groupedOpen = [...byProject.entries()]
     .map(([code, ts]) => {
-      // Within each project, tasks are listed in TCD (target-date) order — the
-      // priority order a reviewer reads top-to-bottom.
-      const rows = [...ts]
-        .sort(byTcd)
+      const rows = ts
         .map((t) => {
-          const target = t.ccTcd || t.dueDate;
+          const target = targetOf(t);
           const od = isTaskOverdue(target, t.status);
+          const days = dueDaysFromNow(target);
+          const late =
+            od && days !== null ? `<span style="color:#b91c1c;font-weight:700">${Math.abs(days)}d late</span>` : fmtDate(target);
           return `<tr>
         <td>${esc(t.title || '')}</td>
         <td>${esc(t.assigneeName || 'Unassigned')}</td>
-        <td><span class="dot" style="background:${STATUS_COLOR[t.status] || '#94a3b8'}"></span>${esc(STATUS_LABEL[t.status] || t.status || '')}</td>
-        <td style="${od ? 'color:#b91c1c;font-weight:600' : ''}">${fmtDate(t.ccTcd || t.dueDate)}</td>
+        <td>${statusDot(t.status)}</td>
+        <td>${t.priority && t.priority !== 'low' ? esc(PRIORITY_LABEL[t.priority] || t.priority) : '—'}</td>
+        <td class="num">${late}</td>
       </tr>`;
         })
         .join('');
-      return `<h3>${esc(code)} <span class="muted">· ${ts.length} task${ts.length === 1 ? '' : 's'}</span></h3>
-      <table><thead><tr><th>Task</th><th>Assignee</th><th>Status</th><th>Target (TCD)</th></tr></thead><tbody>${rows}</tbody></table>`;
+      return `<h3>${esc(code)} <span class="muted">· ${ts.length} open</span></h3>
+      <table><thead><tr><th>Task</th><th>Owner</th><th>Status</th><th>Priority</th><th>Target</th></tr></thead><tbody>${rows}</tbody></table>`;
     })
     .join('');
 
-  return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<title>${esc(team?.name || 'Team')} — Team Report</title>
-<style>
-  * { box-sizing:border-box; }
-  body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color:#0f172a; margin:0; background:#f8fafc; }
-  .page { max-width:900px; margin:0 auto; padding:40px; background:#fff; }
-  .brand { display:flex; align-items:center; justify-content:space-between; border-bottom:3px solid #1565C0; padding-bottom:14px; margin-bottom:8px; }
-  .brand .mark { display:flex; align-items:center; gap:10px; }
-  .brand .mark svg { display:block; }
-  .brand .logo { font-size:13px; font-weight:900; letter-spacing:.18em; color:#1565C0; text-transform:uppercase; line-height:1.2; }
-  .brand .logo small { display:block; font-size:9px; font-weight:700; letter-spacing:.12em; color:#94a3b8; }
-  .brand .gen { font-size:11px; color:#94a3b8; text-align:right; }
-  h1 { font-size:26px; margin:14px 0 2px; }
-  h2 { font-size:14px; margin:30px 0 10px; text-transform:uppercase; letter-spacing:.08em; color:#1565C0; border-bottom:1px solid #e2e8f0; padding-bottom:5px; }
-  h3 { font-size:13px; margin:18px 0 6px; color:#334155; }
-  .muted { color:#94a3b8; font-weight:400; }
-  .sub { color:#64748b; margin:0; font-size:13px; }
-  .summary { background:#f1f5f9; border-left:4px solid #1565C0; border-radius:8px; padding:14px 16px; margin:18px 0; font-size:14px; line-height:1.6; }
-  .kpis { display:flex; gap:10px; flex-wrap:wrap; margin:16px 0; }
-  .kpi { border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; min-width:110px; flex:1; }
-  .kpi .n { font-size:24px; font-weight:800; }
-  .kpi .l { font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin-top:2px; }
-  .dist { display:flex; height:14px; border-radius:7px; overflow:hidden; margin:6px 0 10px; border:1px solid #e2e8f0; }
-  .dist .seg { min-width:2px; }
-  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:#475569; margin-bottom:6px; }
-  .legend .lg { display:inline-flex; align-items:center; gap:5px; }
-  .legend i { width:9px; height:9px; border-radius:2px; display:inline-block; }
-  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:8px; }
-  th, td { text-align:left; padding:7px 9px; border-bottom:1px solid #eef2f7; vertical-align:middle; }
-  th { font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#64748b; background:#fafbfd; }
-  .pill { font-size:11px; padding:2px 8px; border-radius:99px; background:#eef2f7; color:#475569; text-transform:capitalize; }
-  .bar { height:7px; background:#eef2f7; border-radius:99px; overflow:hidden; }
-  .bar-fill { height:100%; border-radius:99px; }
-  .dot { display:inline-block; width:8px; height:8px; border-radius:99px; margin-right:6px; vertical-align:middle; }
-  .risk { border:1px solid #fecaca; background:#fef2f2; border-radius:10px; padding:4px 12px 10px; }
-  .footer { margin-top:36px; padding-top:12px; border-top:1px solid #e2e8f0; font-size:11px; color:#94a3b8; text-align:center; }
-  @media print { body { background:#fff; } .page { padding:16px; max-width:none; } h2 { break-after:avoid; } table { break-inside:auto; } tr { break-inside:avoid; } }
-</style></head>
-<body>
-  <div class="page">
-    <div class="brand">
-      <span class="mark">
-        <svg width="34" height="34" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <defs><linearGradient id="pg" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="#1565C0"/><stop offset="0.45" stop-color="#1769C8"/><stop offset="1" stop-color="#2B8C29"/></linearGradient></defs>
-          <rect width="64" height="64" rx="17" fill="url(#pg)"/>
-          <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 40 L32 22 L50 40" stroke="#ffffff" stroke-width="7"/>
-            <path d="M18 52 L32 38 L46 52" stroke="#B7E4C2" stroke-width="5" opacity="0.92"/>
-          </g>
-        </svg>
-        <span class="logo">Pragati<small>Bird's eye view</small></span>
-      </span>
-      <span class="gen">Team report<br>Generated ${esc(generated)}${exportedBy ? `<br>Exported by ${esc(exportedBy)}` : ''}</span>
-    </div>
+  const { segments, legend } = distBar(tasks);
 
+  const fn = functionLabel(team?.function || '');
+  const body = `
     <h1>${esc(team?.name || 'Team')}</h1>
-    <p class="sub">${esc(team?.description || 'Team performance & delivery report')}${team?.function ? ` · Function: ${esc(team.function)}` : ''}${team?.leadName ? ` · Lead: ${esc(team.leadName)}` : ''}</p>
+    <p class="sub">
+      ${esc(team?.description || 'Team delivery & exceptions report')}
+      ${fn ? ` · <strong>${esc(fn)}</strong>` : ''}
+      ${team?.leadName ? ` · Lead: <strong>${esc(team.leadName)}</strong>` : ''}
+      · ${ragPill(overallLabel, overallTone)}
+    </p>
 
     <div class="summary">${summaryBits.join(' ')}</div>
 
     <div class="kpis">
-      <div class="kpi"><div class="n">${projects.length}</div><div class="l">Projects</div></div>
-      <div class="kpi"><div class="n">${members.length}</div><div class="l">Members</div></div>
-      <div class="kpi"><div class="n">${doneTasks}/${totalTasks}</div><div class="l">Tasks done</div></div>
-      <div class="kpi"><div class="n">${overallPct}%</div><div class="l">Completion</div></div>
-      <div class="kpi"><div class="n" style="${overdue ? 'color:#b91c1c' : ''}">${overdue}</div><div class="l">Overdue</div></div>
-      <div class="kpi"><div class="n" style="${blocked ? 'color:#b91c1c' : ''}">${blocked}</div><div class="l">Blocked</div></div>
-      <div class="kpi"><div class="n" style="${atRiskProjects ? 'color:#b45309' : ''}">${atRiskProjects}</div><div class="l">At-risk projects</div></div>
-      <div class="kpi"><div class="n">${upcomingTasks.length}</div><div class="l">Due ≤ 14d</div></div>
+      ${kpi(projects.length, 'Projects')}
+      ${kpi(members.length || team?.members?.length || 0, 'Members')}
+      ${kpi(`${doneTasks}/${totalTasks}`, 'Tasks done')}
+      ${kpi(`${overallPct}%`, 'Completion', overallPct >= 80 ? 'ok' : undefined)}
+      ${kpi(openTasks.length, 'Open')}
+      ${kpi(overdue, 'Overdue', overdue ? 'bad' : 'ok')}
+      ${kpi(blocked, 'Blocked', blocked ? 'bad' : undefined)}
+      ${kpi(upcomingTasks.length, 'Due ≤ 14d', upcomingTasks.length > 5 ? 'warn' : undefined)}
     </div>
 
-    <h2>Status distribution</h2>
-    <div class="legend">${distLegend}</div>
-    <div class="dist">${distSegments || '<div class="seg" style="flex:1;background:#eef2f7"></div>'}</div>
+    <h2>Status mix</h2>
+    <div class="legend">${legend}</div>
+    <div class="dist">${segments || '<div class="seg" style="flex:1;background:#eef2f7"></div>'}</div>
 
-    <h2>Projects — health &amp; progress</h2>
-    <table><thead><tr><th>Project</th><th>Health</th><th style="text-align:right">Tasks</th><th style="text-align:right">Overdue</th><th style="text-align:right">Blocked</th><th>Progress</th><th style="text-align:right">%</th></tr></thead>
-    <tbody>${projectRows || '<tr><td colspan="7" class="muted">No projects.</td></tr>'}</tbody></table>
+    ${
+      decisionItems.length > 0
+        ? `<h2>Decisions needed — ${decisionItems.length}</h2>
+    <p class="section-note">Blocked and overdue work only. Use this as the meeting agenda.</p>
+    <div class="risk"><table>
+      <thead><tr><th>Work item</th><th>Owner</th><th>Status</th><th>Age</th><th>Why</th></tr></thead>
+      <tbody>${decisionRows}</tbody>
+    </table></div>`
+        : `<div class="callout" style="margin-top:20px"><strong>No decisions pending.</strong> Zero overdue and zero blocked on this board.</div>`
+    }
 
     ${
       upcomingTasks.length > 0
-        ? `<h2>Upcoming deadlines — next 14 days</h2>
-    <table><thead><tr><th>Task</th><th>Project</th><th>Assignee</th><th>Status</th><th>Due</th></tr></thead>
+        ? `<h2>Next 14 days</h2>
+    <p class="section-note">Upcoming targets — protect these dates before they slip.</p>
+    <table><thead><tr><th>Task</th><th>Project</th><th>Owner</th><th>Status</th><th>Due</th></tr></thead>
     <tbody>${upcomingRows}</tbody></table>`
         : ''
     }
 
-    <h2>Member workload</h2>
-    <table><thead><tr><th>Member</th><th style="text-align:right">Assigned</th><th style="text-align:right">Done</th><th style="text-align:right">Overdue</th><th>Progress</th><th style="text-align:right">%</th></tr></thead>
-    <tbody>${memberRows || '<tr><td colspan="6" class="muted">No members.</td></tr>'}</tbody></table>
+    <h2>Projects — health &amp; progress</h2>
+    <p class="section-note">Recurring system boards are omitted — managed under Teams → Recurring.</p>
+    <table><thead><tr>
+      <th>Project</th><th>Health</th><th style="text-align:right">Tasks</th>
+      <th style="text-align:right">Overdue</th><th style="text-align:right">Blocked</th>
+      <th style="text-align:right">≤14d</th><th>Progress</th><th style="text-align:right">%</th>
+    </tr></thead>
+    <tbody>${projectRows || '<tr><td colspan="8" class="muted">No projects.</td></tr>'}</tbody></table>
 
+    <h2>Owner load</h2>
+    <p class="section-note">Open work by person — overdue and blocked call out who needs support.</p>
+    <table><thead><tr>
+      <th>Owner</th>
+      <th style="text-align:right">Open</th>
+      <th style="text-align:right">Overdue</th>
+      <th style="text-align:right">Blocked</th>
+      <th>Done %</th>
+      <th style="text-align:right">%</th>
+    </tr></thead>
+    <tbody>${ownerRows || '<tr><td colspan="6" class="muted">No open assignments.</td></tr>'}</tbody></table>
+
+    <h2>Open backlog by project</h2>
+    <p class="section-note">Open items only, target-date order. Done work is excluded so the print stays action-ready.</p>
+    ${groupedOpen || '<p class="muted">No open tasks.</p>'}
     ${
-      overdue > 0
-        ? `<h2>⚠ Overdue — needs attention</h2>
-    <div class="risk"><table><thead><tr><th>Task</th><th>Project</th><th>Assignee</th><th>Due</th></tr></thead>
-    <tbody>${overdueRows}</tbody></table></div>`
+      doneTasks > 0
+        ? `<p class="muted" style="margin-top:12px">${doneTasks} completed task${doneTasks === 1 ? '' : 's'} omitted from print — use CSV for full history.</p>`
         : ''
     }
+  `;
 
-    <h2>Task backlog by project</h2>
-    ${groupedTasks || '<p class="muted">No tasks.</p>'}
-
-    <div class="footer">Generated by Pragati · ${esc(generated)}${exportedBy ? ` · Exported by ${esc(exportedBy)}` : ''}</div>
-  </div>
-</body></html>`;
-}
-
-// ── CSV export ───────────────────────────────────────────────────────────────
-// A flat, spreadsheet-friendly dump of the task backlog so a lead can pivot,
-// filter, or paste it into a tracker. Complements the visual HTML/PDF report.
-function csvCell(v: any): string {
-  const s = String(v ?? '');
-  // Quote anything containing a comma, quote, or newline; double embedded quotes.
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-// TCD-first ordering helper shared by the HTML + CSV exports. Tasks without a
-// target date sink to the bottom; done tasks sink below open ones at the same
-// date so the action list reads top-down.
-function tcdKey(t: any): number {
-  const d = t.ccTcd || t.dueDate;
-  return d ? new Date(d).getTime() : Number.POSITIVE_INFINITY;
-}
-function byTcd(a: any, b: any): number {
-  const k = tcdKey(a) - tcdKey(b);
-  if (k !== 0) return k;
-  // open before done at the same date
-  return (a.status === 'done' ? 1 : 0) - (b.status === 'done' ? 1 : 0);
+  return wrapReportHtml({
+    title: `${team?.name || 'Team'} — Team Report`,
+    docType: 'Team status report',
+    generated,
+    exportedBy,
+    bodyHtml: body,
+    footerRight: `${team?.name || 'Team'} · ${generated}${exportedBy ? ` · ${exportedBy}` : ''}`,
+  });
 }
 
 export function buildTeamReportCsv(team: any, board: any[], exportedBy = ''): string {
   const tasks: any[] = [...(board || [])].sort(byTcd);
-  const now = new Date();
   const header = [
+    'Sr',
     'Ref No',
     'Project Code',
     'Project',
     'Task',
-    'Assignee',
+    'Owner',
     'Status',
     'Priority',
+    'Type',
+    'GxP Critical',
+    'Waiting On',
     'Target Date (TCD)',
     'Due Date',
-    'Subtasks',
+    'Subtasks Done/Total',
     'Overdue',
-    'Days Overdue',
+    'Days Overdue / Until',
+    'Open',
   ];
-  const rows = tasks.map((t) => {
-    const target = t.ccTcd || t.dueDate;
+  const rows = tasks.map((t, i) => {
+    const target = targetOf(t);
     const overdue = isTaskOverdue(target, t.status);
-    const daysOver = overdue ? Math.abs(dueDaysFromNow(target) as number) : '';
-    const subs = (t.subtaskCount ?? 0) > 0 ? `${t.subtasksDone ?? 0}/${t.subtaskCount}` : '';
+    const days = dueDaysFromNow(target);
+    const daysCol =
+      days === null ? '' : overdue ? String(Math.abs(days)) : days >= 0 ? String(days) : String(days);
+    const subs =
+      (t.subtaskCount ?? 0) > 0 ? `${t.subtasksDone ?? 0}/${t.subtaskCount}` : '';
     return [
+      String(i + 1),
       t.ccNo || '',
       t.projectCode || '',
       t.projectName || '',
@@ -402,85 +407,67 @@ export function buildTeamReportCsv(team: any, board: any[], exportedBy = ''): st
       t.assigneeName || 'Unassigned',
       STATUS_LABEL[t.status] || t.status || '',
       t.priority || '',
+      (t.taskType || '').replace(/_/g, ' '),
+      t.gxpCritical ? 'Yes' : '',
+      t.pendingWith || '',
       fmtDate(t.ccTcd),
       fmtDate(t.dueDate),
       subs,
       overdue ? 'Yes' : 'No',
-      daysOver === '' ? '' : String(daysOver),
+      daysCol,
+      t.status !== 'done' ? 'Yes' : 'No',
     ]
       .map(csvCell)
       .join(',');
   });
-  const metaBlock = [
+
+  const open = tasks.filter((t) => t.status !== 'done').length;
+  const overdueN = tasks.filter((t) => isTaskOverdue(targetOf(t), t.status)).length;
+  const blockedN = tasks.filter((t) => t.status === 'blocked').length;
+  const meta = [
     ['Pragati Team Report', ''],
     ['Team', team?.name || ''],
-    ['Generated at', new Date().toLocaleString()],
+    ['Function', functionLabel(team?.function || '')],
+    ['Lead', team?.leadName || ''],
+    ['Generated at', fmtDateTime()],
     ...(exportedBy ? [['Exported by', exportedBy]] : []),
+    ['Open tasks', String(open)],
+    ['Overdue', String(overdueN)],
+    ['Blocked', String(blockedN)],
     ['', ''],
-  ].map(([k, v]) => [k, v].map(csvCell).join(','));
+    ['Tasks', ''],
+  ].map((r) => r.map(csvCell).join(','));
 
-  return '﻿' + [...metaBlock, header.map(csvCell).join(','), ...rows].join('\r\n');
+  return csvEscapeBom([...meta, header.map(csvCell).join(','), ...rows]);
 }
 
-function triggerDownload(content: string, mime: string, filename: string) {
-  const blob = new Blob([content], { type: mime });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+function safeTeamName(team: any): string {
+  return String(team?.name || 'team')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
 }
 
 export function downloadTeamCsv(team: any, board: any[], exportedBy = '') {
-  const safeName = String(team?.name || 'team')
-    .replace(/[^a-z0-9]+/gi, '-')
-    .toLowerCase();
   triggerDownload(
     buildTeamReportCsv(team, board, exportedBy),
     'text/csv;charset=utf-8',
-    `${safeName}-tasks-${new Date().toISOString().slice(0, 10)}.csv`,
+    `${safeTeamName(team)}-tasks-${new Date().toISOString().slice(0, 10)}.csv`,
   );
 }
 
 export function downloadTeamReport(team: any, progress: any, board: any[], exportedBy = '') {
   const html = buildTeamReportHtml(team, progress, board, exportedBy);
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const safeName = String(team?.name || 'team')
-    .replace(/[^a-z0-9]+/gi, '-')
-    .toLowerCase();
-  a.href = url;
-  a.download = `${safeName}-report-${new Date().toISOString().slice(0, 10)}.html`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  triggerDownload(
+    html,
+    'text/html;charset=utf-8',
+    `${safeTeamName(team)}-report-${new Date().toISOString().slice(0, 10)}.html`,
+  );
 }
 
-// Open the report in a new tab as a preview, with a floating "Save as PDF /
-// Print" action so the user controls when the print dialog opens. Auto-firing
-// it on open was jarring — they couldn't skim the report first.
 export function printTeamReport(team: any, progress: any, board: any[], exportedBy = '') {
   const html = buildTeamReportHtml(team, progress, board, exportedBy);
-  const w = window.open('', '_blank');
-  if (!w) {
-    downloadTeamReport(team, progress, board, exportedBy);
-    return;
-  }
-  const withPrintBar = html.replace(
-    '</body>',
-    `<div id="pragati-print-bar" style="position:fixed;right:16px;bottom:16px;z-index:99999;display:flex;gap:8px;font-family:-apple-system,Segoe UI,Roboto,sans-serif">
-       <button onclick="window.print()" style="background:linear-gradient(135deg,#1565C0,#2E7D32);color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(15,23,42,0.18)">Save as PDF / Print</button>
-       <button onclick="window.close()" style="background:#fff;color:#475569;border:1px solid #cbd5e1;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;cursor:pointer">Close</button>
-     </div>
-     <style>@media print { #pragati-print-bar { display:none !important; } }</style>
-     </body>`,
+  openPrintableReport(html, `${safeTeamName(team)}-report`, () =>
+    downloadTeamReport(team, progress, board, exportedBy),
   );
-  w.document.write(withPrintBar);
-  w.document.close();
-  w.focus();
 }
