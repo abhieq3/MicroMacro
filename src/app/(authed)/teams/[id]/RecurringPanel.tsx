@@ -21,8 +21,11 @@ interface RecurringActivity {
   assigneeId: string | null;
   assigneeName?: string | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  scheduleKind?: 'interval' | 'monthly_weekday';
   intervalUnit: 'day' | 'week' | 'month' | 'year';
   intervalCount: number;
+  weekday?: number | null;
+  weekdayOrdinal?: number | null;
   cadence: string;
   startDate: string | null;
   nextDueDate: string | null;
@@ -43,14 +46,37 @@ const PRIORITY_OPTS = [
   { value: 'high', label: 'High' },
   { value: 'critical', label: 'Critical' },
 ];
+const SCHEDULE_KIND_OPTS = [
+  { value: 'interval', label: 'Every N days / weeks / months' },
+  { value: 'monthly_weekday', label: 'On a weekday each month (e.g. last Sunday)' },
+];
+const WEEKDAY_OPTS = [
+  { value: '0', label: 'Sunday' },
+  { value: '1', label: 'Monday' },
+  { value: '2', label: 'Tuesday' },
+  { value: '3', label: 'Wednesday' },
+  { value: '4', label: 'Thursday' },
+  { value: '5', label: 'Friday' },
+  { value: '6', label: 'Saturday' },
+];
+const ORDINAL_OPTS = [
+  { value: '1', label: '1st' },
+  { value: '2', label: '2nd' },
+  { value: '3', label: '3rd' },
+  { value: '4', label: '4th' },
+  { value: '-1', label: 'Last' },
+];
 
 type Draft = {
   title: string;
   description: string;
   assigneeId: string;
   priority: string;
+  scheduleKind: 'interval' | 'monthly_weekday';
   intervalCount: number;
   intervalUnit: string;
+  weekday: string; // '0'..'6'
+  weekdayOrdinal: string; // '1'|'2'|'3'|'4'|'-1'
   startDate: string;
   leadTimeDays: number;
   checklist: string[];
@@ -61,8 +87,11 @@ const EMPTY_DRAFT: Draft = {
   description: '',
   assigneeId: '',
   priority: 'medium',
+  scheduleKind: 'interval',
   intervalCount: 1,
   intervalUnit: 'month',
+  weekday: '0',
+  weekdayOrdinal: '-1',
   startDate: '',
   leadTimeDays: 0,
   checklist: [''],
@@ -74,8 +103,11 @@ function draftFrom(a: RecurringActivity): Draft {
     description: a.description || '',
     assigneeId: a.assigneeId || '',
     priority: a.priority,
+    scheduleKind: a.scheduleKind === 'monthly_weekday' ? 'monthly_weekday' : 'interval',
     intervalCount: a.intervalCount,
     intervalUnit: a.intervalUnit,
+    weekday: String(typeof a.weekday === 'number' ? a.weekday : 0),
+    weekdayOrdinal: String(typeof a.weekdayOrdinal === 'number' ? a.weekdayOrdinal : -1),
     startDate: a.startDate ? a.startDate.slice(0, 10) : '',
     leadTimeDays: a.leadTimeDays || 0,
     checklist: a.checklist.length ? a.checklist.map((c) => c.title) : [''],
@@ -123,17 +155,28 @@ export function RecurringPanel({
   }
 
   function payloadFrom(d: Draft) {
-    return {
+    const scheduleKind = d.scheduleKind === 'monthly_weekday' ? 'monthly_weekday' : 'interval';
+    const base: Record<string, unknown> = {
       title: d.title.trim(),
       description: d.description.trim() || undefined,
       assigneeId: d.assigneeId || null,
       priority: d.priority,
-      intervalUnit: d.intervalUnit,
+      scheduleKind,
       intervalCount: Math.max(1, Number(d.intervalCount) || 1),
       startDate: d.startDate,
       leadTimeDays: Math.max(0, Number(d.leadTimeDays) || 0),
       checklist: d.checklist.map((t) => t.trim()).filter(Boolean).map((title) => ({ title })),
     };
+    if (scheduleKind === 'monthly_weekday') {
+      base.intervalUnit = 'month';
+      base.weekday = Number(d.weekday);
+      base.weekdayOrdinal = Number(d.weekdayOrdinal);
+    } else {
+      base.intervalUnit = d.intervalUnit;
+      base.weekday = null;
+      base.weekdayOrdinal = null;
+    }
+    return base;
   }
 
   async function save() {
@@ -286,7 +329,67 @@ export function RecurringPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="label">Schedule type</label>
+            <Select
+              value={draft.scheduleKind}
+              onChange={(v) =>
+                setDraft((d) => ({
+                  ...d,
+                  scheduleKind: v === 'monthly_weekday' ? 'monthly_weekday' : 'interval',
+                  intervalUnit: v === 'monthly_weekday' ? 'month' : d.intervalUnit,
+                }))
+              }
+              ariaLabel="Schedule type"
+              options={SCHEDULE_KIND_OPTS}
+            />
+          </div>
+
+          {draft.scheduleKind === 'monthly_weekday' ? (
+            <div className="rounded-xl border border-violet-200/80 dark:border-violet-500/20 bg-violet-50/40 dark:bg-violet-500/[0.06] p-3 space-y-3">
+              <p className="text-[11px] text-violet-700/80 dark:text-violet-300/70 leading-snug">
+                Example: <strong>Last Sunday of each month</strong> — ideal for monthly reviews and downtime windows.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="label">Which</label>
+                  <Select
+                    value={draft.weekdayOrdinal}
+                    onChange={(v) => setDraft((d) => ({ ...d, weekdayOrdinal: v }))}
+                    ariaLabel="Weekday ordinal"
+                    options={ORDINAL_OPTS}
+                  />
+                </div>
+                <div>
+                  <label className="label">Weekday</label>
+                  <Select
+                    value={draft.weekday}
+                    onChange={(v) => setDraft((d) => ({ ...d, weekday: v }))}
+                    ariaLabel="Weekday"
+                    options={WEEKDAY_OPTS}
+                  />
+                </div>
+                <div>
+                  <label className="label">Every</label>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="number"
+                      min={1}
+                      className="input w-16"
+                      value={draft.intervalCount}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          intervalCount: Math.max(1, Number(e.target.value) || 1),
+                        }))
+                      }
+                    />
+                    <span className="text-xs text-slate-500 dark:text-white/40 shrink-0">month(s)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
             <div>
               <label className="label">Repeats every</label>
               <div className="flex gap-2">
@@ -309,14 +412,34 @@ export function RecurringPanel({
                 </div>
               </div>
             </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label">{editing === 'new' ? 'First due date' : 'Re-anchor due date'}</label>
+              <label className="label">
+                {editing === 'new'
+                  ? draft.scheduleKind === 'monthly_weekday'
+                    ? 'Start from (snaps to next match)'
+                    : 'First due date'
+                  : 'Re-anchor due date'}
+              </label>
               <DatePicker
                 block
-                placeholder={editing === 'new' ? 'Pick first due date' : 'Leave blank to keep'}
+                placeholder={
+                  editing === 'new'
+                    ? draft.scheduleKind === 'monthly_weekday'
+                      ? 'On or after this date'
+                      : 'Pick first due date'
+                    : 'Leave blank to keep'
+                }
                 value={draft.startDate || null}
                 onChange={(v) => setDraft((d) => ({ ...d, startDate: v || '' }))}
               />
+              {draft.scheduleKind === 'monthly_weekday' && (
+                <p className="text-[10px] text-slate-400 mt-1 leading-snug">
+                  We pick the next matching day on or after this date (e.g. last Sunday on or after 1 Aug).
+                </p>
+              )}
             </div>
             <div>
               <label className="label">Appear ahead (days)</label>

@@ -9,6 +9,7 @@ import { handleError, readBody } from '@/lib/http';
 import { RecurringActivityCreateSchema } from '@/lib/validations';
 import {
   ensureRecurringProject,
+  firstMonthlyWeekdayOnOrAfter,
   generateOccurrence,
   serializeRecurringActivity,
 } from '@/lib/recurring';
@@ -64,7 +65,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const ownerId = String((team as any).leadId || user.sub);
     const project = await ensureRecurringProject(params.id, ownerId);
 
-    const start = new Date(body.startDate);
+    const scheduleKind = body.scheduleKind === 'monthly_weekday' ? 'monthly_weekday' : 'interval';
+    const intervalCount = body.intervalCount ?? 1;
+    const intervalUnit = scheduleKind === 'monthly_weekday' ? 'month' : body.intervalUnit;
+    const weekday = scheduleKind === 'monthly_weekday' ? (body.weekday as number) : null;
+    const weekdayOrdinal =
+      scheduleKind === 'monthly_weekday' ? (body.weekdayOrdinal as number) : null;
+
+    // Snap first due to the schedule. Interval: use startDate as-is.
+    // Monthly weekday: next matching weekday on or after startDate.
+    const anchor = new Date(body.startDate);
+    const firstDue =
+      scheduleKind === 'monthly_weekday' && weekday !== null && weekdayOrdinal !== null
+        ? firstMonthlyWeekdayOnOrAfter(anchor, weekday, weekdayOrdinal)
+        : anchor;
+
     const activity = await RecurringActivity.create({
       teamId: params.id,
       projectId: project._id,
@@ -73,10 +88,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       checklist: body.checklist || [],
       assigneeId: body.assigneeId || null,
       priority: body.priority || 'medium',
-      intervalUnit: body.intervalUnit,
-      intervalCount: body.intervalCount,
-      startDate: start,
-      nextDueDate: start,
+      scheduleKind,
+      intervalUnit,
+      intervalCount,
+      weekday,
+      weekdayOrdinal,
+      startDate: firstDue,
+      nextDueDate: firstDue,
       leadTimeDays: body.leadTimeDays ?? 0,
       active: true,
       createdBy: user.sub,

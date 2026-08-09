@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth';
 import { guardTeamOwner } from '@/lib/teamAuth';
 import { handleError, readBody } from '@/lib/http';
 import { RecurringActivityUpdateSchema } from '@/lib/validations';
-import { serializeRecurringActivity } from '@/lib/recurring';
+import { firstMonthlyWeekdayOnOrAfter, serializeRecurringActivity } from '@/lib/recurring';
 import { logOperation } from '@/lib/audit';
 
 export const runtime = 'nodejs';
@@ -33,15 +33,55 @@ export async function PATCH(
     if (body.checklist !== undefined) activity.checklist = body.checklist as any;
     if (body.assigneeId !== undefined) activity.assigneeId = (body.assigneeId as any) || null;
     if (body.priority !== undefined) activity.priority = body.priority;
-    if (body.intervalUnit !== undefined) activity.intervalUnit = body.intervalUnit;
+    if (body.scheduleKind !== undefined) {
+      (activity as any).scheduleKind = body.scheduleKind;
+      if (body.scheduleKind === 'monthly_weekday') {
+        activity.intervalUnit = 'month';
+      }
+    }
+    if (body.intervalUnit !== undefined && (activity as any).scheduleKind !== 'monthly_weekday') {
+      activity.intervalUnit = body.intervalUnit;
+    }
     if (body.intervalCount !== undefined) activity.intervalCount = body.intervalCount;
+    if (body.weekday !== undefined) (activity as any).weekday = body.weekday;
+    if (body.weekdayOrdinal !== undefined) (activity as any).weekdayOrdinal = body.weekdayOrdinal;
     if (body.leadTimeDays !== undefined) activity.leadTimeDays = body.leadTimeDays;
     if (body.active !== undefined) activity.active = body.active;
-    // Re-anchoring the start date moves the next occurrence to that date.
+    // Re-anchoring: snap monthly-weekday to the real calendar occurrence.
     if (body.startDate !== undefined) {
       const start = new Date(body.startDate);
-      activity.startDate = start;
-      activity.nextDueDate = start;
+      const kind = (activity as any).scheduleKind || 'interval';
+      const due =
+        kind === 'monthly_weekday' &&
+        typeof (activity as any).weekday === 'number' &&
+        typeof (activity as any).weekdayOrdinal === 'number'
+          ? firstMonthlyWeekdayOnOrAfter(
+              start,
+              (activity as any).weekday,
+              (activity as any).weekdayOrdinal,
+            )
+          : start;
+      activity.startDate = due;
+      activity.nextDueDate = due;
+    } else if (
+      body.scheduleKind === 'monthly_weekday' ||
+      body.weekday !== undefined ||
+      body.weekdayOrdinal !== undefined
+    ) {
+      // Pattern changed without a new anchor — re-snap next due from today.
+      const kind = (activity as any).scheduleKind || 'interval';
+      if (
+        kind === 'monthly_weekday' &&
+        typeof (activity as any).weekday === 'number' &&
+        typeof (activity as any).weekdayOrdinal === 'number'
+      ) {
+        const next = firstMonthlyWeekdayOnOrAfter(
+          new Date(),
+          (activity as any).weekday,
+          (activity as any).weekdayOrdinal,
+        );
+        activity.nextDueDate = next;
+      }
     }
     await activity.save();
 

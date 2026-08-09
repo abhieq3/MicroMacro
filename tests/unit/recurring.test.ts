@@ -1,11 +1,17 @@
 /**
- * Unit tests for the pure recurrence helpers (date stepping + cadence label).
- * The DB-touching parts (generateOccurrence, ensureRecurringProject) are
- * covered by integration behaviour, not here.
+ * Unit tests for pure recurrence helpers (interval stepping + monthly weekday).
  */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { addInterval, cadenceLabel } from '../../src/lib/recurring';
+import {
+  addInterval,
+  advanceMonthlyWeekday,
+  activityCadenceLabel,
+  cadenceLabel,
+  firstMonthlyWeekdayOnOrAfter,
+  monthlyWeekdayCadenceLabel,
+  nthWeekdayOfMonth,
+} from '../../src/lib/recurring';
 
 describe('addInterval', () => {
   it('steps by days and weeks', () => {
@@ -41,5 +47,74 @@ describe('cadenceLabel', () => {
   it('describes multi-step cadences', () => {
     assert.equal(cadenceLabel('month', 6), 'Every 6 months');
     assert.equal(cadenceLabel('week', 2), 'Every 2 weeks');
+  });
+});
+
+describe('nthWeekdayOfMonth / monthly weekday', () => {
+  // Local calendar days via local noon — format as YYYY-MM-DD in local TZ.
+  const ymd = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  it('finds the last Sunday of August 2026', () => {
+    // Aug 2026: last day is Mon 31 → last Sunday is 30.
+    const d = nthWeekdayOfMonth(2026, 7, 0, -1); // monthIndex 7 = August
+    assert.equal(ymd(d), '2026-08-30');
+    assert.equal(d.getDay(), 0);
+  });
+
+  it('finds the first Monday of September 2026', () => {
+    // Sep 1 2026 is Tuesday → first Monday is Sep 7.
+    const d = nthWeekdayOfMonth(2026, 8, 1, 1);
+    assert.equal(ymd(d), '2026-09-07');
+    assert.equal(d.getDay(), 1);
+  });
+
+  it('snaps on or after a mid-month date to the next last Sunday', () => {
+    // On 9 Aug 2026, next last Sunday is still Aug 30.
+    const d = firstMonthlyWeekdayOnOrAfter(new Date(2026, 7, 9, 12, 0, 0), 0, -1);
+    assert.equal(ymd(d), '2026-08-30');
+  });
+
+  it('snaps past the last Sunday of August to September’s', () => {
+    // After Aug 30, next last Sunday is Sep 27 2026.
+    const d = firstMonthlyWeekdayOnOrAfter(new Date(2026, 7, 31, 12, 0, 0), 0, -1);
+    assert.equal(ymd(d), '2026-09-27');
+  });
+
+  it('advances from one last-Sunday to the next month’s', () => {
+    const next = advanceMonthlyWeekday(new Date(2026, 7, 30, 12, 0, 0), 0, -1, 1);
+    assert.equal(ymd(next), '2026-09-27');
+  });
+
+  it('advances every 2 months', () => {
+    const next = advanceMonthlyWeekday(new Date(2026, 7, 30, 12, 0, 0), 0, -1, 2);
+    // Aug → Oct: last Sunday of Oct 2026 is Oct 25.
+    assert.equal(ymd(next), '2026-10-25');
+  });
+
+  it('labels monthly weekday cadences', () => {
+    assert.equal(monthlyWeekdayCadenceLabel(0, -1, 1), 'last Sunday of each month');
+    assert.equal(monthlyWeekdayCadenceLabel(1, 1, 1), '1st Monday of each month');
+    assert.equal(monthlyWeekdayCadenceLabel(5, 2, 3), '2nd Friday every 3 months');
+  });
+
+  it('activityCadenceLabel picks the right format', () => {
+    assert.equal(
+      activityCadenceLabel({
+        scheduleKind: 'monthly_weekday',
+        weekday: 0,
+        weekdayOrdinal: -1,
+        intervalCount: 1,
+      }),
+      'last Sunday of each month',
+    );
+    assert.equal(
+      activityCadenceLabel({ scheduleKind: 'interval', intervalUnit: 'month', intervalCount: 1 }),
+      'Monthly',
+    );
   });
 });
