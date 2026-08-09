@@ -316,47 +316,6 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
     [openTasks],
   );
 
-  /**
-   * Spotlight ONLY when the activity is due now:
-   *   1) overdue  → "Clear this first"
-   *   2) due today (calendar day) → "Do this today"
-   * Never: far-out dates, pressing/leverage scores, stalled flags, soft horizons.
-   * If nothing is due today and nothing is overdue → render nothing.
-   */
-  const doThisFirst = useMemo(() => {
-    const priRank = (p?: string) =>
-      ({ critical: 0, high: 1, medium: 2, low: 3 } as Record<string, number>)[p || 'medium'] ?? 2;
-
-    type Row = { t: TeamTask; overdue: boolean; pri: number; dueMs: number };
-    const rows: Row[] = [];
-    for (const task of openTasks) {
-      const due = task.ccTcd || task.dueDate;
-      if (!due) continue; // no date → not "due"
-      const d = daysUntil(due);
-      const overdue = isOverdue(due, task.status);
-      // Strict gate: only overdue or due *today*. Future dates never qualify.
-      if (!overdue && d !== 0) continue;
-      rows.push({
-        t: task,
-        overdue,
-        pri: priRank(task.priority),
-        dueMs: new Date(due).getTime(),
-      });
-    }
-    if (rows.length === 0) return null;
-    rows.sort((a, b) => {
-      // Overdue before due-today, then priority, then earliest date.
-      if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
-      return a.pri - b.pri || a.dueMs - b.dueMs;
-    });
-    return rows[0]!.t;
-  }, [openTasks]);
-
-  const doThisFirstKind = useMemo(() => {
-    if (!doThisFirst) return null as null | 'overdue' | 'today';
-    const due = doThisFirst.ccTcd || doThisFirst.dueDate;
-    return isOverdue(due, doThisFirst.status) ? 'overdue' : 'today';
-  }, [doThisFirst]);
 
   // Expanded project view: everyone sees the whole project's tasks, so an IC
   // can see the path of work around their own assignments — not just their
@@ -413,37 +372,6 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       ) : (
         <>
           {isNewContributor && <ContributorWelcome name={dash.user.name} />}
-
-          {/* Spotlight only when due today / overdue / blocked. */}
-          {doThisFirst && (
-            <Link
-              href={`/tasks/${doThisFirst.id}`}
-              className="mb-4 flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#2a2a28] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
-              style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
-            >
-              <div className="min-w-0 flex-1">
-                <div
-                  className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
-                    doThisFirstKind === 'overdue'
-                      ? 'text-red-600 dark:text-red-400'
-                      : 'text-blue-600 dark:text-blue-400'
-                  }`}
-                >
-                  {doThisFirstKind === 'overdue' ? 'Clear this first' : 'Do this today'}
-                </div>
-                <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
-                  {doThisFirst.title}
-                </div>
-                <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 truncate">
-                  {doThisFirst.projectName || doThisFirst.projectCode || 'Task'}
-                  {(doThisFirst.ccTcd || doThisFirst.dueDate) &&
-                    ` · ${formatDate(doThisFirst.ccTcd || doThisFirst.dueDate)}`}
-                  {doThisFirst.assigneeName ? ` · ${doThisFirst.assigneeName}` : ''}
-                </div>
-              </div>
-              <ArrowRight size={16} className="text-slate-300 dark:text-white/25 shrink-0 mt-1" />
-            </Link>
-          )}
 
           {/* ── Quick check / Needs attention strip ────────────────────────
               Renders nothing when there's nothing to surface — silence is

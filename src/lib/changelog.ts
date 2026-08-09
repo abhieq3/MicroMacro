@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Remove home “Do this next” card',
+    tags: ['fix'],
+    highlight: true,
+    body: [
+      'Deleted the dashboard morning spotlight card. It kept promoting far-out work (e.g. monthly activities). What’s due is already on the Due panel — when nothing is due it says “all clear” and stays quiet.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Spotlight is due-today or overdue only',
     tags: ['fix'],
     highlight: true,
