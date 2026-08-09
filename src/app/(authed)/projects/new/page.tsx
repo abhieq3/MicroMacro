@@ -574,6 +574,8 @@ export default function NewProjectPage() {
   const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null);
   // Template list collapse — show only the first 6 built-in options by default
   const [showAllTemplates, setShowAllTemplates] = useState(false);
+  // First-principles create: optional fields hidden until needed
+  const [showMore, setShowMore] = useState(false);
   // Current user id (populated from /auth/me once)
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
@@ -656,7 +658,13 @@ export default function NewProjectPage() {
 
   useEffect(() => {
     api<any[]>('/teams')
-      .then(setTeams)
+      .then((ts) => {
+        setTeams(ts || []);
+        // One team → pick it (removes a pointless decision for most leads).
+        if (isLead && !personal && (ts || []).length === 1) {
+          setForm((f) => (f.teamId ? f : { ...f, teamId: ts[0].id }));
+        }
+      })
       .catch(() => {});
     api<any>('/auth/me')
       .then((me) => {
@@ -669,7 +677,7 @@ export default function NewProjectPage() {
     api<any[]>('/projects')
       .then((ps) => setProjectList((ps || []).filter((p) => !p.archived)))
       .catch(() => {});
-  }, []);
+  }, [isLead, personal]);
 
   // Only fetch built-in lifecycle data when no custom template is active.
   // selectCustomTemplate sets customTemplateId before (possibly) changing
@@ -797,19 +805,26 @@ export default function NewProjectPage() {
     });
   }
 
-  async function submit() {
+  async function submit(opts?: { skipStages?: boolean }) {
     if (!form.name.trim()) {
-      setErr('Project name is required.');
+      setErr('Name is required.');
+      setStep(1);
       return;
     }
-    // A start date after the due date is almost always a typo and produces
-    // nonsensical "behind pace" math downstream — catch it before the round-trip.
+    if (isLead && !personal && !form.teamId) {
+      setErr('Pick a team.');
+      setStep(1);
+      return;
+    }
     if (form.startDate && form.dueDate && form.startDate > form.dueDate) {
-      setErr('The start date is after the due date — please check the dates.');
+      setErr('Start date is after due date.');
+      setStep(1);
       return;
     }
     setErr('');
     setLoading(true);
+    // Blank create from step 1: no stages yet is valid.
+    const phasesForSubmit = opts?.skipStages ? [] : phases;
     // ICs may toggle off to *browse* lead workflows, but they can only ever
     // commit a personal project — so we force `personal` back on at submit
     // for non-leads to spare them a 403 round-trip. The backend still enforces
@@ -831,14 +846,12 @@ export default function NewProjectPage() {
           useTemplate: false,
           // Drop blank phase names and empty task titles so an unfilled row
           // can't save a broken, nameless stage into the workflow.
-          customPhases: phases
+          customPhases: phasesForSubmit
             .map((ph) => ({
               name: ph.name.trim(),
               tasks: (ph.tasks || [])
                 .map((t) => ({
                   title: t.title.trim(),
-                  // Only attach an assignee that's actually on the chosen team,
-                  // so a stale pick from a previously-selected team is dropped.
                   assigneeId:
                     t.assigneeId && members.some((m) => m.id === t.assigneeId)
                       ? t.assigneeId
@@ -851,14 +864,34 @@ export default function NewProjectPage() {
             .filter((ph) => ph.name),
         },
       });
-      // Bust the sidebar calendar cache so newly-added tasks appear immediately.
       clearSidebarCalendarCache();
-      clearDraft(); // saved for real now — drop the local draft
+      clearDraft();
       router.push(`/projects/${p.id}`);
     } catch (e: any) {
-      setErr(e.message || 'Something went wrong.');
+      setErr(e.message || 'Create failed.');
       setLoading(false);
     }
+  }
+
+  /** Fast path: name + team (or personal) → create now, blank board. */
+  function createNow() {
+    if (!form.name.trim()) {
+      setErr('Name is required.');
+      return;
+    }
+    if (isLead && !personal && !form.teamId) {
+      setErr('Pick a team.');
+      return;
+    }
+    // Use blank lifecycle so we don't force template stages on a fast create.
+    if (form.lifecycle !== 'generic' || customTemplateId || sourceProjectId) {
+      setCustomTemplateId(null);
+      setSourceProjectId(null);
+      setTemplateInfo(null);
+      setForm((f) => ({ ...f, lifecycle: 'generic' }));
+      setPhases([]);
+    }
+    void submit({ skipStages: true });
   }
 
   // The label shown in step 2 header
@@ -923,14 +956,13 @@ export default function NewProjectPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6 pt-1">
+      <div className="flex items-center gap-3 mb-5 pt-1">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">New project</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight dark:text-white">New project</h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Step {step} of 2 — {step === 1 ? 'Project details' : 'Stages & workflow'}
+            {step === 1 ? 'Name · team · create' : 'Stages (optional)'}
           </p>
         </div>
-        {/* Step pills */}
         <div className="ml-auto flex items-center gap-2">
           {[1, 2].map((s) => (
             <button
@@ -943,146 +975,255 @@ export default function NewProjectPage() {
                 cursor: step > s ? 'pointer' : 'default',
               }}
             >
-              {step > s ? '✓' : s} {s === 1 ? 'Details' : 'Stages'}
+              {step > s ? '✓' : s} {s === 1 ? 'Basics' : 'Stages'}
             </button>
           ))}
         </div>
       </div>
 
-      {/* ── Step 1: Project details ─────────────────────────────────────── */}
+      {/* ── Step 1: first-principles create ───────────────────────────────
+          Only decisions that cannot be deferred: name + owner (team/personal).
+          Template optional. Dates/priority/description under More. */}
       {step === 1 && (
         <div className="space-y-4">
-          {/* Name */}
           <div className="card p-5 space-y-4">
             <div>
-              <label className="label">Project name *</label>
+              <label className="label">Name *</label>
               <input
-                className="input"
+                className="input text-base"
                 placeholder="e.g. CSV Validation Q2 2026"
                 value={form.name}
                 onChange={(e) => up('name', e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && form.name.trim()) {
+                    e.preventDefault();
+                    createNow();
+                  }
+                }}
                 autoFocus
               />
             </div>
+
+            {/* Where: team vs personal */}
             <div>
-              <label className="label">
-                Description <span className="normal-case font-normal text-slate-300">(optional)</span>
-              </label>
-              <textarea
-                className="textarea"
-                rows={2}
-                placeholder="What's this project about?"
-                value={form.description}
-                onChange={(e) => up('description', e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">Priority</label>
-              <Select
-                value={form.priority}
-                onChange={(v) => up('priority', v)}
-                ariaLabel="Priority"
-                options={[
-                  { value: 'low', label: 'Low' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'high', label: 'High' },
-                  { value: 'critical', label: 'Critical' },
-                ]}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Start date</label>
-                <DatePicker
-                  block
-                  placeholder="Pick a start date"
-                  value={form.startDate || null}
-                  onChange={(v) => up('startDate', v || '')}
-                />
-              </div>
-              <div>
-                <label className="label">Due date</label>
-                <DatePicker
-                  block
-                  placeholder="Pick a due date"
-                  value={form.dueDate || null}
-                  onChange={(v) => up('dueDate', v || '')}
-                  minDate={form.startDate ? new Date(form.startDate) : undefined}
-                />
-              </div>
-            </div>
-            {/* Personal toggle — flips the project between a private personal
-                project (no team) and a shared team project. The privacy of
-                personal projects is intentionally not advertised in the copy
-                here — it's a property of the data model, not a sales pitch. */}
-            <div className="rounded-lg border border-slate-200 px-3 py-2.5 flex items-start gap-3">
-              <button
-                type="button"
-                role="switch"
-                aria-checked={personal}
-                onClick={() => {
-                  const next = !personal;
-                  setPersonal(next);
-                  // Switching to personal: drop any GxP / General lifecycle —
-                  // they aren't offered in the personal view, so default to a
-                  // blank workflow that the personal templates can replace.
-                  // Switching away: clear any personal_* lifecycle for the
-                  // same reason.
-                  const personalKeys =
-                    LIFECYCLE_GROUPS.find((g) => g.label === 'Personal')?.options.map((o) => o.value) ?? [];
-                  if (next) {
-                    if (!personalKeys.includes(form.lifecycle) && form.lifecycle !== 'generic') {
+              <label className="label">Where</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isLead) return;
+                    setPersonal(false);
+                    const personalKeys =
+                      LIFECYCLE_GROUPS.find((g) => g.label === 'Personal')?.options.map((o) => o.value) ??
+                      [];
+                    if (personalKeys.includes(form.lifecycle)) up('lifecycle', 'generic');
+                  }}
+                  disabled={!isLead}
+                  className={`text-left rounded-xl border px-3.5 py-3 transition-all ${
+                    !personal
+                      ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-500/10 ring-1 ring-blue-200'
+                      : 'border-slate-200 dark:border-white/10 hover:border-slate-300'
+                  } ${!isLead ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="text-sm font-bold text-slate-800 dark:text-white/85">Team</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Shared board</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPersonal(true);
+                    if (form.lifecycle !== 'generic' && !form.lifecycle.startsWith('personal_')) {
                       up('lifecycle', 'generic');
                     }
-                  } else if (personalKeys.includes(form.lifecycle)) {
-                    up('lifecycle', 'generic');
-                  }
-                }}
-                className={`mt-0.5 relative w-9 h-5 rounded-full shrink-0 transition-colors cursor-pointer ${
-                  personal ? 'bg-blue-600' : 'bg-slate-300'
-                }`}
-              >
-                <span
-                  className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${personal ? 'left-4' : 'left-0.5'}`}
-                />
-              </button>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-                  Personal project
-                  {!isLead && <Lock size={11} className="text-slate-400" />}
-                </div>
-                <div className="text-xs text-slate-400 mt-0.5">
-                  {isLead
-                    ? 'Personal to-do list — no team attached.'
-                    : personal
-                      ? 'No team attached. Toggle off to browse the shared workflow templates.'
-                      : "Preview mode — contributors can only create personal projects, so we'll switch back on submit."}
-                </div>
+                  }}
+                  className={`text-left rounded-xl border px-3.5 py-3 transition-all ${
+                    personal
+                      ? 'border-blue-500 bg-blue-50/80 dark:bg-blue-500/10 ring-1 ring-blue-200'
+                      : 'border-slate-200 dark:border-white/10 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="text-sm font-bold text-slate-800 dark:text-white/85 flex items-center gap-1.5">
+                    Personal {!isLead && <Lock size={11} className="text-slate-400" />}
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">Only you</div>
+                </button>
               </div>
             </div>
 
             {!personal && teams.length > 0 && (
               <div>
-                <label className="label">Team</label>
+                <label className="label">Team *</label>
                 <Select
                   value={form.teamId}
                   onChange={(v) => up('teamId', v)}
                   ariaLabel="Team"
-                  placeholder="— Unassigned —"
+                  placeholder="Select team…"
                   options={[
-                    { value: '', label: '— Unassigned —' },
+                    { value: '', label: 'Select team…' },
                     ...teams.map((t) => ({ value: t.id, label: t.name })),
                   ]}
                 />
               </div>
             )}
+            {!personal && teams.length === 0 && isLead && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                No teams yet. Create a team first, or use Personal.
+              </p>
+            )}
+
+            {/* Structure: blank default, few quick templates */}
+            <div>
+              <label className="label">Structure</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(personal
+                  ? [
+                      { value: 'generic', label: 'Blank', hint: 'Empty board' },
+                      { value: 'personal_goal', label: 'Goal', hint: 'Plan → do' },
+                      { value: 'personal_side_project', label: 'Side project', hint: 'Build → ship' },
+                      { value: 'personal_habit', label: 'Habit', hint: '30-day build' },
+                    ]
+                  : [
+                      { value: 'generic', label: 'Blank', hint: 'Empty board' },
+                      { value: 'change_control', label: 'Change control', hint: 'Planned change' },
+                      { value: 'csv', label: 'CSV / GAMP', hint: 'Validation' },
+                      { value: 'capa', label: 'CAPA', hint: 'Corrective' },
+                    ]
+                ).map((opt) => {
+                  const active =
+                    !customTemplateId && !sourceProjectId && form.lifecycle === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => selectBuiltInLifecycle(opt.value)}
+                      className={`text-left px-3 py-2.5 rounded-xl text-xs border transition-all ${
+                        active
+                          ? 'bg-blue-50 dark:bg-blue-500/15 border-blue-500 text-blue-800 dark:text-blue-200'
+                          : 'bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/70 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`font-bold ${active ? '' : ''}`}>{opt.label}</div>
+                      <div className={`text-[10px] mt-0.5 ${active ? 'text-blue-600/80' : 'text-slate-400'}`}>
+                        {opt.hint}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {(customTemplateId || sourceProjectId) && (
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Using {lifecycleLabel}.{' '}
+                  <button
+                    type="button"
+                    className="font-semibold text-blue-600"
+                    onClick={() => selectBuiltInLifecycle('generic')}
+                  >
+                    Clear
+                  </button>
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Lifecycle template picker */}
-          <div className="card p-5">
+          {/* Primary actions — create is the default path */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <button
+              type="button"
+              onClick={createNow}
+              disabled={loading}
+              className="btn-primary justify-center"
+            >
+              {loading ? 'Creating…' : 'Create project'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!form.name.trim()) {
+                  setErr('Name is required.');
+                  return;
+                }
+                if (isLead && !personal && !form.teamId) {
+                  setErr('Pick a team.');
+                  return;
+                }
+                setErr('');
+                setStep(2);
+              }}
+              className="btn-secondary justify-center"
+            >
+              Edit stages →
+            </button>
+            <button type="button" className="btn-secondary justify-center sm:ml-0" onClick={() => router.back()}>
+              Cancel
+            </button>
+            {err && <span className="text-sm text-red-600 sm:ml-1">{err}</span>}
+          </div>
+
+          {/* More: description, dates, full templates, clone */}
+          <div className="card overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowMore((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50/80 dark:hover:bg-white/[0.03] transition-colors"
+            >
+              <span className="text-sm font-semibold text-slate-700 dark:text-white/75">More options</span>
+              <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                Description, dates, all templates
+                {showMore ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+            </button>
+            {showMore && (
+              <div className="px-4 pb-5 space-y-4 border-t border-slate-100 dark:border-white/[0.06] pt-4">
+                <div>
+                  <label className="label">Description</label>
+                  <textarea
+                    className="textarea"
+                    rows={2}
+                    placeholder="Optional"
+                    value={form.description}
+                    onChange={(e) => up('description', e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="label">Priority</label>
+                    <Select
+                      value={form.priority}
+                      onChange={(v) => up('priority', v)}
+                      ariaLabel="Priority"
+                      options={[
+                        { value: 'low', label: 'Low' },
+                        { value: 'medium', label: 'Medium' },
+                        { value: 'high', label: 'High' },
+                        { value: 'critical', label: 'Critical' },
+                      ]}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Start</label>
+                    <DatePicker
+                      block
+                      placeholder="Optional"
+                      value={form.startDate || null}
+                      onChange={(v) => up('startDate', v || '')}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Due</label>
+                    <DatePicker
+                      block
+                      placeholder="Optional"
+                      value={form.dueDate || null}
+                      onChange={(v) => up('dueDate', v || '')}
+                      minDate={form.startDate ? new Date(form.startDate) : undefined}
+                    />
+                  </div>
+                </div>
+
+          {/* Full workflow template picker */}
+          <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="label mb-0">Workflow template</label>
-              {/* Save-as-template button — shown when a non-generic lifecycle is selected */}
+              <label className="label mb-0">All templates</label>
               {(hasBuiltInLifecycle || customTemplateId || sourceProjectId) && phases.length > 0 && (
                 <button
                   type="button"
@@ -1094,13 +1235,7 @@ export default function NewProjectPage() {
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-400 mb-3 mt-0.5">
-              {personal
-                ? 'Pick a ready-made template to jump-start your personal project — or start blank.'
-                : isLead
-                  ? 'Pick a template to get predefined stages and tasks — you can edit everything in the next step.'
-                  : 'Browse every template available — the shared workflows are listed too so you can see how shared projects are structured. Shared projects can only be created by a lead.'}
-            </p>
+            <p className="text-xs text-slate-400 mb-3 mt-0.5">Optional. You can edit stages after create.</p>
             <div className="space-y-4">
               {/* When the Personal toggle is on, only show the Personal group
                   plus a single "Custom / Blank" starter — the QA / Life
@@ -1345,7 +1480,7 @@ export default function NewProjectPage() {
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <div className="flex items-baseline justify-between mb-2">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    What you get
+                    Stages
                   </div>
                   <div className="text-[11px] text-slate-400">
                     {templateInfo.phases.length} stage{templateInfo.phases.length === 1 ? '' : 's'} ·{' '}
@@ -1373,7 +1508,7 @@ export default function NewProjectPage() {
               <div className="mt-4 pt-4 border-t border-slate-100">
                 <div className="flex items-baseline justify-between mb-2">
                   <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    What you get
+                    Stages
                   </div>
                   <div className="text-[11px] text-slate-400">
                     {selectedCustomTemplate.phases.length} stage
@@ -1381,9 +1516,6 @@ export default function NewProjectPage() {
                     {selectedCustomTemplate.phases.reduce((n, ph) => n + ph.tasks.length, 0)} tasks
                   </div>
                 </div>
-                {selectedCustomTemplate.description && (
-                  <p className="text-[11px] text-slate-500 mb-2">{selectedCustomTemplate.description}</p>
-                )}
                 <div className="flex flex-wrap gap-1.5">
                   {selectedCustomTemplate.phases.map((ph, i) => (
                     <span
@@ -1399,26 +1531,9 @@ export default function NewProjectPage() {
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => {
-                if (!form.name.trim()) {
-                  setErr('Enter a project name first.');
-                  return;
-                }
-                setErr('');
-                setStep(2);
-              }}
-              className="btn-primary"
-            >
-              Next: Configure stages →
-            </button>
-            <button className="btn-secondary" onClick={() => router.back()}>
-              Cancel
-            </button>
-            {err && <span className="text-sm text-red-600">{err}</span>}
+            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1429,10 +1544,12 @@ export default function NewProjectPage() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-1">
               <div>
-                <h3 className="text-sm font-bold text-slate-800">Stages for "{form.name}"</h3>
+                <h3 className="text-sm font-bold text-slate-800 dark:text-white/85">
+                  Stages · {form.name || 'Project'}
+                </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Based on <span className="font-semibold text-slate-600">{lifecycleLabel}</span> template.
-                  Rename, reorder, add or remove stages and tasks freely.
+                  Template: <span className="font-semibold text-slate-600 dark:text-white/60">{lifecycleLabel}</span>
+                  . Edit freely.
                 </p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
@@ -1498,7 +1615,7 @@ export default function NewProjectPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button onClick={submit} disabled={loading} className="btn-primary">
+            <button onClick={() => submit()} disabled={loading} className="btn-primary">
               {loading ? 'Creating…' : 'Create project'}
             </button>
             <button className="btn-secondary" onClick={() => setStep(1)}>
