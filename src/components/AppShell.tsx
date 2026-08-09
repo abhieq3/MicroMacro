@@ -101,17 +101,17 @@ export interface CurrentUser {
 }
 
 /* ── Dark-mode hook ─────────────────────────────────────────────────
-   The initial value is read from the `theme` cookie that's painted onto
-   <html class="dark"> server-side (see (authed)/layout.tsx). That kills
-   the FOUC: previously we mounted with light, then a useEffect flipped
-   to dark, causing a visible flash + a full re-paint of the shell. */
+   Initial value comes from the `pragati_theme` cookie painted onto
+   <html class="dark"> server-side (root + authed layouts). Must use the
+   same cookie name on write or a refresh always reverts to light. */
 function useDarkMode(initialDark: boolean): [boolean, () => void] {
   const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    // Persist via cookie so the next SSR render starts in the right
-    // mode. 365 d, sameSite=lax so it travels with normal navigation.
-    document.cookie = `theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
+    // Same name the server reads in layout.tsx — 365 d, SameSite=Lax.
+    document.cookie = `pragati_theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
+    // Clear legacy `theme` cookie if present so it can't confuse anything.
+    document.cookie = 'theme=; path=/; max-age=0; SameSite=Lax';
   }, [dark]);
   return [dark, () => setDark((d) => !d)];
 }

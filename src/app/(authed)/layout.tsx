@@ -32,8 +32,10 @@ export default async function AuthedLayout({ children }: { children: React.React
   }
 
   // Classic brand: light default; dark when cookie says so.
-  // Cookie is the only source of truth — no FOUC, no theme thrash.
-  const themeCookie = cookies().get('pragati_theme')?.value;
+  // Prefer pragati_theme; fall back to legacy `theme` so a refresh mid-fix
+  // does not dump users back to light.
+  const themeCookie =
+    cookies().get('pragati_theme')?.value ?? cookies().get('theme')?.value;
   const initialDark = themeCookie === 'dark';
 
   // Persisted sidebar width — clamped server-side so an invalid cookie can't

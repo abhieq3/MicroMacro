@@ -48,7 +48,9 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Classic brand: light office canvas. Dark opt-in.
-  const theme = cookies().get('pragati_theme')?.value;
+  // Prefer pragati_theme; fall back to legacy `theme` (older client write).
+  const theme =
+    cookies().get('pragati_theme')?.value ?? cookies().get('theme')?.value;
   const dark = theme === 'dark';
 
   return (
