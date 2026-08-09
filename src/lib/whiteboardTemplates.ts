@@ -71,10 +71,10 @@ function line(x0: number, y0: number, x1: number, y1: number, color = GUIDE): Bo
 const firstPrinciples: BoardTemplate = {
   id: 'first_principles',
   label: 'First principles',
-  blurb: 'Strip to what’s true, then rebuild the plan.',
-  prompt: 'What are we actually trying to make true?',
+  blurb: 'Jensen: strip to physics, then rebuild. No deck fluff.',
+  prompt: 'What must be true when this is done?',
   build: () => [
-    t(40, 28, 'PROBLEM (one sentence)', { size: 2.0, color: ACCENT }),
+    t(40, 28, 'PROBLEM (one sentence — no jargon)', { size: 2.0, color: ACCENT }),
     box(36, 52, 720, 56),
     t(48, 68, '…', { size: 2.8, color: INK }),
 
@@ -85,15 +85,15 @@ const firstPrinciples: BoardTemplate = {
     t(48, 230, '•', { size: 2.5, color: INK }),
     t(48, 260, '•', { size: 2.5, color: INK }),
 
-    t(400, 130, '2. CONSTRAINTS  (time, people, GxP, cost)', { size: 2.0, color: ACCENT }),
+    t(400, 130, '2. CONSTRAINTS  (time · people · quality · cost)', { size: 2.0, color: ACCENT }),
     box(396, 154, 360, 200),
     t(408, 170, '•', { size: 2.5, color: INK }),
     t(408, 200, '•', { size: 2.5, color: INK }),
     t(408, 230, '•', { size: 2.5, color: INK }),
 
-    t(40, 380, '3. FASTEST PATH FROM TRUTH → OUTCOME', { size: 2.0, color: ACCENT }),
+    t(40, 380, '3. FASTEST PATH  truth → outcome  (own each step)', { size: 2.0, color: ACCENT }),
     box(36, 404, 720, 100),
-    t(48, 420, '1.', { size: 2.5, color: INK }),
+    t(48, 420, '1.  who · by when', { size: 2.5, color: INK }),
     t(48, 450, '2.', { size: 2.5, color: INK }),
     t(48, 480, '3.', { size: 2.5, color: INK }),
   ],

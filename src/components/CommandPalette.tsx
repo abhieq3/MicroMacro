@@ -9,7 +9,6 @@ import {
   UsersRound,
   ShieldCheck,
   NotebookPen,
-  Presentation,
   ScrollText,
   UserCircle,
   Moon,
@@ -21,7 +20,6 @@ import {
   Calendar,
 } from 'lucide-react';
 import { api } from '@/lib/client/api';
-import { WHITEBOARD_ENABLED } from '@/lib/features';
 import { useToast } from './Toast';
 import { PRIORITY_COLORS } from './ui';
 import { parseQuickAdd } from '@/lib/quickAddParse';
@@ -150,9 +148,12 @@ export function CommandPalette({
       { id: 'p-projects', label: 'Projects', icon: FolderKanban, run: go('/projects') },
       { id: 'p-teams', label: 'Teams', icon: Users, run: go('/teams') },
       { id: 'p-myday', label: 'My Day', icon: NotebookPen, run: go('/my-day') },
-      ...(WHITEBOARD_ENABLED
-        ? [{ id: 'p-whiteboard', label: 'Whiteboard', icon: Presentation, run: go('/whiteboard') }]
-        : []),
+      {
+        id: 'p-whiteboard',
+        label: 'Whiteboard (My Day)',
+        icon: NotebookPen,
+        run: go('/my-day?board=1'),
+      },
       { id: 'p-settings', label: 'Profile & activity', icon: UserCircle, run: go('/settings') },
     ];
     if (user.username) {

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
-import { SCRATCHPAD_ENABLED } from '@/lib/features';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { SCRATCHPAD_ENABLED, WHITEBOARD_ENABLED } from '@/lib/features';
 import { api } from '@/lib/client/api';
 import { useIsLead, useCurrentUser } from '@/components/CurrentUserContext';
 import {
@@ -30,6 +32,16 @@ import { formatDate } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import { notifyCalendarChange } from '@/components/SidebarCalendar';
+import { WhiteboardIcon } from '@/components/WhiteboardIcon';
+
+const Whiteboard = dynamic(() => import('@/components/Whiteboard').then((m) => m.Whiteboard), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full min-h-[420px] flex items-center justify-center text-sm text-slate-400">
+      Opening the board…
+    </div>
+  ),
+});
 
 interface Note {
   id: string;
@@ -393,6 +405,97 @@ function NotesPanel({ onSaveWhiteboardRequest }: { onSaveWhiteboardRequest?: () 
   );
 }
 
+/**
+ * Jensen-style thinking board: private, full-screen, scaffold-first.
+ * Hangs bottom-right on My Day so today’s work and deep thinking share a room.
+ */
+function WhiteboardFAB({ autoOpen = false }: { autoOpen?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (autoOpen) setOpen(true);
+  }, [autoOpen]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function close() {
+    setOpen(false);
+    // Drop ?board=1 so refresh doesn't re-open.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('board')) {
+        url.searchParams.delete('board');
+        router.replace(url.pathname + (url.search || ''));
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title="Whiteboard — first principles"
+        aria-label="Open whiteboard"
+        className="fixed bottom-6 right-6 z-40 flex h-14 items-center gap-2.5 rounded-full border border-blue-200/80 bg-white pl-3.5 pr-5 text-blue-700 transition-all hover:-translate-y-0.5 hover:border-blue-300 active:scale-[0.98] dark:border-blue-400/25 dark:bg-[#1c1917] dark:text-blue-300"
+        style={{
+          boxShadow:
+            '0 14px 36px rgba(21,101,192,0.22), 0 4px 12px rgba(15,23,42,0.08)',
+        }}
+      >
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-blue-600 to-emerald-500 text-white shadow-sm">
+          <WhiteboardIcon size={18} className="text-white" filled />
+        </span>
+        <span className="text-[13px] font-bold tracking-tight">Board</span>
+      </button>
+
+      {open && (
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/50 backdrop-blur-[3px]">
+            <div className="flex flex-1 flex-col m-0 sm:m-3 sm:rounded-2xl overflow-hidden bg-[#f8fafc] dark:bg-[#0c0a09] shadow-2xl border border-white/10 min-h-0">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200/80 dark:border-white/[0.07] shrink-0 bg-white dark:bg-[#141210]">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-emerald-500 flex items-center justify-center shadow-sm">
+                  <WhiteboardIcon size={18} className="text-white" filled />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-black text-slate-900 dark:text-white/90 tracking-tight">
+                    Think first
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-white/35 leading-snug">
+                    Name the problem · strip to what’s true · draw the path · private to you
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={close}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-white/[0.06] transition-colors"
+                  aria-label="Close whiteboard"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="flex-1 min-h-0 p-3 sm:p-4">
+                <Whiteboard />
+              </div>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+    </>
+  );
+}
+
 function NotesFAB() {
   const [open, setOpen] = useState(false);
 
@@ -412,7 +515,7 @@ function NotesFAB() {
         onClick={() => setOpen(true)}
         title="Open notes"
         aria-label="Open notes"
-        className="fixed bottom-6 right-6 z-40 grid h-[52px] w-[52px] place-items-center rounded-2xl border border-amber-200 bg-white text-amber-600 transition-all hover:-translate-y-0.5 hover:border-amber-300 active:scale-95 dark:border-amber-500/20 dark:bg-[#262624] dark:text-amber-400"
+        className="fixed bottom-6 right-[5.75rem] z-40 grid h-[52px] w-[52px] place-items-center rounded-2xl border border-amber-200 bg-white text-amber-600 transition-all hover:-translate-y-0.5 hover:border-amber-300 active:scale-95 dark:border-amber-500/20 dark:bg-[#262624] dark:text-amber-400"
         style={{ boxShadow: '0 12px 32px rgba(15,23,42,0.14), 0 2px 8px rgba(15,23,42,0.07)' }}
       >
         <FileText size={22} />
@@ -464,6 +567,15 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
   const me = useCurrentUser();
   const firstName = (me?.name || '').trim().split(/\s+/)[0] || '';
   const dateLabel = useDateLabel();
+  // Deep link /my-day?board=1 opens the thinking board (from /whiteboard redirect, Cmd+K).
+  const [openBoardOnLoad] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return new URLSearchParams(window.location.search).get('board') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const [open, setOpen] = useState<Note[]>(initialData.open);
   const [done, setDone] = useState<Note[]>(initialData.done);
@@ -657,10 +769,10 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
           {open.length === 0 && done.length === 0 && (
             <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] p-8 text-center">
               <div className="text-sm font-bold text-slate-700 dark:text-white/60 mb-1">
-                Capture one thing
+                Capture one thing for today
               </div>
               <div className="text-xs text-slate-400 dark:text-white/25 max-w-xs mx-auto leading-relaxed">
-                Ideas, blockers, follow-ups. Unfinished notes carry over.
+                Or open the board (bottom right) to think it through first — then write the next move here.
               </div>
             </div>
           )}
@@ -824,10 +936,8 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
         </div>
       </div>
 
-      {/* Secondary sticky-notes tool — off for a focused launch (see
-          lib/features); re-enable per-deployment with
-          NEXT_PUBLIC_SCRATCHPAD_ENABLED=1. The whiteboard graduated to its own
-          first-class page at /whiteboard — thinking is not a secondary tool. */}
+      {/* Jensen board: hang bottom-right on My Day. Scratchpad notes optional. */}
+      {WHITEBOARD_ENABLED && <WhiteboardFAB autoOpen={openBoardOnLoad} />}
       {SCRATCHPAD_ENABLED && <NotesFAB />}
 
       {/* Promote modal */}

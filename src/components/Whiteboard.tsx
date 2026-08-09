@@ -654,7 +654,7 @@ export function Whiteboard() {
     >
       <div className="shrink-0 px-3 pt-2.5 pb-1.5 border-b border-slate-100 dark:border-[#2f3336]">
         <label className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30 mb-1">
-          Working on
+          The problem (one sentence)
         </label>
         <input
           type="text"
@@ -664,14 +664,14 @@ export function Whiteboard() {
             setPrompt(e.target.value);
             dirty.current = true;
           }}
-          placeholder="Name the problem in one line — then draw the path."
-          className="w-full bg-transparent text-[14px] font-semibold text-slate-800 dark:text-white/90 placeholder:text-slate-300 dark:placeholder:text-white/20 outline-none border-0 p-0"
+          placeholder="What must be true? Write it. Then draw the path."
+          className="w-full bg-transparent text-[15px] font-bold text-slate-900 dark:text-white/90 placeholder:text-slate-300 dark:placeholder:text-white/20 outline-none border-0 p-0"
         />
       </div>
 
       <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-[#2f3336] overflow-x-auto">
         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/25 shrink-0 mr-0.5">
-          Start from
+          Scaffold
         </span>
         {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
           <button
@@ -885,12 +885,15 @@ export function Whiteboard() {
         {loaded && visibleStrokes.length === 0 && !editingText && (
           <div className="absolute inset-0 flex items-center justify-center p-4">
             <div className="text-center max-w-lg w-full">
-              <Pen size={22} className="mx-auto mb-2 text-slate-300 dark:text-white/25" />
-              <div className="text-sm font-bold text-slate-700 dark:text-white/80">
-                Think on the board — not in a deck
+              <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white shadow-md">
+                <Pen size={20} />
               </div>
-              <p className="text-[12px] text-slate-400 dark:text-white/35 mt-1.5 leading-relaxed max-w-sm mx-auto">
-                Pick a scaffold, or press T and click the board — type with the marker. Private — wipe when done.
+              <div className="text-[15px] font-black text-slate-800 dark:text-white/90 tracking-tight">
+                First principles. Then the path.
+              </div>
+              <p className="text-[12.5px] text-slate-500 dark:text-white/40 mt-1.5 leading-relaxed max-w-sm mx-auto">
+                Jensen rule: if you can’t put it on a whiteboard, you don’t understand it yet.
+                Name what’s true, kill fluff, own the next move. Private — wipe clean when done.
               </p>
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pointer-events-auto">
                 {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
@@ -898,7 +901,7 @@ export function Whiteboard() {
                     key={tpl.id}
                     type="button"
                     onClick={() => applyTemplate(tpl.id)}
-                    className="rounded-xl border border-slate-200 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] px-3 py-2.5 hover:border-blue-300 dark:hover:border-blue-400/40 transition-colors"
+                    className="rounded-xl border border-slate-200 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] px-3 py-2.5 hover:border-blue-400 hover:shadow-sm dark:hover:border-blue-400/40 transition-all text-left"
                   >
                     <div className="text-[12px] font-bold text-slate-800 dark:text-white/85">{tpl.label}</div>
                     <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 leading-snug">
@@ -908,7 +911,7 @@ export function Whiteboard() {
                 ))}
               </div>
               <p className="mt-3 text-[10px] text-slate-300 dark:text-white/20">
-                Click to write · T text · V pen · E eraser · ⌘Z undo
+                T text · V pen · E eraser · ⌘Z undo · private to you
               </p>
             </div>
           </div>

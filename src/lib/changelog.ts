@@ -31,6 +31,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Whiteboard on My Day (Jensen board FAB)',
+    tags: ['improvement', 'feature'],
+    highlight: true,
+    body: [
+      'Removed Whiteboard from the sidebar. It now hangs bottom-right on My Day as a full-screen thinking board — first principles scaffolds, problem line, private wipe-clean.',
+      'Deep links /whiteboard and Cmd+K “Whiteboard” open My Day with the board ready. Empty state quotes Jensen: if you can’t put it on a whiteboard, you don’t understand it yet.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Remove home “Do this next” card',
     tags: ['fix'],
     highlight: true,

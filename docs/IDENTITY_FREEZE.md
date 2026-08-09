@@ -12,7 +12,7 @@
 | Login | Aurora brand panel + white form |
 | Home layout | Two-column Projects · Due with real cards |
 | Login voice | Steve Jobs only |
-| Personal tools | My Day + Whiteboard |
+| Personal tools | My Day + board FAB (not a sidebar item) |
 
 ## Rejected
 

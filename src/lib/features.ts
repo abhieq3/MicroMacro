@@ -5,10 +5,9 @@
  *
  *   NEXT_PUBLIC_FOCUS_MODE=1
  *     Core only: Dashboard · Projects · Teams · My Day · admin.
- *     (Whiteboard stays available — thinking is core, not theater.)
  *
  * Optional surfaces:
- *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0  — hide private sketch board
+ *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0  — hide My Day board FAB
  *   NEXT_PUBLIC_WORKBENCH_MODULES=0
  *   NEXT_PUBLIC_SCRATCHPAD_ENABLED=1
  */
@@ -27,9 +26,8 @@ function envOff(name: string): boolean {
 export const FOCUS_MODE = envOn('NEXT_PUBLIC_FOCUS_MODE');
 
 /**
- * Private whiteboard (personal sketch only — not team records).
+ * Private whiteboard FAB on My Day (Jensen thinking board — not a nav item).
  * On by default. Opt out with NEXT_PUBLIC_WHITEBOARD_ENABLED=0.
- * Stays on in focus mode: clear thinking is not a secondary module.
  */
 export const WHITEBOARD_ENABLED = !envOff('NEXT_PUBLIC_WHITEBOARD_ENABLED');
 

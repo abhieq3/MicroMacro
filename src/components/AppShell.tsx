@@ -10,7 +10,6 @@ import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
-import { WHITEBOARD_ENABLED } from '@/lib/features';
 import { PwaProvider } from './PwaProvider';
 import { PwaInstallMenuItem } from './PwaInstall';
 import { NavigationProgress } from './NavigationProgress';
@@ -59,7 +58,6 @@ import {
   UsersRound,
   ShieldCheck,
   NotebookPen,
-  Presentation,
   LogOut,
   Menu,
   X,
@@ -225,7 +223,6 @@ export default function AppShell({
       '/teams',
       '/my-day',
       '/settings',
-      '/whiteboard',
       '/people',
       '/audit',
       '/admin',
@@ -339,7 +336,7 @@ export default function AppShell({
   }, [router]);
 
   // ── Global keyboard shortcuts ───────────────────────────────────────────────
-  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, G→W: Whiteboard,
+  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day,
   // ?: shortcuts modal
   // Skipped when focus is on a text input / textarea / contenteditable.
   useEffect(() => {
@@ -388,9 +385,6 @@ export default function AppShell({
           T: '/teams',
           m: '/my-day',
           M: '/my-day',
-          ...(WHITEBOARD_ENABLED
-            ? { w: '/whiteboard', W: '/whiteboard' }
-            : {}),
         };
         if (dest[e.key]) {
           e.preventDefault();
@@ -419,19 +413,8 @@ export default function AppShell({
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
   // user management (create/reset/unlock/delete/promote accounts) is an
   // admin-only surface, appended via adminExtra below.
-  // My Day and Whiteboard are NOT in the main nav list — they render pinned
-  // just above the user footer as the viewer's *personal* surfaces, kept
-  // together and always reachable without scrolling. Whiteboard sits beside
-  // My Day because they're the same kind of space: yours alone, for thinking
-  // and capturing before work becomes tracked records. (The three record
-  // surfaces — Dashboard/Projects/Teams — are the shared org view above.)
-  const whiteboardItem: NavItem = {
-    href: '/whiteboard',
-    label: 'Whiteboard',
-    icon: Presentation,
-    iconColor: '#0E7490',
-    iconBg: '#E0F7FA',
-  };
+  // My Day is pinned above the footer as the personal surface. Whiteboard
+  // lives as a FAB on My Day (Jensen: think on the board before status).
   const leadNav: NavItem[] = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
@@ -750,13 +733,12 @@ export default function AppShell({
             those stay pinned closest to the footer. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* Personal surfaces — My Day (+ Whiteboard when enabled), pinned just
-            above the footer. Both are "yours alone": capture and thinking. */}
+        {/* Personal: My Day. Whiteboard opens from a FAB on that page. */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
           style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}
         >
-          {[myDayItem, ...(WHITEBOARD_ENABLED ? [whiteboardItem] : [])].map((n) => {
+          {[myDayItem].map((n) => {
             const Icon = n.icon;
             const active = isActive(n.href);
             return (
@@ -1223,17 +1205,6 @@ export default function AppShell({
                 >
                   <UserCircle size={18} className="text-slate-400" /> Profile &amp; settings
                 </Link>
-                {/* Whiteboard doesn't fit the 5-tab bottom bar, so the sheet is
-                its mobile entry point — the canvas itself is touch-native. */}
-                {WHITEBOARD_ENABLED && (
-                  <Link
-                    href="/whiteboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
-                  >
-                    <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
-                  </Link>
-                )}
                 {/* Admin-only links — these never fit in the 4-tab bottom nav, so
                 this is the only mobile entry point for Logs (and Platform for
                 master-admins). */}
@@ -1400,9 +1371,6 @@ export default function AppShell({
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
                     { keys: ['G', 'M'], label: 'My Day' },
-                    ...(WHITEBOARD_ENABLED
-                      ? [{ keys: ['G', 'W'], label: 'Whiteboard' }]
-                      : []),
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (

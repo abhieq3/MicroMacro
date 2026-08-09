@@ -1,13 +1,9 @@
-import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { getCurrentUserFromCookie } from '@/lib/auth';
-import WhiteboardPageClient from './WhiteboardPageClient';
 
-export const metadata: Metadata = { title: 'Whiteboard' };
-
-/** Private sketch board for the signed-in user. */
-export default async function WhiteboardPage() {
-  const jwt = await getCurrentUserFromCookie();
-  if (!jwt) redirect('/login');
-  return <WhiteboardPageClient />;
+/**
+ * Whiteboard lives on My Day as a floating action (Jensen: think on the board
+ * next to today’s work — not as a separate nav destination).
+ */
+export default function WhiteboardPage() {
+  redirect('/my-day?board=1');
 }
