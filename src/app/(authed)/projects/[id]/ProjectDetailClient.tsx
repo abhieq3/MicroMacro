@@ -44,7 +44,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
-import { ForecastChip } from '@/components/ForecastChip';
+
 import { chimeIfEnabled, playDropTick } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
@@ -2008,9 +2008,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             )}
             {!project.isPersonal && !project.isSystem && <LifecycleTag lifecycle={project.lifecycle} />}
             {!project.isSystem && <PriorityTag priority={project.priority} />}
-            {!project.isPersonal && !project.isSystem && !project.archived && (
-              <ForecastChip projectId={project.id} />
-            )}
+
           </div>
           {/* Description — owner can hover to reveal edit affordance, click to edit inline */}
           {editingDesc ? (

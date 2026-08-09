@@ -11,7 +11,6 @@ import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
 import { PwaProvider } from './PwaProvider';
-import { PwaInstallMenuItem } from './PwaInstall';
 import { NavigationProgress } from './NavigationProgress';
 import { PrefetchOnHover } from './PrefetchOnHover';
 
@@ -543,8 +542,6 @@ export default function AppShell({
           </Link>
         );
       })}
-
-      <PwaInstallMenuItem dark={dark} onDone={() => setAccountMenuOpen(false)} />
 
       <div className="my-1.5 border-t" style={{ borderColor: dark ? 'rgba(255,255,255,0.08)' : '#eef2f7' }} />
       <button

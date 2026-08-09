@@ -31,6 +31,15 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-09',
+    title: 'Remove Foresight, Install app, and calendar subscribe from profile',
+    tags: ['improvement'],
+    highlight: true,
+    body: [
+      'Foresight is gone across the product (My Day strip, profile/settings panel, team tab, project forecast chip, digest pace lines). Profile settings no longer offer Install app or Pragati calendar subscribe — keep the workspace focused on work and the daily brief.',
+    ],
+  },
+  {
+    date: '2026-08-09',
     title: 'Whiteboard on My Day (Jensen board FAB)',
     tags: ['improvement', 'feature'],
     highlight: true,

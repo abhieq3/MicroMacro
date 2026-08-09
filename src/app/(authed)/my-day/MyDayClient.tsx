@@ -723,7 +723,6 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
         {/* ── Left: assigned reality first, then personal capture ─── */}
         <div className="min-w-0">
           <TodayFromProjects />
-          <MyDayForesight />
 
           {/* ── Capture bar ────────────────────────────────────────── */}
           <form onSubmit={add} className="mb-4">
@@ -1191,65 +1190,6 @@ function PromoteModal({
         </div>
       </div>
     </ModalPortal>
-  );
-}
-
-/* ── Delivery Foresight strip ─────────────────────────────────────────────────
-   The forward-looking counterpart to the task list: one computed line over the
-   heavy engine (lib/ai/deliveryForesight), and — when something is trending to
-   miss — a single "start here" pointer at the task most likely to slip. This is
-   "optimal order" in its minimal form: not a re-sorted list, just the one move
-   that matters today. Silent until there's enough history to forecast. */
-function MyDayForesight() {
-  const [f, setF] = useState<any | null>(null);
-  useEffect(() => {
-    api('/me/foresight')
-      .then((d: any) => setF(d))
-      .catch(() => setF(null));
-  }, []);
-
-  if (!f || !f.hasSignal) return null;
-  // Nothing forward-looking to add on a clear plate — the list speaks for itself.
-  if (f.status === 'clear' && !f.topRisk) return null;
-
-  const clearLabel = f.clearDateP80
-    ? new Date(f.clearDateP80).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : null;
-  const accent =
-    f.status === 'at_risk' || f.status === 'overloaded'
-      ? '#d97706'
-      : f.status === 'cooling'
-        ? '#64748b'
-        : '#7c3aed';
-
-  return (
-    <div
-      className="mt-5 rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] px-3.5 py-3"
-      style={{ borderLeft: `3px solid ${accent}` }}
-    >
-      <div className="flex items-center gap-1.5 mb-1">
-        <Sparkles size={12} style={{ color: accent }} className="shrink-0" />
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent }}>
-          Foresight
-        </span>
-        {clearLabel && f.openTasks > 0 && (
-          <span className="ml-auto text-[10px] font-medium text-slate-400 dark:text-white/30">
-            plate clears ~{clearLabel}
-          </span>
-        )}
-      </div>
-      <p className="text-[12.5px] text-slate-700 dark:text-white/75 leading-snug">{f.headline}</p>
-      {f.topRisk && (
-        <Link
-          href={`/tasks/${f.topRisk.id}`}
-          className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/[0.1] border border-amber-200/70 dark:border-amber-400/20 px-2.5 py-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300 transition hover:bg-amber-100 dark:hover:bg-amber-500/[0.16]"
-        >
-          <Zap size={12} strokeWidth={2.5} className="shrink-0" />
-          <span className="truncate">Start here: {f.topRisk.title}</span>
-          <ArrowRight size={12} className="shrink-0" />
-        </Link>
-      )}
-    </div>
   );
 }
 

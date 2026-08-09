@@ -660,10 +660,10 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
         teamOverdueCount > 0 ||
         leadershipBrief.team.signoffsPending > 0)) ||
     (leadershipBrief?.workspace && leadershipBrief.workspace.overdueTotal > 0);
-  const foresightHtml =
-    foresightLine && hasPressure
-      ? `<p style="margin:0 0 16px;font-size:12.5px;color:#64748b;line-height:1.5;"><strong style="color:#475569;">Pace —</strong> ${escapeHtml(foresightLine.replace(/^Foresight:\s*/i, ''))}</p>`
-      : '';
+  // Foresight UI removed product-wide — never inject pace lines into email.
+  void foresightLine;
+  void hasPressure;
+  const foresightHtml = '';
 
   // Lead/admin: team first, then YOU. IC: YOU first (no leadership block).
   const bodyCore =
@@ -723,9 +723,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   } else {
     lines.push('YOU — ALL CLEAR', '  Nothing overdue or due today.', '');
   }
-  if (foresightLine && hasPressure) {
-    lines.push('PACE', `  ${foresightLine.replace(/^Foresight:\s*/i, '')}`, '');
-  }
+
   const textSection = (heading: string, items: DigestTask[]) => {
     if (!items.length) return;
     lines.push(heading.toUpperCase());
@@ -952,61 +950,8 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
   // the multi-tenant path will resolve the tenant's stored niche here.
   const dailyInsight = pickInsight(resolveIndustry(), 0, now);
 
-  // ── Delivery Foresight ──────────────────────────────────────────────────
-  // One forward-looking, computed line per recipient (lib/ai/
-  // deliveryForesight) — the predictive counterpart to the task list. Fully
-  // self-contained and best-effort: two batched queries for the whole run
-  // (each recipient's recent completed history + their open plate), the shared
-  // cached prior, then the pure deterministic engine. A failure here — or
-  // simply too little history to forecast — must never block the brief.
+  // Delivery Foresight removed from product surfaces and digests.
   const foresightByUser = new Map<string, string>();
-  try {
-    const { computeForesight, getWorkspacePrior, seedFromId } = await import('@/lib/ai/deliveryForesight');
-    const prior = await getWorkspacePrior(now);
-    const histSince = new Date(now.getTime() - 180 * DAY_MS);
-    const [historyRows, foreOpenRows] = await Promise.all([
-      Task.find({ assigneeId: { $in: ids }, status: 'done', completedAt: { $gte: histSince } })
-        .select('assigneeId createdAt completedAt dueDate ccTcd')
-        .limit(15000)
-        .lean(),
-      Task.find({ assigneeId: { $in: ids }, status: { $ne: 'done' } })
-        .select('assigneeId title status priority dueDate ccTcd')
-        .limit(8000)
-        .lean(),
-    ]);
-    const histByUser = new Map<string, any[]>();
-    for (const t of historyRows as any[]) {
-      const k = String(t.assigneeId);
-      (histByUser.get(k) || histByUser.set(k, []).get(k)!).push(t);
-    }
-    const openByUser = new Map<string, any[]>();
-    for (const t of foreOpenRows as any[]) {
-      const k = String(t.assigneeId);
-      (openByUser.get(k) || openByUser.set(k, []).get(k)!).push(t);
-    }
-    for (const r of recipients) {
-      const uid = String(r.user._id);
-      const f = computeForesight({
-        completed: histByUser.get(uid) || [],
-        open: (openByUser.get(uid) || []).map((t) => ({
-          id: String(t._id),
-          title: t.title,
-          status: t.status,
-          priority: t.priority,
-          dueDate: t.dueDate,
-          ccTcd: t.ccTcd,
-        })),
-        prior: prior.cycle,
-        gapPrior: prior.gap,
-        now,
-        trials: 1200,
-        seed: seedFromId(uid),
-      });
-      if (f.digestLine) foresightByUser.set(uid, f.digestLine);
-    }
-  } catch {
-    // best-effort — the brief still sends without the foresight line.
-  }
 
   for (const r of recipients) {
     const uid = String(r.user._id);

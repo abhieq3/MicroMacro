@@ -29,11 +29,6 @@ const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m
   ssr: false,
   loading: () => <div className="h-40 skeleton rounded-xl" />,
 });
-// Predictive engine UI — only mounts when the Foresight tab is open.
-const TeamForesight = dynamic(() => import('@/components/TeamForesight').then((m) => m.TeamForesight), {
-  ssr: false,
-  loading: () => <div className="h-40 skeleton rounded-xl" />,
-});
 // Opt-in team modules — loaded only when the team has them enabled and the
 // viewer opens the tab, so they cost nothing for teams that don't use them.
 const QmsPanel = dynamic(() => import('./QmsPanel').then((m) => m.QmsPanel), {
@@ -184,9 +179,7 @@ export default function TeamDetailPage() {
   // bars), so they're merged into one Projects overview (team-wide summary +
   // per-project rows). "Work" answers the lead's daily question — who is doing
   // what — by grouping tasks under each person; an IC sees only their own.
-  // "Foresight" (lead/admin only) sits between the two — the predictive capacity
-  // read, on demand rather than taking up permanent vertical space. Everyone
-  // opens on Work — unless deep-linked via ?view= (e.g. from a Recurring project).
+  // Everyone opens on Work — unless deep-linked via ?view= (e.g. from a Recurring project).
   const searchParams = useSearchParams();
   const viewParam = searchParams?.get('view');
   const initialView = (
@@ -194,13 +187,12 @@ export default function TeamDetailPage() {
     viewParam === 'projects' ||
     viewParam === 'qms' ||
     viewParam === 'tickets' ||
-    viewParam === 'foresight' ||
-    viewParam === 'work'
+        viewParam === 'work'
       ? viewParam
       : 'work'
-  ) as 'work' | 'foresight' | 'projects' | 'qms' | 'tickets' | 'recurring';
+  ) as 'work' | 'projects' | 'qms' | 'tickets' | 'recurring';
   const [view, setView] = useState<
-    'work' | 'foresight' | 'projects' | 'qms' | 'tickets' | 'recurring'
+    'work' | 'projects' | 'qms' | 'tickets' | 'recurring'
   >(initialView);
 
   async function load() {
@@ -681,9 +673,6 @@ export default function TeamDetailPage() {
                 ...(WORKBENCH_MODULES_ENABLED && team.modules?.recurring?.enabled
                   ? [['recurring', 'Recurring']]
                   : []),
-                // Foresight is forward-looking — kept last so the team reads
-                // current work first, then the outlook.
-                ...(isLead ? [['foresight', 'Foresight']] : []),
               ] as [string, string][]
             ).map(([k, l]) => (
               <button
@@ -770,8 +759,6 @@ export default function TeamDetailPage() {
               </Card>
             ))}
 
-          {/* ── Foresight — predictive capacity outlook (lead/admin only) ──── */}
-          {view === 'foresight' && isLead && <TeamForesight teamId={id} />}
 
           {/* ── QMS — quality tracking (CSV Activity), opt-in per team ──────── */}
           {WORKBENCH_MODULES_ENABLED && view === 'qms' && team.modules?.qms?.enabled && (
