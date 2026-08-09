@@ -14,7 +14,7 @@ import {
 } from '@/components/ui';
 import { DatePicker } from '@/components/DatePicker';
 import { UserAvatar } from '@/components/AvatarRegistry';
-import { useCurrentUser, useIsLead } from '@/components/CurrentUserContext';
+import { useIsLead } from '@/components/CurrentUserContext';
 import dynamic from 'next/dynamic';
 import {
   AlertTriangle,
@@ -34,9 +34,9 @@ const ActivityGraph = dynamic(
   () => import('@/components/ActivityGraph').then((m) => m.ActivityGraph),
   { ssr: false, loading: () => <div className="h-40 rounded-xl bg-slate-50 dark:bg-white/[0.04] animate-pulse" /> },
 );
-function warmActivityGraph(userId: string | undefined, cacheUserId?: string) {
+function warmActivityGraph(userId: string | undefined) {
   void import('@/components/ActivityGraph').then((m) =>
-    m.preloadActivityGraphData({ userId, cacheUserId }),
+    m.preloadActivityGraphData({ userId }),
   );
 }
 // Lazy — the bird's-eye view is a heavy SVG layout component and most
@@ -2045,7 +2045,6 @@ function ContributorRow({
   onViewActivity?: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const currentUser = useCurrentUser();
 
   // Overdue first, then in_progress / blocked / review, then due date.
   const STATUS_ORDER: Record<string, number> = {
@@ -2081,11 +2080,11 @@ function ContributorRow({
               {onViewActivity && (
                 <button
                   type="button"
-                  onMouseEnter={() => warmActivityGraph(person.id, currentUser?.id)}
-                  onFocus={() => warmActivityGraph(person.id, currentUser?.id)}
+                  onMouseEnter={() => warmActivityGraph(person.id)}
+                  onFocus={() => warmActivityGraph(person.id)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    warmActivityGraph(person.id, currentUser?.id);
+                    warmActivityGraph(person.id);
                     onViewActivity();
                   }}
                   title={`View ${person.name}'s activity`}
