@@ -110,9 +110,11 @@ function useDarkMode(initialDark: boolean): [boolean, () => void] {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
     // Same name the server reads in layout.tsx — 365 d, SameSite=Lax.
-    document.cookie = `pragati_theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
+    // Secure when served over HTTPS so session theme can't leak on plain HTTP.
+    const secure = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `pragati_theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax${secure}`;
     // Clear legacy `theme` cookie if present so it can't confuse anything.
-    document.cookie = 'theme=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = `theme=; path=/; max-age=0; SameSite=Lax${secure}`;
   }, [dark]);
   return [dark, () => setDark((d) => !d)];
 }
@@ -223,7 +225,7 @@ export default function AppShell({
     const onFlushed = () => setOfflineQueued(queueLength());
     window.addEventListener('pragati:offline-queued', onQueued);
     window.addEventListener('pragati:offline-flushed', onFlushed);
-    const stop = installOnlineFlush((path, opts) => api(path, opts));
+    const stop = installOnlineFlush();
     return () => {
       stop();
       window.removeEventListener('pragati:offline-queued', onQueued);
@@ -929,8 +931,9 @@ export default function AppShell({
         </Suspense>
         {offlineQueued > 0 && (
           <div
-            className="fixed top-0 inset-x-0 z-[9990] px-3 py-1.5 text-center text-[11px] font-bold tracking-tight bg-amber-500 text-amber-950 shadow-sm"
+            className="sticky top-0 inset-x-0 z-[9990] px-3 py-1.5 text-center text-[11px] font-bold tracking-tight bg-amber-500 text-amber-950 shadow-sm"
             role="status"
+            data-testid="offline-queue-banner"
           >
             Offline — {offlineQueued} change{offlineQueued === 1 ? '' : 's'} queued. Syncs when you&rsquo;re
             back online.

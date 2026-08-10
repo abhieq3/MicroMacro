@@ -103,7 +103,7 @@ describe('composeHeadline — lead', () => {
         signoffs: 3,
         teamOverdue: 0,
       }),
-      '3 QA sign-offs pending on your team.',
+      '3 approvals pending on your team.',
     );
   });
 });
