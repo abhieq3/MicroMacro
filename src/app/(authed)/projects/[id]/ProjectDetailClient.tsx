@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { BIRDS_EYE_ENABLED } from '@/lib/features';
+import { useBlockerPrompt } from '@/components/BlockerPrompt';
 
 import { chimeIfEnabled, playFanfare, playVictory } from '@/lib/sound';
 import { Celebration, type CelebrationLevel } from '@/components/Celebration';
@@ -649,6 +650,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [savingDue, setSavingDue] = useState(false);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
   const { showToast, ToastEl } = useToast();
+  const { requestBlocker, blockerPromptUI } = useBlockerPrompt();
   const [showBirdEye, setShowBirdEye] = useState(false);
   // Headless bird's-eye export — the Export menu downloads the map (SVG/PNG)
   // directly instead of opening the interactive view.
@@ -1002,16 +1004,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     return false;
   }
 
-  /** Ask for the bottleneck when marking blocked — no anonymous blockers. */
-  function askBlocker(existing?: string | null): string | null {
-    const have = String(existing || '').trim();
-    if (have) return have;
-    if (typeof window === 'undefined') return null;
-    const who = window.prompt('Blocked — who or what is waiting? (person, team, part, decision)');
-    const t = who?.trim().slice(0, 120) || '';
-    return t || null;
-  }
-
   /** Critical path: if this slips, the project end slips. */
   async function toggleCriticalPath(taskId: string, next: boolean) {
     if (!canManage) return;
@@ -1037,7 +1029,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     const wasNotDone = cur?.status !== 'done';
     let pendingWith: string | undefined;
     if (statusChanged && toStatus === 'blocked') {
-      const who = askBlocker(cur?.pendingWith);
+      const who = await requestBlocker(cur?.pendingWith, cur?.title);
       if (!who) {
         showToast('Name the blocker before marking blocked.', 'err');
         load();
@@ -1086,7 +1078,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     const wasNotDone = cur?.status !== 'done';
     let pendingWith: string | undefined;
     if (status === 'blocked' && cur?.status !== 'blocked') {
-      const who = askBlocker(cur?.pendingWith);
+      const who = await requestBlocker(cur?.pendingWith, cur?.title);
       if (!who) {
         showToast('Name the blocker before marking blocked.', 'err');
         return;
@@ -1238,6 +1230,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   return (
     <div className="space-y-4 page-enter">
       {ToastEl}
+      {blockerPromptUI}
       {warFooting && (
         <div
           className="rounded-xl border border-red-200 dark:border-red-500/25 bg-red-50 dark:bg-red-500/10 px-4 py-3 flex items-start gap-3"

@@ -31,9 +31,18 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-10',
+    title: 'Terafab polish: blocker dialog + multi-tab offline lock',
+    tags: ['improvement', 'fix'],
+    highlight: true,
+    body: [
+      'Blocked asks for a cause in a proper modal (mobile-safe chips) — no browser prompt.',
+      'Offline queue: merge partial PATCHes, protect on 401, single-tab flush lock across browser tabs.',
+    ],
+  },
+  {
+    date: '2026-08-10',
     title: 'Machine complete: path edges, offline queue, thrash defaults off',
     tags: ['feature', 'improvement'],
-    highlight: true,
     body: [
       'Critical path: set a predecessor so the board orders path tasks by dependency.',
       'Offline: task status changes queue on the device and sync when you reconnect — banner shows the count.',

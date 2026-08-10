@@ -210,12 +210,53 @@ export async function flushOfflineQueue(): Promise<{
   return { flushed, remaining, dropped, error, needsAuth };
 }
 
+/** Cross-tab flush lock — only one tab drains the queue at a time. */
+const LOCK_KEY = 'pragati-offline-flush-lock';
+const LOCK_TTL_MS = 12_000;
+const TAB_ID =
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `t-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+function tryAcquireFlushLock(): boolean {
+  if (typeof window === 'undefined') return true;
+  const now = Date.now();
+  try {
+    const raw = localStorage.getItem(LOCK_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { id?: string; at?: number };
+      if (parsed.id && parsed.id !== TAB_ID && typeof parsed.at === 'number' && now - parsed.at < LOCK_TTL_MS) {
+        return false;
+      }
+    }
+    localStorage.setItem(LOCK_KEY, JSON.stringify({ id: TAB_ID, at: now }));
+    // Verify win under race.
+    const check = JSON.parse(localStorage.getItem(LOCK_KEY) || '{}') as { id?: string };
+    return check.id === TAB_ID;
+  } catch {
+    return true;
+  }
+}
+
+function releaseFlushLock() {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = localStorage.getItem(LOCK_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { id?: string };
+    if (parsed.id === TAB_ID) localStorage.removeItem(LOCK_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function installOnlineFlush(): () => void {
   if (typeof window === 'undefined') return () => {};
   let flushing = false;
   const run = () => {
     if (!navigator.onLine || flushing) return;
     if (queueLength() === 0) return;
+    if (!tryAcquireFlushLock()) return;
     flushing = true;
     void flushOfflineQueue()
       .then((r) => {
@@ -227,17 +268,28 @@ export function installOnlineFlush(): () => void {
       })
       .finally(() => {
         flushing = false;
+        releaseFlushLock();
       });
   };
   const onOnline = () => run();
   const onVis = () => {
     if (document.visibilityState === 'visible') run();
   };
+  // Another tab may enqueue — refresh banner + try flush if we are the leader.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === KEY || e.key === LOCK_KEY) {
+      window.dispatchEvent(new CustomEvent('pragati:offline-queued', { detail: { count: queueLength() } }));
+      if (navigator.onLine) run();
+    }
+  };
   window.addEventListener('online', onOnline);
   document.addEventListener('visibilitychange', onVis);
+  window.addEventListener('storage', onStorage);
   if (navigator.onLine && queueLength() > 0) run();
   return () => {
     window.removeEventListener('online', onOnline);
     document.removeEventListener('visibilitychange', onVis);
+    window.removeEventListener('storage', onStorage);
+    releaseFlushLock();
   };
 }

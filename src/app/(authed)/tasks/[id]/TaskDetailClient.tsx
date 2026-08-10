@@ -27,6 +27,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { FlowSignalTaskStrip } from '@/components/FlowSignalTaskStrip';
+import { useBlockerPrompt } from '@/components/BlockerPrompt';
 import { TaskRecurringCard } from './TaskRecurringCard';
 
 // TaskCompletePop is only shown on task completion — off the critical render
@@ -121,6 +122,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const [celebrate, setCelebrate] = useState<any | null>(null);
   const [projectCeleb, setProjectCeleb] = useState<{ title: string; subtitle?: string } | null>(null);
   const { showToast, ToastEl } = useToast();
+  const { requestBlocker, blockerPromptUI } = useBlockerPrompt();
 
   async function load() {
     try {
@@ -250,18 +252,12 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
     // Physics: blocked requires a named cause (person, team, part, decision).
     let pendingWith: string | undefined;
     if (newStatus === 'blocked') {
-      const existing = String(task?.pendingWith || '').trim();
-      if (!existing) {
-        const who =
-          typeof window !== 'undefined'
-            ? window.prompt('Blocked — who or what is waiting? (person, team, part, decision)')
-            : null;
-        if (!who?.trim()) {
-          showToast('Name the blocker before marking blocked.', 'err');
-          return;
-        }
-        pendingWith = who.trim().slice(0, 120);
+      const who = await requestBlocker(task?.pendingWith, task?.title);
+      if (!who) {
+        showToast('Name the blocker before marking blocked.', 'err');
+        return;
       }
+      pendingWith = who;
     }
     setSavingStatus(true);
     setTask((t: any) => ({
@@ -404,6 +400,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
       {ToastEl}
+      {blockerPromptUI}
       <TaskCompletePop task={celebrate} onDone={() => setCelebrate(null)} />
       {projectCeleb && (
         <Celebration
