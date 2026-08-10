@@ -11,7 +11,8 @@ export const metadata: Metadata = {
     default: 'Pragati',
     template: '%s · Pragati',
   },
-  description: 'Team work, fully visible. Track projects and tasks across your organization.',
+  description:
+    'The work board for Earth — and Mars. Projects, tasks, owners, due dates, blockers. One source of truth.',
   robots: { index: false, follow: false },
   manifest: '/manifest.webmanifest',
   applicationName: 'Pragati',

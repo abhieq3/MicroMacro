@@ -68,22 +68,21 @@ export function QmsPanel({ teamId, isLead }: { teamId: string; isLead: boolean }
 
   return (
     <Card
-      title="Quality tracking"
+      title="Trackers"
       action={
         isLead ? (
           <button
             onClick={() => setCreating((v) => !v)}
             className="text-xs font-bold text-brand-700 hover:text-brand-800 px-2 py-1 rounded-md hover:bg-blue-50 transition-colors"
           >
-            {creating ? 'Cancel' : '+ New record'}
+            {creating ? 'Cancel' : '+ New tracker'}
           </button>
         ) : undefined
       }
     >
       {ToastEl}
       <p className="-mt-1 mb-3 text-[11px] text-slate-500 leading-snug">
-        Quality records for IT/CSV — periodic reviews, change controls, deviations, access reviews —
-        one record per sheet. Two numbers to read straight into a review.
+        Multi-step records with your own columns — one sheet per process. Open vs done at a glance.
       </p>
 
       {/* Meeting-ready counters: how many records are still open vs closed. */}

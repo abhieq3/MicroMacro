@@ -832,10 +832,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       setBlockComplete(true);
       return;
     }
-    // A project's status is a controlled GxP record. Changing it on a shared
-    // project requires a re-authenticated e-signature with a reason (21 CFR
-    // Part 11 §11.10 / §11.50) — so we route through a sign-off modal instead
-    // of patching straight away. Personal projects skip this (no audit trail).
+    // Shared project status is an audited change — re-auth + reason via
+    // sign-off modal. Personal projects patch directly.
     if (!project.isPersonal) {
       setPendingStatus(newStatus);
       return;
@@ -996,15 +994,37 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     return false;
   }
 
+  /** Ask for the bottleneck when marking blocked — no anonymous blockers. */
+  function askBlocker(existing?: string | null): string | null {
+    const have = String(existing || '').trim();
+    if (have) return have;
+    if (typeof window === 'undefined') return null;
+    const who = window.prompt('Blocked — who or what is waiting? (person, team, part, decision)');
+    const t = who?.trim().slice(0, 120) || '';
+    return t || null;
+  }
+
   // Kanban drop: persist a status change (if any) and the new column order.
   async function dropReorder(taskId: string, toStatus: string, orderedIds: string[]) {
     const cur = tasks.find((t: any) => t.id === taskId);
     const statusChanged = !!cur && cur.status !== toStatus;
     const wasNotDone = cur?.status !== 'done';
+    let pendingWith: string | undefined;
+    if (statusChanged && toStatus === 'blocked') {
+      const who = askBlocker(cur?.pendingWith);
+      if (!who) {
+        showToast('Name the blocker before marking blocked.', 'err');
+        load();
+        return;
+      }
+      pendingWith = who;
+    }
     setPendingTaskIds((s) => new Set([...s, taskId]));
     try {
       if (statusChanged) {
-        await api(`/tasks/${taskId}`, { method: 'PATCH', body: { status: toStatus } });
+        const body: any = { status: toStatus };
+        if (pendingWith !== undefined) body.pendingWith = pendingWith;
+        await api(`/tasks/${taskId}`, { method: 'PATCH', body });
       }
       // Persisting column order is a lead/admin action; an IC dragging their
       // own card still gets the status change, just not a saved reorder.
@@ -1033,19 +1053,34 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   }
 
   async function moveTaskFromPhase(taskId: string, status: string) {
-    const wasNotDone = tasks.find((t: any) => t.id === taskId)?.status !== 'done';
+    const cur = tasks.find((t: any) => t.id === taskId);
+    const wasNotDone = cur?.status !== 'done';
+    let pendingWith: string | undefined;
+    if (status === 'blocked' && cur?.status !== 'blocked') {
+      const who = askBlocker(cur?.pendingWith);
+      if (!who) {
+        showToast('Name the blocker before marking blocked.', 'err');
+        return;
+      }
+      pendingWith = who;
+    }
     // Optimistic local update
     setProject((p: any) => ({
       ...p,
-      tasks: p.tasks.map((t: any) => (t.id === taskId ? { ...t, status } : t)),
+      tasks: p.tasks.map((t: any) =>
+        t.id === taskId
+          ? { ...t, status, ...(pendingWith !== undefined ? { pendingWith } : {}) }
+          : t,
+      ),
     }));
     setPendingTaskIds((s) => new Set([...s, taskId]));
     try {
-      await api(`/tasks/${taskId}`, { method: 'PATCH', body: { status } });
+      const body: any = { status };
+      if (pendingWith !== undefined) body.pendingWith = pendingWith;
+      await api(`/tasks/${taskId}`, { method: 'PATCH', body });
       if (status === 'done' && wasNotDone) {
         if (!celebrateIfMilestone(taskId)) {
           chimeIfEnabled();
-          const cur = tasks.find((t: any) => t.id === taskId);
           if (cur) setTaskPop(cur);
         }
       }
@@ -2048,11 +2083,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                         {t.requiresQaSignoff &&
                           (t.qaSignoffAt ? (
                             <span className="tag bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              QA ✓
+                              Approved
                             </span>
                           ) : (
                             <span className="tag bg-purple-50 text-purple-700 border border-purple-200">
-                              Sign-off
+                              Needs approval
                             </span>
                           ))}
                         <PriorityTag priority={t.priority} />

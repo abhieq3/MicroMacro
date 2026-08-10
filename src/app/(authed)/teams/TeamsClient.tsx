@@ -619,20 +619,20 @@ function TeamFormModal({
                 {modulesOpen && (
                   <div className="space-y-2">
                     <ModuleToggle
-                      label="Quality (QMS) tracking"
-                      hint="A configurable tracker — define your own columns to follow records through any process."
+                      label="Trackers"
+                      hint="Optional grid for multi-step records — define your own columns."
                       checked={qmsEnabled}
                       onChange={setQmsEnabled}
                     />
                     <ModuleToggle
                       label="Support tickets"
-                      hint="A lightweight request queue for this team."
+                      hint="Lightweight request queue for this team."
                       checked={ticketsEnabled}
                       onChange={setTicketsEnabled}
                     />
                     <ModuleToggle
-                      label="Recurring activities"
-                      hint="Repeating work with a checklist each cycle."
+                      label="Recurring schedule"
+                      hint="Repeating work that lands as tasks each cycle."
                       checked={recurringEnabled}
                       onChange={setRecurringEnabled}
                     />

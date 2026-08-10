@@ -239,13 +239,35 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
 
   async function updateStatus(newStatus: string) {
     const wasDone = task?.status === 'done';
+    // Physics: blocked requires a named cause (person, team, part, decision).
+    let pendingWith: string | undefined;
+    if (newStatus === 'blocked') {
+      const existing = String(task?.pendingWith || '').trim();
+      if (!existing) {
+        const who =
+          typeof window !== 'undefined'
+            ? window.prompt('Blocked — who or what is waiting? (person, team, part, decision)')
+            : null;
+        if (!who?.trim()) {
+          showToast('Name the blocker before marking blocked.', 'err');
+          return;
+        }
+        pendingWith = who.trim().slice(0, 120);
+      }
+    }
     setSavingStatus(true);
-    setTask((t: any) => ({ ...t, status: newStatus }));
+    setTask((t: any) => ({
+      ...t,
+      status: newStatus,
+      ...(pendingWith !== undefined ? { pendingWith } : {}),
+      ...(newStatus !== 'blocked' && t.status === 'blocked' ? { pendingWith: '' } : {}),
+    }));
     try {
-      const updated = await api<any>(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus } });
+      const body: any = { status: newStatus };
+      if (pendingWith !== undefined) body.pendingWith = pendingWith;
+      const updated = await api<any>(`/tasks/${id}`, { method: 'PATCH', body });
       if (newStatus === 'done' && !wasDone) {
         if (updated?.projectClear) {
-          // Big moment — full confetti + victory haptic/sound (Celebration owns haptic).
           playVictory();
           setProjectCeleb({
             title: 'Project clear',
@@ -456,7 +478,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         {!isLead && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
             {canEditBasics
-              ? 'You can edit status, description, and due date.'
+              ? 'You can edit status, waiting-on, description, and due date.'
               : 'Read-only. Assignee or lead can edit.'}
           </div>
         )}
@@ -798,23 +820,25 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 onChange={(v: string) => isLead && update({ assigneeId: v || null })}
               />
             </div>
-            {/* Waiting on — who the task is stuck/pending with (QA, a person,
-               a department). Editable by the assignee or a lead. */}
+            {/* Waiting on — required when blocked. Assignees name the bottleneck. */}
             <div>
               <label className="label flex items-center gap-1">
                 <Clock size={11} /> Waiting on
+                {task.status === 'blocked' && (
+                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Required</span>
+                )}
               </label>
               <input
                 className="input text-sm"
-                placeholder="Who or what is blocking"
+                placeholder="Person, team, part, decision…"
                 value={task.pendingWith || ''}
-                disabled={!canEditAll}
+                disabled={!canEditBasics}
                 onChange={(e) => setTask({ ...task, pendingWith: e.target.value })}
-                onBlur={(e) => canEditAll && update({ pendingWith: e.target.value })}
+                onBlur={(e) => canEditBasics && update({ pendingWith: e.target.value })}
               />
               {task.pendingWith && (
                 <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
-                  <Clock size={11} /> Pending with {task.pendingWith}
+                  <Clock size={11} /> Waiting on {task.pendingWith}
                 </div>
               )}
             </div>

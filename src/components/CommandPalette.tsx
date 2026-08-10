@@ -144,7 +144,7 @@ export function CommandPalette({
 
   const pages: Entry[] = useMemo(() => {
     const items: Entry[] = [
-      { id: 'p-dash', label: 'Dashboard', icon: LayoutDashboard, run: go('/') },
+      { id: 'p-dash', label: 'Today', icon: LayoutDashboard, run: go('/') },
       { id: 'p-projects', label: 'Projects', icon: FolderKanban, run: go('/projects') },
       { id: 'p-teams', label: 'Teams', icon: Users, run: go('/teams') },
       { id: 'p-myday', label: 'My Day', icon: NotebookPen, run: go('/my-day') },

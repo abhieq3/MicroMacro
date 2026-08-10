@@ -320,8 +320,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               the correct product state. */}
           <FlowSignalStrip data={dash.flowSignal} />
 
-          {/* Exception chips only — hide zeros, no vanity inventory. */}
-          {(overdueTasks.length > 0 || blockedTasks.length > 0) && (
+          {/* Exceptions first — the only morning numbers that matter. */}
+          {overdueTasks.length > 0 || blockedTasks.length > 0 ? (
             <div className="flex flex-wrap gap-2 mb-5">
               {overdueTasks.length > 0 && (
                 <SummaryChip
@@ -340,11 +340,21 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                 />
               )}
             </div>
+          ) : (
+            <div className="mb-5 inline-flex items-center gap-2 rounded-xl border border-emerald-200/80 dark:border-emerald-500/25 bg-emerald-50/70 dark:bg-emerald-500/10 px-3 py-2">
+              <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="text-[12px] font-bold text-emerald-800 dark:text-emerald-300 tracking-tight">
+                Zero exceptions
+              </span>
+              <span className="text-[11px] text-emerald-700/70 dark:text-emerald-300/60">
+                Nothing overdue or blocked.
+              </span>
+            </div>
           )}
           {summaryModal === 'overdue' && (
             <SummaryTaskPopup
               title="Overdue"
-              subtitle="Past due date."
+              subtitle="Past due — act or redate."
               tone="red"
               tasks={overdueTasks}
               onClose={() => setSummaryModal(null)}
@@ -353,7 +363,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
           {summaryModal === 'blocked' && (
             <SummaryTaskPopup
               title="Blocked"
-              subtitle="Waiting on a dependency."
+              subtitle="Named bottleneck. Unblock or escalate."
               tone="amber"
               tasks={blockedTasks}
               onClose={() => setSummaryModal(null)}

@@ -898,14 +898,13 @@ export default function TeamDetailPage() {
                 ['work', isLead ? 'Work' : 'My tasks', heroOpen],
                 ['projects', 'Projects', heroProjects.length],
                 ...(WORKBENCH_MODULES_ENABLED && team.modules?.qms?.enabled
-                  ? [['qms', 'QMS', null]]
+                  ? [['qms', 'Trackers', null]]
                   : []),
                 ...(WORKBENCH_MODULES_ENABLED && team.modules?.tickets?.enabled
                   ? [['tickets', 'Tickets', null]]
                   : []),
-                ...(WORKBENCH_MODULES_ENABLED && team.modules?.recurring?.enabled
-                  ? [['recurring', 'Recurring', null]]
-                  : []),
+                // Recurring is core schedule infrastructure — not industry chrome.
+                ...(team.modules?.recurring?.enabled ? [['recurring', 'Recurring', null]] : []),
               ] as [string, string, number | null][]
             ).map(([k, l, count]) => (
               <button
@@ -1150,18 +1149,15 @@ export default function TeamDetailPage() {
           )}
 
 
-          {/* ── QMS — quality tracking (CSV Activity), opt-in per team ──────── */}
+          {/* Trackers / tickets — secondary workbench (flag + per-team). */}
           {WORKBENCH_MODULES_ENABLED && view === 'qms' && team.modules?.qms?.enabled && (
             <QmsPanel teamId={id} isLead={isLead} />
           )}
-
-          {/* ── Tickets — support request queue, opt-in per team ───────────── */}
           {WORKBENCH_MODULES_ENABLED && view === 'tickets' && team.modules?.tickets?.enabled && (
             <TicketsPanel teamId={id} isLead={isLead} members={team.members || []} />
           )}
-
-          {/* ── Recurring — scheduled team activities, opt-in per team ──────── */}
-          {WORKBENCH_MODULES_ENABLED && view === 'recurring' && team.modules?.recurring?.enabled && (
+          {/* Recurring — core schedule, not workbench chrome. */}
+          {view === 'recurring' && team.modules?.recurring?.enabled && (
             <RecurringPanel teamId={id} isLead={isLead} members={team.members || []} />
           )}
 

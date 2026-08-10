@@ -64,35 +64,40 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     );
     if (forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const body = await readBody(req, TaskUpdateSchema);
-    const current = await Task.findById(params.id).select('status assigneeId privateToUserId').lean();
+    const current = await Task.findById(params.id)
+      .select('status assigneeId privateToUserId pendingWith')
+      .lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Assignees may update status (do the work), description, and due date
-    // on their own tasks. Everything else — assignee, priority, compliance
-    // flags, reference fields — stays lead-owned. A task assigned to someone
-    // else (or unassigned) is fully read-only for an IC. Exception: inside
-    // their own personal project the owner edits freely.
-    //
-    // The permission check uses `current.assigneeId`, but we close the TOCTOU
-    // race (a concurrent lead re-assignment sneaking between the permission
-    // read and the actual write) by folding the assignee guard into the update
-    // filter for contributor-scoped edits. If the task was reassigned before
-    // our write lands, findOneAndUpdate returns null and we surface a 403
-    // rather than silently mutating a task the caller no longer owns.
+    // Assignees may update status, waiting-on, description, and due date.
+    // Everything else stays lead-owned. Personal project owners edit freely.
+    // Contributor writes fold assigneeId into the update filter (TOCTOU-safe).
     const icEdit = !canMutate(user!.role) && !ownsPersonal && !ownsPrivate;
     if (icEdit) {
       const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
       const keys = Object.keys(body).filter((k) => body[k as keyof typeof body] !== undefined);
-      // Status is the verb of "do this next" — assignees must be able to finish work.
-      const IC_EDITABLE = new Set(['description', 'dueDate', 'status']);
+      const IC_EDITABLE = new Set(['description', 'dueDate', 'status', 'pendingWith']);
       const onlyAllowed = isAssignee && keys.length > 0 && keys.every((k) => IC_EDITABLE.has(k));
       if (!onlyAllowed) {
         return NextResponse.json(
           {
             error:
-              'You can update status, description, and due date on tasks assigned to you. Other fields are lead-owned.',
+              'You can update status, waiting-on, description, and due date on tasks assigned to you. Other fields are lead-owned.',
           },
           { status: 403 },
+        );
+      }
+    }
+
+    // Blocked without a named cause is a lie.
+    if (body.status === 'blocked') {
+      const waiting = String(
+        body.pendingWith !== undefined ? body.pendingWith : (current as any).pendingWith || '',
+      ).trim();
+      if (!waiting) {
+        return NextResponse.json(
+          { error: 'Blocked requires who or what is waiting — name the blocker.' },
+          { status: 400 },
         );
       }
     }
@@ -105,6 +110,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();
     else if (body.status && body.status !== 'done') set.completedAt = null;
+    // Leaving blocked clears the bottleneck name unless the client sets a new one.
+    if (body.status && body.status !== 'blocked' && current.status === 'blocked') {
+      if (body.pendingWith === undefined) set.pendingWith = '';
+    }
     set.lastActivityAt = new Date();
 
     // For contributor edits we add `assigneeId` to the update filter so the

@@ -30,10 +30,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-08-10',
+    title: 'Universal work board: Today, named blockers, no industry cosplay',
+    tags: ['feature', 'improvement'],
+    highlight: true,
+    body: [
+      'Pragati is the work board for everyone — not a pharma product with optional extras. Mission and principles rewritten.',
+      'Home is Today (nav + command palette). Zero exceptions is the healthy state. Blocked requires who or what is waiting.',
+      'New project templates: Blank / Sprint / Launch first; specialized structures last. Team trackers off by default.',
+    ],
+  },
+  {
     date: '2026-08-09',
     title: 'Complete reliability pass: lazy Kanban, mobile density, People panel',
     tags: ['improvement'],
-    highlight: true,
     body: [
       'Project Kanban lives in its own lazy module — phase view no longer pays for drag-drop on first paint.',
       'Home: People (contributors) desktop-only; Due rows denser on mobile. Task sticky status + unified dashboard API remain.',

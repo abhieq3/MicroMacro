@@ -207,7 +207,7 @@ function buildSummarySheet(wb: ExcelJS.Workbook, project: any, tasks: any[]) {
   ];
   if ((project.gxpImpact || 'none') !== 'none') {
     pairs.push([
-      'GxP impact',
+      'Impact',
       String(project.gxpImpact).toUpperCase(),
       'Regulatory refs',
       project.regulatoryRefs || '—',

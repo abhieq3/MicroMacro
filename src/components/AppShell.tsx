@@ -335,7 +335,7 @@ export default function AppShell({
   }, [router]);
 
   // ── Global keyboard shortcuts ───────────────────────────────────────────────
-  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day,
+  // G→D: Today, G→P: Projects, G→T: Teams, G→M: My Day,
   // ?: shortcuts modal
   // Skipped when focus is on a text input / textarea / contenteditable.
   useEffect(() => {
@@ -414,8 +414,9 @@ export default function AppShell({
   // admin-only surface, appended via adminExtra below.
   // My Day is pinned above the footer as the personal surface. Whiteboard
   // lives as a FAB on My Day (Jensen: think on the board before status).
+  // Today = the only morning surface. Projects/Teams are structure.
   const leadNav: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/', label: 'Today', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
@@ -451,7 +452,7 @@ export default function AppShell({
   const masterAdminExtra: NavItem[] = []; // /master-admin not shipped — no dead link
 
   const contributorNav: NavItem[] = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/', label: 'Today', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
@@ -1364,7 +1365,7 @@ export default function AppShell({
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { keys: ['⌘', 'K'], label: 'Command palette' },
-                    { keys: ['G', 'D'], label: 'Dashboard' },
+                    { keys: ['G', 'D'], label: 'Today' },
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
                     { keys: ['G', 'M'], label: 'My Day' },

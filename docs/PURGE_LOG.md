@@ -34,9 +34,21 @@
 - Mobile task sticky status; Due list denser on small screens  
 - Contributors panel desktop-only (hidden on mobile)  
 
+## 2026-08-10 — Universal beast pass (not vertical cosplay)
+
+| Change | Detail |
+|--------|--------|
+| Mission | Product principles rewritten: work board for everyone; GxP is not the face |
+| Nav | Dashboard → **Today** |
+| Templates | Blank / Sprint / Launch first; regulated structures under **Specialized** |
+| Blockers | `status=blocked` requires `pendingWith` (API + UI prompt) |
+| Workbench | Team trackers/tickets **off by default** (`NEXT_PUBLIC_WORKBENCH_MODULES=1` to enable) |
+| Language | Lifecycle labels universal; QMS tab → Trackers |
+
 ## Still optional later
 
-- Trim lifecycle templates  
+- Critical path field on projects  
+- Collapse My Day into Today for single personal+shared surface  
 - Confirm ICS/install API dead ends  
 - Further split DashboardClient panels into files  
 

@@ -55,75 +55,58 @@ function uid() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-// Templates a lead reaches for, ordered by frequency. Generic 'Custom / Blank'
-// is always the first option so a lead can start fast with a project that
-// doesn't match any pre-baked template.
+// Universal templates first. Industry-specific structure is optional and last —
+// Pragati is the board for everyone, not a vertical cosplay default.
 const LIFECYCLE_GROUPS = [
   {
-    label: 'Change Management',
-    description: 'Plan and control changes',
+    label: 'Start',
+    description: 'Ship work',
     options: [
-      { value: 'generic', label: 'Custom / Blank', hint: 'Start from scratch' },
-      { value: 'change_control', label: 'Change Control', hint: 'Planned change to a system' },
-      { value: 'software_change', label: 'Software Change', hint: 'Code/configuration release with a review gate' },
-      { value: 'deviation', label: 'Deviation', hint: 'Unplanned event needing investigation' },
-      { value: 'capa', label: 'CAPA', hint: 'Corrective + preventive action' },
-      { value: 'deviation_capa', label: 'Deviation + CAPA', hint: 'Combined deviation→CAPA flow' },
+      { value: 'generic', label: 'Blank', hint: 'Name it. Own it. Move.' },
+      { value: 'agile_sprint', label: 'Sprint', hint: 'Short iteration' },
+      { value: 'software_release', label: 'Release', hint: 'Ship a version' },
+      { value: 'product_launch', label: 'Launch', hint: 'Go to market' },
+      { value: 'research', label: 'Research', hint: 'Scope → analyze → report' },
+      { value: 'software_change', label: 'Change', hint: 'Change with a review gate' },
+      { value: 'incident_management', label: 'Incident', hint: 'Triage → fix → close' },
     ],
   },
   {
-    label: 'Life Sciences',
-    description: 'Regulated / GxP lifecycles',
-    options: [
-      { value: 'csv', label: 'CSV / GAMP 5', hint: 'Computer System Validation' },
-      { value: 'sop', label: 'SOP Development', hint: 'Author → review → train → release' },
-      { value: 'audit', label: 'Audit', hint: 'Internal or external audit' },
-      { value: 'validation', label: 'Validation', hint: 'Process / method validation' },
-      {
-        value: 'regulatory_submission',
-        label: 'Regulatory Submission',
-        hint: 'Planning → dossier → filing → approval',
-      },
-      {
-        value: 'computer_system_retirement',
-        label: 'System Retirement',
-        hint: 'Feasibility → migration → closure',
-      },
-      { value: 'incident_management', label: 'Incident Management', hint: 'Triage → RCA → CAPA → closure' },
-      { value: 'vendor_qualification', label: 'Vendor Qualification', hint: 'Audit → gap assessment → ASL' },
-      { value: 'training_program', label: 'Training Program', hint: 'Needs assessment → rollout → review' },
-      { value: 'product_recall', label: 'Product Recall', hint: 'Alert → notification → prevention' },
-      { value: 'discrepancy_qi', label: 'Discrepancy', hint: 'Detection → RCA → CAPA → closure' },
-    ],
-  },
-  {
-    label: 'General',
-    description: 'Everyday projects',
-    options: [
-      { value: 'agile_sprint', label: 'Agile Sprint', hint: 'Two-week development iteration' },
-      { value: 'software_release', label: 'Software Release', hint: 'Generic release pipeline' },
-      { value: 'product_launch', label: 'Product Launch', hint: 'Go-to-market workflow' },
-      { value: 'research', label: 'Research', hint: 'Scoping → analysis → reporting' },
-    ],
-  },
-  {
-    // Surfaced only when the "Personal project" toggle is on — purely
-    // personal templates, no QA/GxP framing, so the user can move fast.
     label: 'Personal',
-    description: 'Ready-made for your own goals',
+    description: 'Your own goals',
     options: [
       { value: 'personal_goal', label: 'Personal Goal', hint: 'Define → plan → do → reflect' },
-      { value: 'personal_career', label: 'Career Growth', hint: 'Grow in your role, step up' },
-      { value: 'personal_job_search', label: 'Job Search', hint: 'Target → apply → interview → offer' },
-      { value: 'personal_study', label: 'Study Plan', hint: 'Course / certification roadmap' },
-      { value: 'personal_reading', label: 'Reading Challenge', hint: 'Curate → read → reflect' },
-      { value: 'personal_habit', label: 'Habit Tracker', hint: '30-day habit build' },
-      { value: 'personal_fitness', label: 'Fitness Plan', hint: 'Baseline → build → sustain' },
-      { value: 'personal_wellness', label: 'Wellness & Mindfulness', hint: 'Calmer, healthier routine' },
-      { value: 'personal_finance', label: 'Financial Goal', hint: 'Save, pay off, or invest' },
-      { value: 'personal_side_project', label: 'Side Project', hint: 'Idea → build → ship → iterate' },
-      { value: 'personal_creative', label: 'Creative Project', hint: 'Write, record or make — to published' },
-      { value: 'personal_declutter', label: 'Declutter & Organise', hint: 'Clear the clutter, room by room' },
+      { value: 'personal_career', label: 'Career Growth', hint: 'Grow in your role' },
+      { value: 'personal_job_search', label: 'Job Search', hint: 'Target → apply → offer' },
+      { value: 'personal_study', label: 'Study Plan', hint: 'Course / certification' },
+      { value: 'personal_side_project', label: 'Side Project', hint: 'Idea → build → ship' },
+      { value: 'personal_habit', label: 'Habit', hint: '30-day build' },
+      { value: 'personal_fitness', label: 'Fitness', hint: 'Baseline → build → sustain' },
+      { value: 'personal_finance', label: 'Finance', hint: 'Save, pay off, invest' },
+      { value: 'personal_creative', label: 'Creative', hint: 'Make and publish' },
+      { value: 'personal_declutter', label: 'Organize', hint: 'Clear the clutter' },
+      { value: 'personal_reading', label: 'Reading', hint: 'Curate → read → reflect' },
+      { value: 'personal_wellness', label: 'Wellness', hint: 'Healthier routine' },
+    ],
+  },
+  {
+    label: 'Specialized',
+    description: 'Optional structure for regulated or complex ops',
+    options: [
+      { value: 'change_control', label: 'Controlled Change', hint: 'Planned change with gates' },
+      { value: 'deviation', label: 'Issue Investigation', hint: 'Unplanned event → root cause' },
+      { value: 'capa', label: 'Corrective Action', hint: 'Fix the system, not only the symptom' },
+      { value: 'deviation_capa', label: 'Issue + Fix', hint: 'Investigation then corrective path' },
+      { value: 'audit', label: 'Audit', hint: 'Internal or external review' },
+      { value: 'validation', label: 'Validation', hint: 'Prove it works as intended' },
+      { value: 'sop', label: 'Procedure', hint: 'Author → review → train → release' },
+      { value: 'csv', label: 'System Validation', hint: 'Computer system qualification' },
+      { value: 'training_program', label: 'Training', hint: 'Needs → rollout → review' },
+      { value: 'vendor_qualification', label: 'Vendor', hint: 'Qualify a supplier' },
+      { value: 'regulatory_submission', label: 'Submission', hint: 'Dossier → filing → decision' },
+      { value: 'product_recall', label: 'Recall', hint: 'Alert → notify → prevent' },
+      { value: 'computer_system_retirement', label: 'Retire System', hint: 'Migrate → shut down' },
+      { value: 'discrepancy_qi', label: 'Discrepancy', hint: 'Detect → RCA → close' },
     ],
   },
 ];

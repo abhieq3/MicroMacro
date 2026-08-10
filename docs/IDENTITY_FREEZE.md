@@ -10,7 +10,8 @@
 | Visual system | **Classic brand** — blue `#1565C0` → forest `#2E7D32` |
 | Interior UI | **Carded classic chrome** — not X feed, not monochrome density |
 | Login | Aurora brand panel + white form |
-| Home layout | Two-column Projects · Due with real cards |
+| Home layout | **Today** — exceptions first, then Projects · Due |
+| Product identity | Universal work board (Earth + Mars) — not pharma-first |
 | Login quotes | Live public web APIs + quiet fallback; **no weekly re-theme** |
 | Personal board | My Day **FAB** (not a sidebar nav item) |
 | Recurring holders | **Hidden** from dashboard project lists |
