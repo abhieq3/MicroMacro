@@ -290,7 +290,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     assert.doesNotMatch(mail.html, /QA sign-off rehearsal/, 'dueSoonDays=0 hides the look-ahead');
 
     assert.match(mail.html, /href="https:\/\/pragati\.example\/tasks\/t2"/, 'deep links use APP_URL');
-    assert.match(mail.text || '', /Open My Day: https:\/\/pragati\.example\/my-day/);
+    assert.match(mail.text || '', /Open Today: https:\/\/pragati\.example\//);
   });
 
   it('includes the look-ahead section when dueSoonDays is raised', async () => {

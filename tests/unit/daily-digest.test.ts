@@ -196,7 +196,7 @@ describe('renderDigestEmail', () => {
     assert.match(out.html, />Team</);
     assert.match(out.html, /1 blocked on your team/);
     assert.match(out.html, /Vendor sign-off/);
-    assert.match(out.html, /Open board/);
+    assert.match(out.html, /Open Today/);
     assert.match(out.subject, /Team:/);
     assert.match(out.subject, /1 blocked/);
     // Zero sign-offs must not appear as a big tile
