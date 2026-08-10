@@ -31,9 +31,19 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-10',
-    title: 'Critical path + exception-only alerts — the machine tightens',
+    title: 'Machine complete: path edges, offline queue, thrash defaults off',
     tags: ['feature', 'improvement'],
     highlight: true,
+    body: [
+      'Critical path: set a predecessor so the board orders path tasks by dependency.',
+      'Offline: task status changes queue on the device and sync when you reconnect — banner shows the count.',
+      'Bird’s-eye and Flow Signal are opt-in. Today has a one-line Capture field. The morning path is the product.',
+    ],
+  },
+  {
+    date: '2026-08-10',
+    title: 'Critical path + exception-only alerts — the machine tightens',
+    tags: ['feature', 'improvement'],
     body: [
       'Projects: mark tasks on the critical path — open path tasks surface first. Leads toggle from board or task detail.',
       'Email and push only fire on real exceptions (overdue / due today / team fire). Silent all-clear is free.',

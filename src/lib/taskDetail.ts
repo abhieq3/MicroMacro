@@ -36,32 +36,42 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       .lean();
     if (!proj) return null;
 
-    const [project, assignee, qa, commentUsers, flowConfirmer, recurringDoc] = await Promise.all([
-      Project.findById((t as any).projectId)
-        .select('code ccNo name teamId')
-        .lean(),
-      (t as any).assigneeId ? User.findById((t as any).assigneeId).lean() : Promise.resolve(null),
-      (t as any).qaSignoffUserId ? User.findById((t as any).qaSignoffUserId).lean() : Promise.resolve(null),
-      // One batched lookup covers both comment authors and effort-log entries.
-      User.find({
-        _id: {
-          $in: [
-            ...((t as any).comments || []).map((c: any) => c.userId),
-            ...((t as any).effortLog || []).map((e: any) => e.userId),
-          ],
-        },
-      })
-        .select('name')
-        .lean(),
-      (t as any).flowPendingConfirmedByUserId
-        ? User.findById((t as any).flowPendingConfirmedByUserId)
-            .select('name')
-            .lean()
-        : Promise.resolve(null),
-      (t as any).recurringActivityId
-        ? RecurringActivity.findById((t as any).recurringActivityId).lean()
-        : Promise.resolve(null),
-    ]);
+    const [project, assignee, qa, commentUsers, flowConfirmer, recurringDoc, siblings, blockedByDoc] =
+      await Promise.all([
+        Project.findById((t as any).projectId)
+          .select('code ccNo name teamId')
+          .lean(),
+        (t as any).assigneeId ? User.findById((t as any).assigneeId).lean() : Promise.resolve(null),
+        (t as any).qaSignoffUserId ? User.findById((t as any).qaSignoffUserId).lean() : Promise.resolve(null),
+        // One batched lookup covers both comment authors and effort-log entries.
+        User.find({
+          _id: {
+            $in: [
+              ...((t as any).comments || []).map((c: any) => c.userId),
+              ...((t as any).effortLog || []).map((e: any) => e.userId),
+            ],
+          },
+        })
+          .select('name')
+          .lean(),
+        (t as any).flowPendingConfirmedByUserId
+          ? User.findById((t as any).flowPendingConfirmedByUserId)
+              .select('name')
+              .lean()
+          : Promise.resolve(null),
+        (t as any).recurringActivityId
+          ? RecurringActivity.findById((t as any).recurringActivityId).lean()
+          : Promise.resolve(null),
+        // Sibling titles for critical-path predecessor picker (cap keeps payload small).
+        Task.find({ projectId: (t as any).projectId })
+          .select('_id title status')
+          .sort({ position: 1, createdAt: 1 })
+          .limit(80)
+          .lean(),
+        (t as any).blockedByTaskId
+          ? Task.findById((t as any).blockedByTaskId).select('title').lean()
+          : Promise.resolve(null),
+      ]);
     const uMap = new Map(commentUsers.map((u) => [String(u._id), u.name]));
     const comments = ((t as any).comments || []).map((c: any) => ({
       id: String(c._id),
@@ -90,9 +100,15 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
         projectName: (project as any)?.name,
         projectTeamId: (project as any)?.teamId ? String((project as any).teamId) : null,
         flowPendingConfirmedByName: (flowConfirmer as any)?.name || null,
+        blockedByTitle: (blockedByDoc as any)?.title || null,
       }),
       comments,
       effortLog,
+      siblingTasks: (siblings || []).map((s: any) => ({
+        id: String(s._id),
+        title: s.title,
+        status: s.status,
+      })),
       // Full schedule definition so the task detail page can show/edit cadence
       // (e.g. last Sunday of each month) without a second round-trip.
       recurring: recurringDoc ? serializeRecurringActivity(recurringDoc) : null,

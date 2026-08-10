@@ -379,6 +379,8 @@ export const TaskUpdateSchema = z.object({
   remarks: z.string().max(5000).optional(),
   pendingWith: z.string().max(120).optional(),
   onCriticalPath: z.boolean().optional(),
+  /** Predecessor task id (same project), or null to clear. */
+  blockedByTaskId: nullableObjectId,
 });
 export type TaskUpdateInput = z.infer<typeof TaskUpdateSchema>;
 

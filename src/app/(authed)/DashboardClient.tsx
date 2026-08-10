@@ -47,7 +47,9 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 });
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
-// Flow strip is secondary; keep first paint light.
+import { BIRDS_EYE_ENABLED } from '@/lib/features';
+import { api } from '@/lib/client/api';
+// Flow strip is secondary; keep first paint light. Off when FLOW_SIGNAL_MODE=off.
 const FlowSignalStrip = dynamic(
   () => import('@/components/FlowSignalStrip').then((m) => m.FlowSignalStrip),
   { ssr: false, loading: () => null },
@@ -198,6 +200,63 @@ function buildBirdsEyeDataFromDash(dash: DashResp): BirdsEyeData {
   };
 }
 
+/** One-line capture on Today — lands in personal scratch; full Capture for board. */
+function TodayCapture() {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    try {
+      await api('/scratch', { method: 'POST', body: { text: t } });
+      setText('');
+      setFlash('Captured');
+      setTimeout(() => setFlash(null), 1600);
+    } catch {
+      setFlash('Failed — try Capture');
+      setTimeout(() => setFlash(null), 2200);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mb-4 flex items-center gap-2">
+      <input
+        className="input text-sm flex-1 min-w-0"
+        placeholder="Capture a thought…"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        disabled={busy}
+        maxLength={500}
+        aria-label="Capture a thought"
+      />
+      <button
+        type="submit"
+        disabled={busy || !text.trim()}
+        className="btn-primary text-xs shrink-0 disabled:opacity-50"
+      >
+        Add
+      </button>
+      {flash && (
+        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+          {flash}
+        </span>
+      )}
+      <Link
+        href="/my-day"
+        className="text-[11px] font-bold text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 shrink-0 hidden sm:inline"
+      >
+        Capture →
+      </Link>
+    </form>
+  );
+}
+
 /* ── Main page ────────────────────────────────────────────────────────────── */
 export default function DashboardClient({ initialData }: { initialData: DashResp }) {
   const dash = initialData;
@@ -294,9 +353,11 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
             </span>
           </h1>
         </div>
-        {/* Bird's-eye view trigger — quiet, on the row the user sees every day. */}
+        {/* Bird's-eye — opt-in power tool, not the morning path. */}
         <div className="flex items-center gap-2 shrink-0">
-          {!isFirstRun && <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} />}
+          {!isFirstRun && BIRDS_EYE_ENABLED && (
+            <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} />
+          )}
         </div>
       </div>
       {/* Subline removed. The summary chips below (Ongoing / Open / Overdue
@@ -305,7 +366,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       {/* Bird's-eye view modal — mounted at the page level so the SVG
           tree gets its own scroll area regardless of where the trigger
           was clicked from. */}
-      {birdsEyeOpen && (
+      {BIRDS_EYE_ENABLED && birdsEyeOpen && (
         <BirdsEyeView onClose={() => setBirdsEyeOpen(false)} data={buildBirdsEyeDataFromDash(dash)} />
       )}
 
@@ -315,9 +376,10 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
         <>
           {isNewContributor && <ContributorWelcome name={dash.user.name} />}
 
+          <TodayCapture />
+
           {/* ── Quick check / Needs attention strip ────────────────────────
-              Renders nothing when there's nothing to surface — silence is
-              the correct product state. */}
+              Renders nothing when FLOW_SIGNAL_MODE=off or nothing to surface. */}
           <FlowSignalStrip data={dash.flowSignal} />
 
           {/* Exceptions first — the only morning numbers that matter. */}

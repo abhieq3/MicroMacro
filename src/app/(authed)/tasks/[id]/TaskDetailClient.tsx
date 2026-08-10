@@ -897,31 +897,58 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               </div>
             </div>
             {isLead && (
-              <label className="mt-3 flex items-start gap-2.5 cursor-pointer rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 hover:bg-slate-50/80 dark:hover:bg-white/[0.03]">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={!!task.onCriticalPath}
-                  onChange={(e) =>
-                    update(
-                      { onCriticalPath: e.target.checked },
-                      { optimistic: { onCriticalPath: e.target.checked } },
-                    )
-                  }
-                />
-                <span className="min-w-0">
-                  <span className="block text-[12px] font-bold text-slate-800 dark:text-white/85">
-                    Critical path
+              <div className="mt-3 space-y-2">
+                <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 hover:bg-slate-50/80 dark:hover:bg-white/[0.03]">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={!!task.onCriticalPath}
+                    onChange={(e) =>
+                      update(
+                        { onCriticalPath: e.target.checked },
+                        { optimistic: { onCriticalPath: e.target.checked } },
+                      )
+                    }
+                  />
+                  <span className="min-w-0">
+                    <span className="block text-[12px] font-bold text-slate-800 dark:text-white/85">
+                      Critical path
+                    </span>
+                    <span className="block text-[11px] text-slate-500 dark:text-white/40 leading-snug">
+                      If this slips, the project end slips. Surfaces first on the board.
+                    </span>
                   </span>
-                  <span className="block text-[11px] text-slate-500 dark:text-white/40 leading-snug">
-                    If this slips, the project end slips. Surfaces first on the board.
-                  </span>
-                </span>
-              </label>
+                </label>
+                {task.onCriticalPath && (
+                  <div>
+                    <label className="label">After (predecessor)</label>
+                    <Select
+                      value={task.blockedByTaskId || ''}
+                      ariaLabel="Predecessor on critical path"
+                      onChange={(v) =>
+                        update(
+                          { blockedByTaskId: v || null },
+                          { optimistic: { blockedByTaskId: v || null } },
+                        )
+                      }
+                      options={[
+                        { value: '', label: '— None —' },
+                        ...((task.siblingTasks || []) as { id: string; title: string }[])
+                          .filter((s) => s.id !== task.id)
+                          .map((s) => ({ value: s.id, label: s.title })),
+                      ]}
+                    />
+                    <div className="text-[10px] text-slate-400 mt-1">
+                      This task starts after the predecessor finishes.
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             {task.onCriticalPath && !isLead && (
               <div className="mt-2 text-[11px] font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/25 rounded-md px-2 py-1.5">
                 On the critical path
+                {task.blockedByTitle ? ` · after ${task.blockedByTitle}` : ''}
               </div>
             )}
           </div>

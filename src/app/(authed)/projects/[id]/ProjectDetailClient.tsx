@@ -22,6 +22,7 @@ import { DatePicker } from '@/components/DatePicker';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
 import { weightedProgress } from '@/lib/progress';
+import { orderCriticalPathOpen } from '@/lib/criticalPath';
 import {
   CheckCircle2,
   Plus,
@@ -41,6 +42,7 @@ import {
   Route,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
+import { BIRDS_EYE_ENABLED } from '@/lib/features';
 
 import { chimeIfEnabled, playFanfare, playVictory } from '@/lib/sound';
 import { Celebration, type CelebrationLevel } from '@/components/Celebration';
@@ -1020,15 +1022,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     }
   }
 
-  const criticalOpen = tasks
-    .filter((t: any) => t.onCriticalPath && t.status !== 'done')
-    .slice()
-    .sort((a: any, b: any) => {
-      const ad = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-      const bd = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-      if (ad !== bd) return ad - bd;
-      return (a.position ?? 0) - (b.position ?? 0);
-    });
+  const criticalOpen = orderCriticalPathOpen(tasks);
+  const taskTitleById = new Map(tasks.map((t: any) => [t.id, t.title as string]));
 
   // Kanban drop: persist a status change (if any) and the new column order.
   async function dropReorder(taskId: string, toStatus: string, orderedIds: string[]) {
@@ -1291,6 +1286,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                 t.dueDate &&
                 t.status !== 'done' &&
                 new Date(t.dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
+              const waitsOn = t.blockedByTaskId ? taskTitleById.get(t.blockedByTaskId) : null;
               return (
                 <li key={t.id} className="flex items-center gap-2 min-w-0 text-[13px]">
                   <span className="text-[10px] font-black tabular-nums text-violet-500/80 w-4 shrink-0">
@@ -1300,6 +1296,14 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                     task={t}
                     className="font-semibold text-slate-800 dark:text-white/85 hover:text-violet-700 dark:hover:text-violet-300 truncate min-w-0"
                   />
+                  {waitsOn && (
+                    <span
+                      className="text-[10px] text-violet-600/80 dark:text-violet-300/70 truncate max-w-[8rem] shrink-0"
+                      title={`After: ${waitsOn}`}
+                    >
+                      ← {waitsOn}
+                    </span>
+                  )}
                   {t.status === 'blocked' && (
                     <span className="text-[10px] font-bold text-red-600 shrink-0">blocked</span>
                   )}
@@ -1638,7 +1642,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           {/* Actions — Export (PDF/CSV/HTML) for everyone; Archive + Delete
               admin-only. */}
           <div className="flex flex-wrap items-center md:justify-end gap-2">
-            <BirdEyeButton scopeKey={`project:${id}`} onClick={() => setShowBirdEye(true)} />
+            {BIRDS_EYE_ENABLED && (
+              <BirdEyeButton scopeKey={`project:${id}`} onClick={() => setShowBirdEye(true)} />
+            )}
             <ExportMenu
               onExcel={
                 project.isPersonal
@@ -1649,8 +1655,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               }
               onPdf={() => printProjectReport(project, phases, me?.name || me?.email || '')}
               onCsv={() => downloadProjectCsv(project, phases, me?.name || me?.email || '')}
-              onBirdEyeSvg={() => setBirdEyeExport('svg')}
-              onBirdEyePng={() => setBirdEyeExport('png')}
+              onBirdEyeSvg={BIRDS_EYE_ENABLED ? () => setBirdEyeExport('svg') : undefined}
+              onBirdEyePng={BIRDS_EYE_ENABLED ? () => setBirdEyeExport('png') : undefined}
             />
             {isAdmin && !project.isPersonal && (
               <Link

@@ -20,7 +20,9 @@ const parseMode = (raw: string | undefined): FlowMode => {
     case 'live':
       return 'live';
     default:
-      return 'pilot'; // default: pilot — fact layer is visible, inference layers are still off
+      // Off by default — the morning machine is exceptions, not a second product.
+      // Operators opt into pilot/live with FLOW_SIGNAL_MODE=.
+      return 'off';
   }
 };
 

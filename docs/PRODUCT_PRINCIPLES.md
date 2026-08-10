@@ -26,7 +26,23 @@ Everything else is secondary or a feature flag.
 ### Critical path
 
 Leads mark tasks that **gate ship**. Open critical-path work is listed first on the project.  
+Optional **predecessor** edge: this task starts after that one finishes.  
 If the critical path is empty and work is open — the project has no honest end constraint yet.
+
+### Offline
+
+Task status / waiting-on / path toggles queue when offline and flush when online.  
+Banner shows queued count. Not a full offline app — floor-ready finish only.
+
+### Chrome defaults
+
+| Surface | Default |
+|---------|---------|
+| Today · Projects · Teams · Capture | On |
+| Trackers / tickets | Off (`WORKBENCH_MODULES=1`) |
+| Bird's-eye | Off (`BIRDS_EYE_ENABLED=1`) |
+| Flow Signal prompts | Off (`FLOW_SIGNAL_MODE=pilot\|live`) |
+| Whiteboard FAB | On (Capture) |
 
 ## Operating rules (Elon algorithm)
 

@@ -17,9 +17,14 @@
  *   redirect: the caller is trying to authenticate, so a wrong-password
  *   401 should render below the form, not reload the page.
  *
+ * - Network failure on a queueable task PATCH while offline → queued and
+ *   flushed on reconnect (see offlineQueue.ts).
+ *
  * - All other non-OK responses throw an Error with the server's message;
  *   callers display it via setErr() or a toast.
  */
+
+import { enqueueMutation, isQueueableMutation } from './offlineQueue';
 
 const AUTH_ENDPOINTS = [
   '/auth/login',
@@ -76,19 +81,33 @@ export async function api<T = any>(
   opts: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
 ): Promise<T> {
   const requestMethod = (opts.method || 'GET').toUpperCase();
-  const res = await fetchWithRetry(
-    `/api${path}`,
-    {
-      method: requestMethod,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(opts.headers || {}),
+  let res: Response;
+  try {
+    res = await fetchWithRetry(
+      `/api${path}`,
+      {
+        method: requestMethod,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(opts.headers || {}),
+        },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
       },
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-    },
-    requestMethod === 'GET',
-  );
+      requestMethod === 'GET',
+    );
+  } catch (e: any) {
+    // Offline / network dead — queue safe task mutations so the floor can keep moving.
+    if (
+      typeof window !== 'undefined' &&
+      isQueueableMutation(path, requestMethod) &&
+      (!navigator.onLine || /network/i.test(String(e?.message || '')))
+    ) {
+      enqueueMutation(path, requestMethod, opts.body);
+      return { ok: true, queued: true, id: path.split('/').pop() } as T;
+    }
+    throw e;
+  }
 
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;

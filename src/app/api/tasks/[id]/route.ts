@@ -102,10 +102,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       }
     }
 
+    // Critical-path predecessor must be another task on the same project.
+    if (body.blockedByTaskId !== undefined && body.blockedByTaskId) {
+      if (String(body.blockedByTaskId) === String(params.id)) {
+        return NextResponse.json({ error: 'A task cannot block itself.' }, { status: 400 });
+      }
+      const self = await Task.findById(params.id).select('projectId').lean();
+      const pred = await Task.findById(body.blockedByTaskId).select('projectId').lean();
+      if (!pred || !self || String((pred as any).projectId) !== String((self as any).projectId)) {
+        return NextResponse.json(
+          { error: 'Predecessor must be a task on the same project.' },
+          { status: 400 },
+        );
+      }
+    }
+
     const set: any = {};
     for (const [k, v] of Object.entries(body)) {
       if (v === undefined) continue;
       if (['startDate', 'dueDate', 'ccTcd'].includes(k)) set[k] = v ? new Date(v as string) : null;
+      else if (k === 'blockedByTaskId') set[k] = v || null;
       else set[k] = v;
     }
     if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();

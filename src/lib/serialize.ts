@@ -190,6 +190,7 @@ export function task(t: any, extras: Any = {}) {
     remarks: t.remarks || '',
     pendingWith: t.pendingWith || '',
     onCriticalPath: !!t.onCriticalPath,
+    blockedByTaskId: id(t.blockedByTaskId),
     privateToUserId: id(t.privateToUserId),
     isPrivate: !!t.privateToUserId,
     // Present when this task is an occurrence of a team recurring activity.

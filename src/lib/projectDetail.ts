@@ -32,6 +32,7 @@ function taskForProjectBoard(t: any, extras: any = {}) {
     remarks: t.remarks || '',
     pendingWith: t.pendingWith || '',
     onCriticalPath: !!t.onCriticalPath,
+    blockedByTaskId: t.blockedByTaskId ? String(t.blockedByTaskId) : null,
     lastActivityAt: toIso((t as any).lastActivityAt || t.updatedAt || t.createdAt),
     position: t.position ?? 0,
     createdAt: toIso(t.createdAt),

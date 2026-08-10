@@ -103,6 +103,9 @@ const TaskSchema = new Schema(
     // Critical path: if this slips, the project end slips. Leads mark it.
     // Open critical-path tasks surface first on the project board.
     onCriticalPath: { type: Boolean, default: false },
+    // Single predecessor on the critical path (task B waits on task A).
+    // Same project only — enforced on write. Null = no edge.
+    blockedByTaskId: { type: Schema.Types.ObjectId, ref: 'Task', default: null },
 
     subtasks: { type: [SubtaskSchema], default: [] },
     comments: { type: [CommentSchema], default: [] },

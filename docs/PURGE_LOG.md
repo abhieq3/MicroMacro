@@ -54,10 +54,20 @@
 | Today You panel | Exceptions first; My Day renamed **Capture** |
 | Digest CTA | Open Today only |
 
+## 2026-08-10 wave 3 — complete the machine
+
+| Change | Detail |
+|--------|--------|
+| Path edges | `blockedByTaskId` + topo order on project strip |
+| Offline queue | Task PATCH queues offline; AppShell flushes + banner |
+| Birds-eye | Opt-in `NEXT_PUBLIC_BIRDS_EYE_ENABLED=1` |
+| Flow Signal | Default mode `off` |
+| Today capture | One-line scratch → `/scratch` |
+
 ## Still optional later
 
-- Ordered critical-path dependencies (edges), not just flags  
-- Offline write queue  
+- Multi-predecessor DAG / Gantt  
+- Full offline board cache  
 - Confirm ICS/install API dead ends  
 - Further split DashboardClient panels into files  
 
