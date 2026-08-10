@@ -103,6 +103,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     // Critical-path predecessor must be another task on the same project.
+    // Setting a predecessor implies the task is on the critical path.
     if (body.blockedByTaskId !== undefined && body.blockedByTaskId) {
       if (String(body.blockedByTaskId) === String(params.id)) {
         return NextResponse.json({ error: 'A task cannot block itself.' }, { status: 400 });
@@ -124,6 +125,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       else if (k === 'blockedByTaskId') set[k] = v || null;
       else set[k] = v;
     }
+    if (body.blockedByTaskId) set.onCriticalPath = true;
     if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();
     else if (body.status && body.status !== 'done') set.completedAt = null;
     // Leaving blocked clears the bottleneck name unless the client sets a new one.

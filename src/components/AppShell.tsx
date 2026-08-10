@@ -11,6 +11,7 @@ import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
 import { installOnlineFlush, queueLength } from '@/lib/client/offlineQueue';
+import { useToast } from './Toast';
 import { PwaProvider } from './PwaProvider';
 import { NavigationProgress } from './NavigationProgress';
 import { PrefetchOnHover } from './PrefetchOnHover';
@@ -139,6 +140,9 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const toast = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -222,7 +226,19 @@ export default function AppShell({
   useEffect(() => {
     setOfflineQueued(queueLength());
     const onQueued = () => setOfflineQueued(queueLength());
-    const onFlushed = () => setOfflineQueued(queueLength());
+    const onFlushed = (ev: Event) => {
+      setOfflineQueued(queueLength());
+      const detail = (ev as CustomEvent).detail as
+        | { dropped?: number; error?: string; flushed?: number }
+        | undefined;
+      // Surface permanent drops so the floor knows a change did not land.
+      if (detail?.dropped && detail.dropped > 0) {
+        toastRef.current.warning(
+          `${detail.dropped} offline change${detail.dropped === 1 ? '' : 's'} could not sync`,
+          detail.error || 'Re-apply on the task if needed.',
+        );
+      }
+    };
     window.addEventListener('pragati:offline-queued', onQueued);
     window.addEventListener('pragati:offline-flushed', onFlushed);
     const stop = installOnlineFlush();
@@ -929,21 +945,27 @@ export default function AppShell({
         <Suspense fallback={null}>
           <NavigationProgress />
         </Suspense>
+        <PrefetchOnHover />
         {offlineQueued > 0 && (
           <div
-            className="sticky top-0 inset-x-0 z-[9990] px-3 py-1.5 text-center text-[11px] font-bold tracking-tight bg-amber-500 text-amber-950 shadow-sm"
+            className="fixed top-0 inset-x-0 z-[9990] h-8 px-3 flex items-center justify-center text-center text-[11px] font-bold tracking-tight bg-amber-500 text-amber-950 shadow-sm"
             role="status"
             data-testid="offline-queue-banner"
           >
-            Offline — {offlineQueued} change{offlineQueued === 1 ? '' : 's'} queued. Syncs when you&rsquo;re
-            back online.
+            Offline — {offlineQueued} change{offlineQueued === 1 ? '' : 's'} queued. Syncs when
+            you&rsquo;re back online.
           </div>
         )}
-        <PrefetchOnHover />
         {/* Fixed-height app shell: the shell itself never scrolls (overflow-hidden),
-        so the sidebar stays put — only <main> scrolls. This is what keeps the
-        sidebar pinned regardless of how far the page content scrolls. */}
-        <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-page)' }}>
+        so the sidebar stays put — only <main> scrolls. Top padding reserves
+        space for the fixed offline banner so content is never covered. */}
+        <div
+          className="h-screen flex overflow-hidden"
+          style={{
+            background: 'var(--bg-page)',
+            paddingTop: offlineQueued > 0 ? 32 : 0,
+          }}
+        >
           {/* Mobile backdrop */}
           <div
             className={`lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-150 ${

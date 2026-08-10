@@ -617,6 +617,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // byte. The client still refetches on mount to stay live; SSR is the fast
   // first paint, the client fetch is the freshness pass.
   const [project, setProject] = useState<any>(initialProject);
+  const projectRef = useRef(project);
+  projectRef.current = project;
   const [me, setMe] = useState<any>(initialMe);
   const [view, setView] = useState<'phases' | 'board'>('phases');
   // Finished phases start collapsed so open work leads the page.
@@ -681,7 +683,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       setProject(p);
       setLoadErr(null);
     } catch (e: any) {
-      setLoadErr(e?.message || 'Could not load this project.');
+      // Offline / blip: keep optimistic board paint. Only hard-fail empty.
+      if (!projectRef.current) {
+        setLoadErr(e?.message || 'Could not load this project.');
+      }
     }
   }
 
@@ -1042,14 +1047,17 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     }
     setPendingTaskIds((s) => new Set([...s, taskId]));
     try {
+      let queued = false;
       if (statusChanged) {
         const body: any = { status: toStatus };
         if (pendingWith !== undefined) body.pendingWith = pendingWith;
-        await api(`/tasks/${taskId}`, { method: 'PATCH', body });
+        const res = await api<any>(`/tasks/${taskId}`, { method: 'PATCH', body });
+        queued = !!res?.queued;
       }
       // Persisting column order is a lead/admin action; an IC dragging their
       // own card still gets the status change, just not a saved reorder.
-      if (isLead) {
+      // Skip reorder while offline — status is the floor-critical write.
+      if (isLead && !queued) {
         await api(`/projects/${id}/reorder-tasks`, { method: 'POST', body: { orderedIds } });
       }
       if (toStatus === 'done' && wasNotDone) {
@@ -1059,8 +1067,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         }
         // Milestone sound/haptic owned by celebrateIfMilestone + Celebration.
       }
-      // Optimistic state is already applied by KanbanBoard; reconcile silently.
-      load();
+      // Optimistic state is already applied by KanbanBoard; reconcile when online.
+      if (!queued) load();
     } catch (e: any) {
       showToast(e.message || 'Failed to update task', 'err');
       load(); // revert optimistic
@@ -1098,12 +1106,20 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     try {
       const body: any = { status };
       if (pendingWith !== undefined) body.pendingWith = pendingWith;
-      await api(`/tasks/${taskId}`, { method: 'PATCH', body });
+      const res = await api<any>(`/tasks/${taskId}`, { method: 'PATCH', body });
       if (status === 'done' && wasNotDone) {
         if (!celebrateIfMilestone(taskId)) {
           chimeIfEnabled();
           if (cur) setTaskPop(cur);
         }
+      }
+      if (res?.queued) {
+        setPendingTaskIds((s) => {
+          const n = new Set(s);
+          n.delete(taskId);
+          return n;
+        });
+        return;
       }
     } catch (e: any) {
       showToast(e.message || 'Failed to update task', 'err');

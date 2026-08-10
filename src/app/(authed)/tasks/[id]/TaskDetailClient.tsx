@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { notifyCalendarChange } from '@/components/SidebarCalendar';
@@ -97,6 +97,8 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   // Seed from the server-rendered payload so real content paints on first
   // byte; the mount-time refetch below keeps it fresh.
   const [task, setTask] = useState<any>(initialTask);
+  const taskRef = useRef(task);
+  taskRef.current = task;
   // Project team scope for the assignee picker. The picker fetches its own
   // (paginated) roster from /api/users?teamId=… — we only need the id here.
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -125,7 +127,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
       setTask(await api<any>(`/tasks/${id}`));
       setLoadErr(null);
     } catch (e: any) {
-      setLoadErr(e?.message || 'Could not load this task.');
+      // Offline / blip after a queued mutation: keep optimistic paint.
+      // Only hard-fail when we have nothing on screen.
+      if (!taskRef.current) {
+        setLoadErr(e?.message || 'Could not load this task.');
+      }
     }
   }
 
@@ -227,13 +233,15 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   async function update(patch: any, opts?: { optimistic?: any }) {
     if (opts?.optimistic) setTask((t: any) => ({ ...t, ...opts.optimistic }));
     try {
-      await api(`/tasks/${id}`, { method: 'PATCH', body: patch });
+      const res = await api<any>(`/tasks/${id}`, { method: 'PATCH', body: patch });
       // A date change must refresh the sidebar calendar dots at once.
       if ('dueDate' in patch || 'ccTcd' in patch || 'status' in patch) notifyCalendarChange();
+      // Queued offline — keep optimistic state; don't refetch (would blank UI).
+      if (res?.queued) return;
       load();
     } catch (e: any) {
       showToast(e.message || 'Save failed', 'err');
-      load(); // revert
+      load(); // revert when online enough to load
     }
   }
 
@@ -267,6 +275,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
       if (pendingWith !== undefined) body.pendingWith = pendingWith;
       const updated = await api<any>(`/tasks/${id}`, { method: 'PATCH', body });
       if (newStatus === 'done' && !wasDone) {
+        // Offline queue has no projectClear — still celebrate the personal close.
         if (updated?.projectClear) {
           playVictory();
           setProjectCeleb({
@@ -286,6 +295,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
           });
         }
       }
+      if (updated?.queued) return;
       load();
     } catch (e: any) {
       showToast(e.message || 'Failed to update status', 'err');
