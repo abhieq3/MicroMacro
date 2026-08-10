@@ -1354,9 +1354,27 @@ function TaskTableRow({ t }: { t: TeamTask }) {
 /*  MY TASKS PANEL — tasks assigned to the current user (all roles)           */
 /* ────────────────────────────────────────────────────────────────────────── */
 function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
-  const myTasks = tasks.filter((t) => t.assigneeId === myId && t.status !== 'done');
+  const myOpen = tasks.filter((t) => t.assigneeId === myId && t.status !== 'done');
+  // Exceptions first: overdue → blocked → due today → rest (Elon morning order).
+  const myTasks = myOpen.slice().sort((a, b) => {
+    const rank = (t: TeamTask) => {
+      if (isOverdue(t.ccTcd || t.dueDate, t.status)) return 0;
+      if (t.status === 'blocked') return 1;
+      const d = daysUntil(t.ccTcd || t.dueDate);
+      if (d === 0) return 2;
+      if (d !== null && d > 0 && d <= 2) return 3;
+      return 4;
+    };
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    const da = daysUntil(a.ccTcd || a.dueDate) ?? 999;
+    const db = daysUntil(b.ccTcd || b.dueDate) ?? 999;
+    return da - db;
+  });
   const myDone = tasks.filter((t) => t.assigneeId === myId && t.status === 'done').length;
   const myOverdue = myTasks.filter((t) => isOverdue(t.ccTcd || t.dueDate, t.status)).length;
+  const myBlocked = myTasks.filter((t) => t.status === 'blocked').length;
 
   if (myTasks.length === 0 && myDone === 0) return null;
 
@@ -1368,15 +1386,22 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
       <PanelHeader
         icon={<CheckCircle2 size={13} />}
         tint={PANEL_TINTS.emerald}
-        title="My tasks"
+        title="You"
         count={myTasks.length}
         countSuffix=" open"
         trailing={
-          myOverdue > 0 ? (
-            <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full">
-              {myOverdue} overdue
-            </span>
-          ) : null
+          <span className="flex items-center gap-1">
+            {myOverdue > 0 && (
+              <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full">
+                {myOverdue} overdue
+              </span>
+            )}
+            {myBlocked > 0 && (
+              <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                {myBlocked} blocked
+              </span>
+            )}
+          </span>
         }
       />
       {myTasks.length === 0 ? (
@@ -1443,10 +1468,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
           })}
           {myTasks.length > 15 && (
             <li className="px-4 py-2.5 text-[10px] text-slate-400 dark:text-white/30">
-              +{myTasks.length - 15} more —{' '}
-              <Link href="/my-day" className="text-blue-600 dark:text-blue-400 font-bold">
-                view in My Day →
-              </Link>
+              +{myTasks.length - 15} more — exceptions are listed first.
             </li>
           )}
         </ul>

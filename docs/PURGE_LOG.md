@@ -45,10 +45,19 @@
 | Workbench | Team trackers/tickets **off by default** (`NEXT_PUBLIC_WORKBENCH_MODULES=1` to enable) |
 | Language | Lifecycle labels universal; QMS tab → Trackers |
 
+## 2026-08-10 wave 2 — machine tightens
+
+| Change | Detail |
+|--------|--------|
+| Critical path | `Task.onCriticalPath` + board strip + lead toggle |
+| Exception-only digest/push | Skip send when no overdue/due-today/team fire |
+| Today You panel | Exceptions first; My Day renamed **Capture** |
+| Digest CTA | Open Today only |
+
 ## Still optional later
 
-- Critical path field on projects  
-- Collapse My Day into Today for single personal+shared surface  
+- Ordered critical-path dependencies (edges), not just flags  
+- Offline write queue  
 - Confirm ICS/install API dead ends  
 - Further split DashboardClient panels into files  
 

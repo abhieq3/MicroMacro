@@ -457,9 +457,10 @@ export default function AppShell({
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
 
+  // Capture / whiteboard — secondary to Today. Personal notes live here.
   const myDayItem: NavItem = {
     href: '/my-day',
-    label: 'My Day',
+    label: 'Capture',
     icon: NotebookPen,
     iconColor: '#1565C0',
     iconBg: '#EFF6FF',
@@ -1368,7 +1369,7 @@ export default function AppShell({
                     { keys: ['G', 'D'], label: 'Today' },
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
-                    { keys: ['G', 'M'], label: 'My Day' },
+                    { keys: ['G', 'M'], label: 'Capture' },
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (

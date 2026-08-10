@@ -267,9 +267,30 @@ export function bucketTasks(
 }
 
 /** Does a section set contain anything worth emailing?
- *  Velocity (“moved yesterday”) does not count — exceptions and due work only. */
+ *  Exceptions only: overdue + due today. "Soon" alone is not a fire —
+ *  silence is the product when nothing burns. */
 export function digestHasContent(s: DigestSections): boolean {
-  return s.overdue.length > 0 || s.today.length > 0 || s.soon.length > 0;
+  return s.overdue.length > 0 || s.today.length > 0;
+}
+
+/** Leadership brief has fire if team/workspace exceptions exist. */
+export function leadershipHasExceptions(brief: {
+  team?: { blocked?: unknown[]; signoffsPending?: number; overdueByMember?: unknown[] } | null;
+  workspace?: { overdueTotal?: number; risky?: unknown[] } | null;
+  my?: { overdue?: unknown[]; today?: unknown[] } | null;
+} | null | undefined): boolean {
+  if (!brief) return false;
+  if ((brief.my?.overdue?.length || 0) > 0 || (brief.my?.today?.length || 0) > 0) return true;
+  if (brief.team) {
+    if ((brief.team.blocked?.length || 0) > 0) return true;
+    if ((brief.team.signoffsPending || 0) > 0) return true;
+    if ((brief.team.overdueByMember?.length || 0) > 0) return true;
+  }
+  if (brief.workspace) {
+    if ((brief.workspace.overdueTotal || 0) > 0) return true;
+    if ((brief.workspace.risky?.length || 0) > 0) return true;
+  }
+  return false;
 }
 
 function escapeHtml(s: string): string {
@@ -627,15 +648,10 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       </div>`
     : '';
 
-  // CTAs: lead/admin get board first; everyone gets My Day.
+  // One home: Today.
   let openBtn = '';
   if (appUrl) {
-    const primary =
-      isLead || isAdmin
-        ? `<a href="${appUrl}/" style="display:inline-block;background:#1565C0;color:#fff;font-weight:700;font-size:13px;text-decoration:none;padding:10px 16px;border-radius:10px;margin-right:8px;">Open board</a>`
-        : '';
-    const secondary = `<a href="${appUrl}/my-day" style="display:inline-block;background:${isLead || isAdmin ? '#fff' : '#1565C0'};color:${isLead || isAdmin ? '#1565C0' : '#fff'};font-weight:700;font-size:13px;text-decoration:none;padding:10px 16px;border-radius:10px;border:1px solid #1565C0;">Open My Day</a>`;
-    openBtn = `${primary}${secondary}`;
+    openBtn = `<a href="${appUrl}/" style="display:inline-block;background:#1565C0;color:#fff;font-weight:700;font-size:13px;text-decoration:none;padding:10px 16px;border-radius:10px;">Open Today</a>`;
   }
 
   const manage = appUrl
@@ -715,8 +731,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   textSection('Coming up', rest.soon);
   if (!digestHasContent(sections) && !leadershipBrief) lines.push('All clear — nothing due today.');
   if (appUrl) {
-    if (isLead || isAdmin) lines.push('', `Open board: ${appUrl}/`);
-    lines.push(`Open My Day: ${appUrl}/my-day`);
+    lines.push('', `Open Today: ${appUrl}/`);
   }
 
   return { subject, html, text: lines.join('\n') };
@@ -936,8 +951,6 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       })),
     };
 
-    // Brief goes out every day — empty plate is signal ("you're clear").
-
     const role = normalizeRole((r.user as any).role);
     let leadershipBrief: RenderInput['leadershipBrief'] = null;
     if (role === 'lead' || role === 'admin' || role === 'master_admin') {
@@ -945,8 +958,18 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
         const { buildDailyBrief } = await import('@/lib/brief');
         leadershipBrief = await buildDailyBrief(uid, role, now);
       } catch {
-        // The personal brief still sends if a leadership roll-up is unavailable.
+        // Leadership roll-up optional; personal exceptions still send.
       }
+    }
+
+    // Exception-only: no mail when nothing is overdue/due today and no
+    // leadership fire. All-clear silence is free and honest. Test/welcome
+    // still send so delivery can be verified.
+    const hasFire =
+      digestHasContent(sections) || leadershipHasExceptions(leadershipBrief as any);
+    if (!hasFire && !opts.test && !opts.welcome) {
+      summary.skippedNoTasks += 1;
+      continue;
     }
 
     const { subject, html, text } = renderDigestEmail({

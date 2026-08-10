@@ -123,7 +123,7 @@ export function composeHeadline(c: HeadlineCounts): string {
     return `${n} team overdue.`;
   }
   if (c.role === 'lead' && (c.signoffs ?? 0) > 0) {
-    return `${c.signoffs} QA sign-off${s(c.signoffs!)} pending on your team.`;
+    return `${c.signoffs} approval${s(c.signoffs!)} pending on your team.`;
   }
 
   if (c.overdue > 0 && c.today > 0) {
@@ -379,22 +379,17 @@ export async function buildDailyBrief(
     weekend: isWeekend,
   });
 
+  // Exception-only signal for push / silence-is-feature channels.
+  // "Soon", wins yesterday, and quiet workspace stats do not wake anyone.
   brief.hasContent =
     buckets.overdue.length > 0 ||
     buckets.today.length > 0 ||
-    buckets.soon.length > 0 ||
     approvals > 0 ||
-    winsYesterday > 0 ||
     !!(
       brief.team &&
       (brief.team.blocked.length || brief.team.signoffsPending || brief.team.overdueByMember.length)
     ) ||
-    !!(
-      brief.workspace &&
-      (brief.workspace.doneYesterday ||
-        brief.workspace.overdueTotal ||
-        brief.workspace.auditHighlights.length)
-    );
+    !!(brief.workspace && (brief.workspace.overdueTotal || 0) > 0);
 
   return brief;
 }

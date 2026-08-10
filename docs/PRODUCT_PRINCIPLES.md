@@ -19,9 +19,14 @@ The board is the source of truth. Everything else is optional chrome.
 
 1. **Today** — overdue → blocked (with a named cause) → due today → act  
 2. **Delivery** — open task → finish it (or name the blocker)  
-3. **Lead** — who is late, who is stuck, one export if the room needs paper  
+3. **Lead** — critical path green, who is late, who is stuck, one export if needed  
 
 Everything else is secondary or a feature flag.
+
+### Critical path
+
+Leads mark tasks that **gate ship**. Open critical-path work is listed first on the project.  
+If the critical path is empty and work is open — the project has no honest end constraint yet.
 
 ## Operating rules (Elon algorithm)
 

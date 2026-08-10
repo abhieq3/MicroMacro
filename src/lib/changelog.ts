@@ -31,9 +31,19 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-10',
-    title: 'Universal work board: Today, named blockers, no industry cosplay',
+    title: 'Critical path + exception-only alerts — the machine tightens',
     tags: ['feature', 'improvement'],
     highlight: true,
+    body: [
+      'Projects: mark tasks on the critical path — open path tasks surface first. Leads toggle from board or task detail.',
+      'Email and push only fire on real exceptions (overdue / due today / team fire). Silent all-clear is free.',
+      'Today “You” list sorts exceptions first. My Day is Capture (notes/board). Digest CTA opens Today.',
+    ],
+  },
+  {
+    date: '2026-08-10',
+    title: 'Universal work board: Today, named blockers, no industry cosplay',
+    tags: ['feature', 'improvement'],
     body: [
       'Pragati is the work board for everyone — not a pharma product with optional extras. Mission and principles rewritten.',
       'Home is Today (nav + command palette). Zero exceptions is the healthy state. Blocked requires who or what is waiting.',

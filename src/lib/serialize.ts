@@ -189,6 +189,7 @@ export function task(t: any, extras: Any = {}) {
     deployStage: t.deployStage || 'na',
     remarks: t.remarks || '',
     pendingWith: t.pendingWith || '',
+    onCriticalPath: !!t.onCriticalPath,
     privateToUserId: id(t.privateToUserId),
     isPrivate: !!t.privateToUserId,
     // Present when this task is an occurrence of a team recurring activity.

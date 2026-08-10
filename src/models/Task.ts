@@ -100,6 +100,10 @@ const TaskSchema = new Schema(
     // can name whoever the bottleneck is. Empty = not waiting on anyone.
     pendingWith: { type: String, default: '' },
 
+    // Critical path: if this slips, the project end slips. Leads mark it.
+    // Open critical-path tasks surface first on the project board.
+    onCriticalPath: { type: Boolean, default: false },
+
     subtasks: { type: [SubtaskSchema], default: [] },
     comments: { type: [CommentSchema], default: [] },
     effortLog: { type: [EffortEntrySchema], default: [] },

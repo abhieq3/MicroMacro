@@ -38,6 +38,7 @@ import {
   ChevronDown,
   RefreshCw,
   ArrowRight,
+  Route,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 
@@ -1004,6 +1005,31 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     return t || null;
   }
 
+  /** Critical path: if this slips, the project end slips. */
+  async function toggleCriticalPath(taskId: string, next: boolean) {
+    if (!canManage) return;
+    setProject((p: any) => ({
+      ...p,
+      tasks: (p.tasks || []).map((t: any) => (t.id === taskId ? { ...t, onCriticalPath: next } : t)),
+    }));
+    try {
+      await api(`/tasks/${taskId}`, { method: 'PATCH', body: { onCriticalPath: next } });
+    } catch (e: any) {
+      showToast(e.message || 'Could not update critical path', 'err');
+      load();
+    }
+  }
+
+  const criticalOpen = tasks
+    .filter((t: any) => t.onCriticalPath && t.status !== 'done')
+    .slice()
+    .sort((a: any, b: any) => {
+      const ad = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const bd = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      if (ad !== bd) return ad - bd;
+      return (a.position ?? 0) - (b.position ?? 0);
+    });
+
   // Kanban drop: persist a status change (if any) and the new column order.
   async function dropReorder(taskId: string, toStatus: string, orderedIds: string[]) {
     const cur = tasks.find((t: any) => t.id === taskId);
@@ -1245,6 +1271,54 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               Open schedule
             </Link>
           )}
+        </div>
+      )}
+      {/* Critical path — the ordered constraints that define ship. */}
+      {!project.isSystem && criticalOpen.length > 0 && (
+        <div className="rounded-xl border border-violet-200/90 dark:border-violet-500/30 bg-violet-50/70 dark:bg-violet-500/[0.08] px-4 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Route size={15} className="text-violet-700 dark:text-violet-300 shrink-0" />
+            <div className="text-[12px] font-bold uppercase tracking-wider text-violet-800 dark:text-violet-300">
+              Critical path
+            </div>
+            <span className="text-[11px] font-bold tabular-nums text-violet-600/80 dark:text-violet-300/70">
+              {criticalOpen.length} open
+            </span>
+          </div>
+          <ol className="space-y-1.5">
+            {criticalOpen.map((t: any, i: number) => {
+              const late =
+                t.dueDate &&
+                t.status !== 'done' &&
+                new Date(t.dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
+              return (
+                <li key={t.id} className="flex items-center gap-2 min-w-0 text-[13px]">
+                  <span className="text-[10px] font-black tabular-nums text-violet-500/80 w-4 shrink-0">
+                    {i + 1}
+                  </span>
+                  <TaskLink
+                    task={t}
+                    className="font-semibold text-slate-800 dark:text-white/85 hover:text-violet-700 dark:hover:text-violet-300 truncate min-w-0"
+                  />
+                  {t.status === 'blocked' && (
+                    <span className="text-[10px] font-bold text-red-600 shrink-0">blocked</span>
+                  )}
+                  {late && <span className="text-[10px] font-bold text-red-600 shrink-0">overdue</span>}
+                  {t.assigneeName && (
+                    <span className="text-[11px] text-slate-400 dark:text-white/35 truncate shrink-0 max-w-[7rem]">
+                      {t.assigneeName}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+      {!project.isSystem && canManage && criticalOpen.length === 0 && openTaskCount > 0 && (
+        <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/10 px-4 py-2.5 text-[12px] text-slate-500 dark:text-white/40">
+          <span className="font-semibold text-slate-600 dark:text-white/55">No critical path yet.</span>{' '}
+          Mark tasks that gate ship — use the path icon on a task row, or toggle on task detail.
         </div>
       )}
       {celebration && (
@@ -1977,6 +2051,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                                 </span>
                               ) : null;
                             })()}
+                          {t.onCriticalPath && (
+                            <span className="tag bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25">
+                              Path
+                            </span>
+                          )}
                           {t.requiresQaSignoff &&
                             (t.qaSignoffAt ? (
                               <span className="tag bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -1990,6 +2069,21 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                           <PriorityTag priority={t.priority} />
                           {t.dueDate && (
                             <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>
+                          )}
+                          {canManage && (
+                            <button
+                              type="button"
+                              onClick={() => toggleCriticalPath(t.id, !t.onCriticalPath)}
+                              aria-label={t.onCriticalPath ? 'Remove from critical path' : 'Add to critical path'}
+                              title={t.onCriticalPath ? 'On critical path' : 'Mark critical path'}
+                              className={`p-1 rounded transition-all shrink-0 ${
+                                t.onCriticalPath
+                                  ? 'text-violet-600 bg-violet-50 dark:bg-violet-500/15'
+                                  : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10'
+                              }`}
+                            >
+                              <Route size={13} />
+                            </button>
                           )}
                           {canDelete && (
                             <button
@@ -2077,6 +2171,11 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                               </span>
                             ) : null;
                           })()}
+                        {t.onCriticalPath && (
+                          <span className="tag bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25">
+                            Path
+                          </span>
+                        )}
                         {t.gxpCritical && (
                           <span className="tag bg-red-50 text-red-700 border border-red-200">Critical</span>
                         )}
@@ -2093,6 +2192,21 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                         <PriorityTag priority={t.priority} />
                         {t.dueDate && (
                           <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>
+                        )}
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => toggleCriticalPath(t.id, !t.onCriticalPath)}
+                            aria-label={t.onCriticalPath ? 'Remove from critical path' : 'Add to critical path'}
+                            title={t.onCriticalPath ? 'On critical path' : 'Mark critical path'}
+                            className={`p-1 rounded transition-all shrink-0 ${
+                              t.onCriticalPath
+                                ? 'text-violet-600 bg-violet-50 dark:bg-violet-500/15'
+                                : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10'
+                            }`}
+                          >
+                            <Route size={13} />
+                          </button>
                         )}
                         {canDelete && (
                           <button
