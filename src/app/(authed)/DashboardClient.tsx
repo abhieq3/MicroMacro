@@ -555,10 +555,10 @@ function FullScreenOverlay({
         onClick={onClose}
       >
         <div
-          className="bg-white dark:bg-[#262624] rounded-2xl w-full max-w-4xl my-2 shadow-2xl dark:border dark:border-white/[0.08]"
+          className="bg-white dark:bg-[#222327] rounded-2xl w-full max-w-4xl my-2 shadow-2xl dark:border dark:border-white/[0.08]"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07] sticky top-0 bg-white dark:bg-[#262624] rounded-t-2xl z-10">
+          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-slate-100 dark:border-white/[0.07] sticky top-0 bg-white dark:bg-[#222327] rounded-t-2xl z-10">
             {icon}
             <h3 className="text-sm font-bold text-slate-800 dark:text-white/85">{title}</h3>
             <button
@@ -991,7 +991,7 @@ function ProjectsColumn({
 
       {projects.length === 0 ? (
         <div
-          className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] text-center py-12 px-6"
+          className="bg-white dark:bg-[#222327] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] text-center py-12 px-6"
           style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
         >
           <FolderKanban size={26} className="mx-auto text-slate-300 dark:text-white/20 mb-3" />
@@ -1250,7 +1250,7 @@ function ProjectRow({
 
   return (
     <article
-      className="min-w-0 bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden transition-all"
+      className="min-w-0 bg-white dark:bg-[#222327] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden transition-all"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
       {/* Collapsed-state header — two readable rows, never a 5-piece chip strip.
@@ -1689,7 +1689,7 @@ function UpNextPanel({
         </div>
       )}
       <div
-        className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+        className="bg-white dark:bg-[#222327] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
         style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
       >
         <div className="overflow-y-auto" style={{ maxHeight: expanded ? 'calc(100vh - 220px)' : '60vh' }}>
@@ -1942,7 +1942,7 @@ function ContributorsPanel({
 
   return (
     <section
-      className="hidden md:block bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+      className="hidden md:block bg-white dark:bg-[#222327] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
       <PanelHeader
@@ -2037,7 +2037,7 @@ function MyFocusPanel({ tasks, projects, myId }: { tasks: TeamTask[]; projects: 
 
   return (
     <section
-      className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+      className="bg-white dark:bg-[#222327] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
       <div
