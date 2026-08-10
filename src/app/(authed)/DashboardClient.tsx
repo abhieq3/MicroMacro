@@ -225,9 +225,12 @@ function TodayCapture() {
   }
 
   return (
-    <form onSubmit={submit} className="mb-4 flex items-center gap-2">
+    <form
+      onSubmit={submit}
+      className="mb-5 flex items-center gap-2 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#222327] px-3 py-2 sm:px-3.5 sm:py-2.5 shadow-sm dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
+    >
       <input
-        className="input text-sm flex-1 min-w-0"
+        className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] sm:text-sm text-slate-800 dark:text-white/90 placeholder:text-slate-400 dark:placeholder:text-white/30 py-1"
         placeholder="Capture a thought…"
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -238,7 +241,7 @@ function TodayCapture() {
       <button
         type="submit"
         disabled={busy || !text.trim()}
-        className="btn-primary text-xs shrink-0 disabled:opacity-50"
+        className="btn-primary text-xs shrink-0 disabled:opacity-40 !py-1.5 !px-3"
       >
         Add
       </button>
@@ -249,9 +252,9 @@ function TodayCapture() {
       )}
       <Link
         href="/my-day"
-        className="text-[11px] font-bold text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 shrink-0 hidden sm:inline"
+        className="text-[11px] font-bold text-slate-400 hover:text-blue-600 dark:text-white/35 dark:hover:text-blue-400 shrink-0 hidden sm:inline pl-0.5"
       >
-        Capture →
+        Board →
       </Link>
     </form>
   );
@@ -341,20 +344,40 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   }, [visibleTasks]);
 
   const firstName = (dash.user.name || '').split(' ')[0] || 'there';
+  const dateLabel = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'short',
+      }).format(new Date());
+    } catch {
+      return '';
+    }
+  }, []);
 
   return (
     <div className="pb-12 max-w-[1440px]">
-      {/* ── Greeting ────────────────────────────────────────────────────── */}
-      <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
+      {/* ── Greeting — brand blue, not peach ─────────────────────────────── */}
+      <div className="mb-5 sm:mb-6 flex items-end justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[1.75rem] sm:text-[1.9rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
-            <span className="text-blue-700 dark:text-blue-400" suppressHydrationWarning>
-              {firstName}
-            </span>
+          <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-white/35 mb-1">
+            Today
+          </div>
+          <h1
+            className="font-display text-[1.85rem] sm:text-[2.05rem] font-black tracking-tight leading-none text-slate-900 dark:text-white"
+            suppressHydrationWarning
+          >
+            {firstName}
           </h1>
+          {dateLabel && (
+            <div className="mt-1.5 text-[12px] font-medium text-slate-400 dark:text-white/35" suppressHydrationWarning>
+              {dateLabel}
+            </div>
+          )}
         </div>
         {/* Bird's-eye — opt-in power tool, not the morning path. */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 pb-0.5">
           {!isFirstRun && BIRDS_EYE_ENABLED && (
             <BirdEyeButton scopeKey="dashboard" onClick={() => setBirdsEyeOpen(true)} />
           )}
@@ -403,14 +426,18 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               )}
             </div>
           ) : (
-            <div className="mb-5 inline-flex items-center gap-2 rounded-xl border border-emerald-200/80 dark:border-emerald-500/25 bg-emerald-50/70 dark:bg-emerald-500/10 px-3 py-2">
-              <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span className="text-[12px] font-bold text-emerald-800 dark:text-emerald-300 tracking-tight">
-                Zero exceptions
+            <div className="mb-5 flex items-center gap-2.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-500/20 bg-gradient-to-r from-emerald-50/90 to-teal-50/40 dark:from-emerald-500/[0.12] dark:to-teal-500/[0.06] px-3.5 py-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0">
+                <CheckCircle2 size={15} strokeWidth={2.4} />
               </span>
-              <span className="text-[11px] text-emerald-700/70 dark:text-emerald-300/60">
-                Nothing overdue or blocked.
-              </span>
+              <div className="min-w-0">
+                <div className="text-[13px] font-bold text-emerald-900 dark:text-emerald-200 tracking-tight">
+                  Zero exceptions
+                </div>
+                <div className="text-[11px] text-emerald-700/75 dark:text-emerald-300/55">
+                  Nothing overdue or blocked. Board is clear.
+                </div>
+              </div>
             </div>
           )}
           {summaryModal === 'overdue' && (
@@ -1417,8 +1444,16 @@ function TaskTableRow({ t }: { t: TeamTask }) {
 /* ────────────────────────────────────────────────────────────────────────── */
 function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
   const myOpen = tasks.filter((t) => t.assigneeId === myId && t.status !== 'done');
-  // Exceptions first: overdue → blocked → due today → rest (Elon morning order).
-  const myTasks = myOpen.slice().sort((a, b) => {
+  // Morning surface: only fire + near-term (≤7d). Far-out backlog stays off Today.
+  const isNear = (t: TeamTask) => {
+    if (isOverdue(t.ccTcd || t.dueDate, t.status)) return true;
+    if (t.status === 'blocked') return true;
+    const d = daysUntil(t.ccTcd || t.dueDate);
+    return d !== null && d >= 0 && d <= 7;
+  };
+  const focus = myOpen.filter(isNear);
+  const later = myOpen.filter((t) => !isNear(t));
+  const myTasks = focus.slice().sort((a, b) => {
     const rank = (t: TeamTask) => {
       if (isOverdue(t.ccTcd || t.dueDate, t.status)) return 0;
       if (t.status === 'blocked') return 1;
@@ -1438,11 +1473,11 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
   const myOverdue = myTasks.filter((t) => isOverdue(t.ccTcd || t.dueDate, t.status)).length;
   const myBlocked = myTasks.filter((t) => t.status === 'blocked').length;
 
-  if (myTasks.length === 0 && myDone === 0) return null;
+  if (myOpen.length === 0 && myDone === 0) return null;
 
   return (
     <section
-      className="bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden"
+      className="bg-white dark:bg-[#222327] rounded-2xl border border-slate-200/80 dark:border-white/[0.08] overflow-hidden"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
       <PanelHeader
@@ -1450,7 +1485,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
         tint={PANEL_TINTS.emerald}
         title="You"
         count={myTasks.length}
-        countSuffix=" open"
+        countSuffix={myTasks.length === 1 ? ' due soon' : ' due soon'}
         trailing={
           <span className="flex items-center gap-1">
             {myOverdue > 0 && (
@@ -1467,19 +1502,29 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
         }
       />
       {myTasks.length === 0 ? (
-        <div className="py-7 text-center">
-          <CheckCircle2 size={18} className="mx-auto text-emerald-300 mb-1.5" />
-          <div className="text-[11px] text-slate-400 dark:text-white/25">All caught up — {myDone} done.</div>
+        <div className="py-7 text-center px-4">
+          <CheckCircle2 size={18} className="mx-auto text-emerald-400 dark:text-emerald-400/70 mb-1.5" />
+          <div className="text-[12px] font-semibold text-slate-600 dark:text-white/50">
+            Nothing due this week
+          </div>
+          {later.length > 0 && (
+            <div className="text-[11px] text-slate-400 dark:text-white/30 mt-1">
+              {later.length} later · far-out work stays off Today
+            </div>
+          )}
+          {myDone > 0 && later.length === 0 && (
+            <div className="text-[11px] text-slate-400 dark:text-white/30 mt-1">{myDone} done.</div>
+          )}
         </div>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-white/[0.06] max-h-72 overflow-y-auto">
-          {myTasks.slice(0, 15).map((t) => {
+          {myTasks.slice(0, 12).map((t) => {
             const due = t.ccTcd || t.dueDate;
             const dueIn = daysUntil(due);
             const overdue = isOverdue(due, t.status);
             const dotColor =
               t.status === 'in_progress'
-                ? '#3B82F6'
+                ? '#42A5F5'
                 : t.status === 'review'
                   ? '#8B5CF6'
                   : t.status === 'blocked'
@@ -1496,7 +1541,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
                     style={{ background: dotColor, boxShadow: `0 0 0 3px ${dotColor}28` }}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/75 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
+                    <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/80 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
                       {t.title}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
@@ -1528,9 +1573,9 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
               </li>
             );
           })}
-          {myTasks.length > 15 && (
+          {later.length > 0 && (
             <li className="px-4 py-2.5 text-[10px] text-slate-400 dark:text-white/30">
-              +{myTasks.length - 15} more — exceptions are listed first.
+              +{later.length} later (beyond 7 days) — not on the morning path
             </li>
           )}
         </ul>

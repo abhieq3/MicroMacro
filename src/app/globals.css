@@ -123,26 +123,29 @@
 
 .dark {
   color-scheme: dark;
-  /* Claude-style warm neutral dark — coffee-toned grays, not blue. */
-  --bg-page: #1f1e1d;
-  --bg-card: #262624;
-  --bg-subtle: #2a2927;
-  --bg-elevated: #30302e;
+  /* Pragati dark — warm-neutral canvas, classic brand blue accent (never terracotta). */
+  --bg-page: #1a1b1e;
+  --bg-card: #222327;
+  --bg-subtle: #28292e;
+  --bg-elevated: #2e2f35;
   --border-card: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.12);
-  --text-primary: #faf9f5;
-  --text-secondary: #c2c0b6;
-  --text-muted: #8a8780;
-  --accent: #c96442;
+  --text-primary: #f4f5f7;
+  --text-secondary: #b8bcc6;
+  --text-muted: #858a96;
+  --accent: #42a5f5;
   --mars: #42a5f5;
   --mars-hover: #64b5f6;
   --mars-soft: rgba(66, 165, 245, 0.16);
-  --mars-glow: rgba(66, 165, 245, 0.22);
+  --mars-glow: rgba(66, 165, 245, 0.28);
   --x-blue: #42a5f5;
   --x-blue-hover: #64b5f6;
   --focus-ring: rgba(66, 165, 245, 0.35);
-  --icon: #c2c0b6;
-  --icon-active: #42a5f5;
+  --icon: #b8bcc6;
+  --icon-active: #64b5f6;
+  --brand: #42a5f5;
+  --brand-dark: #1e88e5;
+  --forest: #66bb6a;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
@@ -1022,8 +1025,8 @@ a {
 .dark .input:focus,
 .dark .select:focus,
 .dark .textarea:focus {
-  border-color: rgba(217, 119, 87, 0.55) !important;
-  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.18) !important;
+  border-color: rgba(66, 165, 245, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.2) !important;
 }
 .dark .input::placeholder,
 .dark .textarea::placeholder {
@@ -1049,21 +1052,30 @@ a {
   color: #faf9f5 !important;
 }
 
-/* Subtle blue-tinted backgrounds → warm neutral */
+/* Brand blue utilities in dark — stay blue (identity freeze), never terracotta. */
 .dark .bg-blue-50 {
-  background-color: rgba(217, 119, 87, 0.1) !important;
+  background-color: rgba(66, 165, 245, 0.12) !important;
 }
 .dark .bg-blue-100 {
-  background-color: rgba(217, 119, 87, 0.16) !important;
+  background-color: rgba(66, 165, 245, 0.18) !important;
 }
+.dark .text-blue-400,
+.dark .text-blue-500 {
+  color: #64b5f6 !important;
+}
+.dark .text-blue-600,
 .dark .text-blue-700,
 .dark .text-blue-800,
 .dark .text-blue-900 {
-  color: #e8a98c !important;
+  color: #90caf9 !important;
 }
 .dark .border-blue-100,
 .dark .border-blue-200 {
-  border-color: rgba(217, 119, 87, 0.22) !important;
+  border-color: rgba(66, 165, 245, 0.28) !important;
+}
+.dark .border-blue-300,
+.dark .border-blue-400 {
+  border-color: rgba(66, 165, 245, 0.4) !important;
 }
 
 /* Kanban horizontal scroller — slim track so the slider doesn't add visual weight. */
@@ -1098,8 +1110,8 @@ a {
 
 /* Selection */
 .dark ::selection {
-  background: rgba(217, 119, 87, 0.35);
-  color: #faf9f5;
+  background: rgba(66, 165, 245, 0.35);
+  color: #f4f5f7;
 }
 
 /* Scrollbar */
