@@ -277,7 +277,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     assert.equal(mail.apiKey, 'test-api-key', 'API key travels in the api-key header');
     assert.equal(mail.to, 'asha@example.com', 'notifyEmail wins over the placeholder login');
     assert.equal(mail.toName, 'Asha Tester');
-    assert.match(mail.subject, /^Your \w+ brief — 1 overdue · 2 due today$/);
+    assert.match(mail.subject, /^Pragati · \w+ · 1 overdue · 2 due today$/);
 
     // Included tasks…
     assert.match(mail.html, /Approve URS revision/);
@@ -308,7 +308,7 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     const summary = await digest.buildAndSendDailyDigests({ now });
 
     assert.equal(summary.sent, 1);
-    assert.match(inbox[0].subject, /brief — 2 due today$/);
+    assert.match(inbox[0].subject, /2 due today$/);
     assert.doesNotMatch(inbox[0].html, /Close out deviation DEV-101/);
   });
 
@@ -328,13 +328,13 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
     assert.equal(summary.sent, 1);
     assert.equal(inbox.length, 1);
     assert.equal(inbox[0].to, 'bola@example.com');
-    assert.match(inbox[0].subject, /^\[Test\] Your \w+ brief — /);
+    assert.match(inbox[0].subject, /^\[Test\] Pragati · /);
     assert.match(inbox[0].html, /all clear|nothing due/i, 'bola has no tasks — empty-state body');
   });
 
-  it('attempts every opted-in deliverable recipient even above the configured provider cap', async () => {
-    // The cap is operational information, not a reason to silently omit a
-    // person from the promised 08:30 batch.
+  it('attempts every opted-in deliverable recipient with fire even above the provider cap', async () => {
+    // Cap is operational info — never a reason to silently drop someone with
+    // exceptions. Empty-plate users stay silent (exception-only product rule).
     users.push({
       _id: 'dddddddddddddddddddddd01',
       name: 'Dora Capped',
@@ -342,14 +342,15 @@ describe('buildAndSendDailyDigests → Brevo (end to end over HTTP)', () => {
       active: true,
       notifDailyDigest: true,
     } as any);
-    settings.sendWhenEmpty = true;
+    // Dora has no open due work — exception-only means she is skipped.
     process.env.BREVO_DAILY_CAP = '1';
     try {
       const summary = await digest.buildAndSendDailyDigests({ now });
       assert.equal(summary.cap, 1);
-      assert.equal(summary.sent, 2);
+      assert.equal(summary.sent, 1, 'asha has exceptions; dora is silent');
+      assert.equal(summary.skippedNoTasks, 1, 'empty plate is not mailed');
       assert.equal(summary.skippedCapReached, 0);
-      assert.equal(inbox.length, 2, 'every deliverable opted-in user is attempted');
+      assert.equal(inbox.length, 1);
       assert.equal(lastRunWrites.length, 1);
       assert.equal(lastRunWrites[0].lastRunSummary.skippedCapReached, 0);
       assert.equal(lastRunWrites[0].lastRunSummary.cap, 1);
