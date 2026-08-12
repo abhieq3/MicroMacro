@@ -73,6 +73,7 @@ export interface BirdsEyeTask {
   projectId: string;
   status: string;
   assigneeName?: string | null;
+  assigneeId?: string | null;
   dueDate?: string | null;
   /** Project-scope only: groups tasks under a phase row. Ignored elsewhere. */
   phaseName?: string | null;
@@ -288,9 +289,41 @@ function truncateText(text: string, maxChars: number): string {
  * between them. Deterministic (alphabetical) so the export and the on-screen
  * view share pixel coordinates. Direction is strictly top-down.
  */
+export type WorkFocus = 'open' | 'overdue' | 'blocked' | 'unassigned' | 'due_soon' | 'all';
+
+function isOverdueTask(t: BirdsEyeTask, now = Date.now()): boolean {
+  if (t.status === 'done' || !t.dueDate) return false;
+  const d = new Date(t.dueDate);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime() < now - (now % 86400000);
+}
+
+function filterWorkTasks(tasks: BirdsEyeTask[], focus: WorkFocus): BirdsEyeTask[] {
+  if (focus === 'all') return tasks;
+  const open = tasks.filter((t) => t.status !== 'done');
+  if (focus === 'open') return open;
+  if (focus === 'blocked') return open.filter((t) => t.status === 'blocked');
+  if (focus === 'unassigned') return open.filter((t) => !t.assigneeId && !t.assigneeName);
+  if (focus === 'overdue') return open.filter((t) => isOverdueTask(t));
+  if (focus === 'due_soon') {
+    const now = Date.now();
+    return open.filter((t) => {
+      if (!t.dueDate) return false;
+      const days = (new Date(t.dueDate).getTime() - now) / 86400000;
+      return days <= 7;
+    });
+  }
+  return open;
+}
+
 function layout(
   data: BirdsEyeData,
-  opts: { collapseTasks: boolean; collapsedIds?: ReadonlySet<string>; rebalanceMode?: boolean },
+  opts: {
+    collapseTasks: boolean;
+    collapsedIds?: ReadonlySet<string>;
+    rebalanceMode?: boolean;
+    workFocus?: WorkFocus;
+  },
 ): {
   nodes: PositionedNode[];
   edges: Edge[];
@@ -319,8 +352,9 @@ function layout(
     const s = (STATUS_ORDER[a.status] ?? 9) - (STATUS_ORDER[b.status] ?? 9);
     return s !== 0 ? s : a.title.localeCompare(b.title);
   };
+  const visibleTasks = filterWorkTasks(data.tasks, opts.workFocus || 'open');
   const tasksByProject = new Map<string, BirdsEyeTask[]>();
-  for (const t of data.tasks) {
+  for (const t of visibleTasks) {
     if (!tasksByProject.has(t.projectId)) tasksByProject.set(t.projectId, []);
     tasksByProject.get(t.projectId)!.push(t);
   }
@@ -349,7 +383,7 @@ function layout(
         width: NODE_WIDTH.count,
         height: NODE_HEIGHT.count,
         label: `${tasks.length} task${tasks.length === 1 ? '' : 's'}`,
-        sub: `${done}/${tasks.length} done`,
+        sub: opts.workFocus && opts.workFocus !== 'all' ? `${tasks.length} open` : `${done}/${tasks.length} done`,
       });
       return out;
     }
@@ -1118,19 +1152,11 @@ export function BirdsEyeView({
   // ── THE THING THAT MAKES IT THE GREATEST FEATURE ON EARTH ─────────────────
   // Urgency focus mode. Users open the tree at team or project level and instantly
   // see what actually matters. This is the "holy shit" moment.
-  const [urgencyFocus, setUrgencyFocus] = useState<number>(0); // 0 = all, 25/45/70 = min urgency to show full strength
-  const urgencyChips = [
-    { label: 'All', value: 0 },
-    { label: 'Due soon', value: 25 },
-    { label: 'Urgent', value: 45 },
-    { label: 'Critical', value: 70 },
-  ];
+  const [urgencyFocus, setUrgencyFocus] = useState<number>(0);
+  const [workFocus, setWorkFocus] = useState<WorkFocus>('open');
 
-  // Elon "high agency" mode: Rebalance the visual tree by urgency.
-  // At team level this surfaces the team's real priorities across projects.
-  // At project level it pulls the hot work to the visual top.
-  // Purely visual (deterministic), doesn't mutate data unless you want it to.
-  const [rebalanceMode, setRebalanceMode] = useState(false);
+  // Open work first. Rebalance so the hot path is at the top of each stack.
+  const [rebalanceMode, setRebalanceMode] = useState(true);
 
   // Elon physics simulation: "Simulate tomorrow" to preview how urgency evolves.
   // Greatest planning feature — see what will be on fire if nothing changes.
@@ -1214,8 +1240,8 @@ export function BirdsEyeView({
     width: baseWidth,
     height: baseHeight,
   } = useMemo(
-    () => layout(data, { collapseTasks, collapsedIds, rebalanceMode }),
-    [data, collapseTasks, collapsedIds, rebalanceMode],
+    () => layout(data, { collapseTasks, collapsedIds, rebalanceMode, workFocus }),
+    [data, collapseTasks, collapsedIds, rebalanceMode, workFocus],
   );
 
   // Apply drag overrides to the computed layout (and expand canvas if dragged
@@ -1245,6 +1271,18 @@ export function BirdsEyeView({
       ? Math.round(childUrgencies.reduce((a, b) => a + b, 0) / childUrgencies.length)
       : 0;
   }, [data.tasks, simDays]);
+
+  const workStats = useMemo(() => {
+    const all = data.tasks || [];
+    const open = all.filter((t) => t.status !== 'done');
+    return {
+      total: all.length,
+      open: open.length,
+      overdue: open.filter((t) => isOverdueTask(t)).length,
+      blocked: open.filter((t) => t.status === 'blocked').length,
+      unassigned: open.filter((t) => !t.assigneeId && !t.assigneeName).length,
+    };
+  }, [data.tasks]);
 
   const projectUrgencies = useMemo(() => {
     const map = new Map<string, number>();
@@ -1742,9 +1780,44 @@ export function BirdsEyeView({
             <div className="text-base sm:text-lg font-black text-slate-900 leading-tight break-words">
               {data.rootLabel}
             </div>
-            {data.rootSubLabel && (
-              <div className="text-[11px] text-slate-500 truncate">{data.rootSubLabel}</div>
-            )}
+            <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
+              {data.rootSubLabel && <span className="truncate">{data.rootSubLabel}</span>}
+              <span className="text-slate-300">·</span>
+              <button
+                type="button"
+                onClick={() => setWorkFocus('open')}
+                className={`font-semibold tabular-nums ${workFocus === 'open' ? 'text-slate-800' : 'hover:text-slate-800'}`}
+              >
+                {workStats.open} open
+              </button>
+              {workStats.overdue > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setWorkFocus('overdue')}
+                  className="font-bold tabular-nums text-red-600 hover:underline"
+                >
+                  {workStats.overdue} overdue
+                </button>
+              )}
+              {workStats.blocked > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setWorkFocus('blocked')}
+                  className="font-bold tabular-nums text-red-600 hover:underline"
+                >
+                  {workStats.blocked} blocked
+                </button>
+              )}
+              {workStats.unassigned > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setWorkFocus('unassigned')}
+                  className="font-semibold tabular-nums text-amber-700 hover:underline"
+                >
+                  {workStats.unassigned} unassigned
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:shrink-0">
             {/* Find on canvas — dims everything that doesn't match; Enter flies
@@ -1920,6 +1993,22 @@ export function BirdsEyeView({
         {/* Canvas — scroll + drag to pan. Inner wrapper is min-w-full so a tree
             narrower than the viewport is centred; a wider one scrolls to both
             edges without clipping. */}
+        <div className="relative flex-1 min-h-0 flex flex-col">
+        {workFocus !== 'all' && workStats.open === 0 && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <div className="pointer-events-auto text-center rounded-2xl border border-slate-200 bg-white/95 px-6 py-5 shadow-lg">
+              <div className="text-sm font-black text-slate-800">Zero open</div>
+              <div className="mt-1 text-[12px] text-slate-500">Board is clear. Done work stays off this view.</div>
+              <button
+                type="button"
+                onClick={() => setWorkFocus('all')}
+                className="mt-3 text-[12px] font-bold text-blue-600 hover:text-blue-700"
+              >
+                Show done →
+              </button>
+            </div>
+          </div>
+        )}
         <div
           ref={scrollRef}
           className={`flex-1 overflow-auto select-none bg-[radial-gradient(circle_at_1px_1px,#e2e8f0_1px,transparent_0)] [background-size:22px_22px] bg-slate-50 dark:bg-[#1f1e1d] ${
@@ -2183,6 +2272,14 @@ export function BirdsEyeView({
                             e.preventDefault();
                             e.stopPropagation();
                             if (clickTimer.current) clearTimeout(clickTimer.current);
+                            if (isTask) {
+                              setEditing({
+                                node: n,
+                                clientX: (e as any).clientX,
+                                clientY: (e as any).clientY,
+                              });
+                              return;
+                            }
                             clickTimer.current = setTimeout(() => {
                               clickTimer.current = null;
                               if (canCollapse) toggleCollapsed(n.id);
@@ -2199,7 +2296,13 @@ export function BirdsEyeView({
                           }}
                           style={interactive ? { cursor: 'pointer' } : undefined}
                         >
-                          {navHref && <title>Click to open/hide · double-click to open the page</title>}
+                          {navHref && (
+                            <title>
+                              {isTask
+                                ? 'Click to update · double-click to open the task'
+                                : 'Click to open/hide · double-click to open the page'}
+                            </title>
+                          )}
                           {shape}
                         </g>
                       );
@@ -2336,24 +2439,36 @@ export function BirdsEyeView({
             </div>
           );
         })()}
+        </div>
 
-        {/* Footer legend + INSIGHT COMMAND BAR
-            This combination is why the Bird's Eye becomes the greatest single feature users ever open.
-            At team level you feel the entire org's heat. At project level you see exactly where the work is stuck or flying.
-            One glance, one click, total clarity. */}
+        {/* Footer — work filters. This is why you open the map. */}
         <div className="shrink-0 border-t border-slate-200 bg-white dark:bg-slate-950/80">
-          {/* Urgency Command Bar – the "greatest on earth" moment */}
-          <div className="flex items-center gap-2 px-4 py-2 text-[11px] border-b border-slate-100 dark:border-white/10">
-            <span className="font-bold uppercase tracking-[1.5px] text-slate-400 mr-1">Focus</span>
-            {urgencyChips.map((chip) => {
-              const active = urgencyFocus === chip.value;
+          <div className="flex items-center gap-2 px-4 py-2 text-[11px] border-b border-slate-100 dark:border-white/10 flex-wrap">
+            <span className="font-bold uppercase tracking-[1.5px] text-slate-400 mr-1">Work</span>
+            {(
+              [
+                { id: 'open', label: `Open${workStats.open ? ` ${workStats.open}` : ''}` },
+                { id: 'overdue', label: workStats.overdue ? `Overdue ${workStats.overdue}` : 'Overdue' },
+                { id: 'blocked', label: workStats.blocked ? `Blocked ${workStats.blocked}` : 'Blocked' },
+                {
+                  id: 'unassigned',
+                  label: workStats.unassigned ? `Unassigned ${workStats.unassigned}` : 'Unassigned',
+                },
+                { id: 'due_soon', label: 'Due soon' },
+                { id: 'all', label: 'Incl. done' },
+              ] as { id: WorkFocus; label: string }[]
+            ).map((chip) => {
+              const active = workFocus === chip.id;
+              const hot = (chip.id === 'overdue' || chip.id === 'blocked') && active;
               return (
                 <button
-                  key={chip.value}
-                  onClick={() => setUrgencyFocus(active ? 0 : chip.value)}
+                  key={chip.id}
+                  onClick={() => setWorkFocus(chip.id)}
                   className={`px-3 py-px rounded-full font-medium transition-all active:scale-[0.97] ${
                     active
-                      ? 'bg-slate-900 text-white dark:bg-white dark:text-black'
+                      ? hot
+                        ? 'bg-red-600 text-white'
+                        : 'bg-slate-900 text-white dark:bg-white dark:text-black'
                       : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
                   }`}
                 >
@@ -2362,9 +2477,6 @@ export function BirdsEyeView({
               );
             })}
 
-            {/* Elon Rebalance: the 10x move. One click and the tree reorders itself to put the highest-leverage work at the top of the visual stack.
-                Team level: your team's real priorities bubble up across projects.
-                Project level: the hot path becomes obvious. Pure visual, deterministic, reversible. */}
             <button
               onClick={() => setRebalanceMode(!rebalanceMode)}
               className={`ml-2 px-3 py-px rounded-full font-medium transition-all active:scale-[0.97] flex items-center gap-1 ${
@@ -2372,9 +2484,9 @@ export function BirdsEyeView({
                   ? 'bg-emerald-600 text-white'
                   : 'bg-slate-100 hover:bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300'
               }`}
-              title="Rebalance the tree by urgency (Elon mode: see what actually moves the needle first)"
+              title="Sort each stack by urgency — hottest work first"
             >
-              {rebalanceMode ? '✓ Rebalanced' : 'Rebalance'}
+              {rebalanceMode ? '✓ Hot first' : 'Hot first'}
             </button>
 
             {/* Elon "what will happen if we do nothing?" simulation.
@@ -2396,23 +2508,23 @@ export function BirdsEyeView({
             </div>
 
             <div className="flex-1" />
-            <span className="text-slate-400 hidden md:inline">Click chips to filter the living tree</span>
+            <span className="text-slate-400 hidden md:inline">Click a task to update it · double-click to open</span>
           </div>
 
           {/* Original status legend, now even more powerful next to urgency focus */}
           <div className="flex items-center gap-2 px-5 py-2 text-[10px] text-slate-500 flex-wrap">
             <span className="font-bold uppercase tracking-widest text-slate-400">Status</span>
             {[
-              { c: STATUS_FILL.done, s: STATUS_STROKE.done, l: 'On track / Done', k: 'done' },
-              { c: STATUS_FILL.review, s: STATUS_STROKE.review, l: 'At risk / Review', k: 'review' },
-              { c: STATUS_FILL.blocked, s: STATUS_STROKE.blocked, l: 'Critical / Blocked', k: 'blocked' },
+              { c: STATUS_FILL.todo, s: STATUS_STROKE.todo, l: 'To do', k: 'todo' },
               {
                 c: STATUS_FILL.in_progress,
                 s: STATUS_STROKE.in_progress,
                 l: 'In progress',
                 k: 'in_progress',
               },
-              { c: STATUS_FILL.todo, s: STATUS_STROKE.todo, l: 'To do', k: 'todo' },
+              { c: STATUS_FILL.review, s: STATUS_STROKE.review, l: 'Review', k: 'review' },
+              { c: STATUS_FILL.blocked, s: STATUS_STROKE.blocked, l: 'Blocked', k: 'blocked' },
+              { c: STATUS_FILL.done, s: STATUS_STROKE.done, l: 'Done', k: 'done' },
             ].map((kk) => (
               <button
                 key={kk.k}

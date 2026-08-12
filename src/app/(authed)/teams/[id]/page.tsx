@@ -357,6 +357,7 @@ export default function TeamDetailPage() {
       title: t.title,
       projectId: t.projectId,
       status: t.status,
+      assigneeId: t.assigneeId ?? null,
       assigneeName: t.assigneeName ?? null,
       dueDate: (t.ccTcd || t.dueDate) ?? null,
       subtaskCount: t.subtaskCount,

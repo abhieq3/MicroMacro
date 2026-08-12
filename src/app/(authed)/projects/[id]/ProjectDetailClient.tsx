@@ -1378,6 +1378,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       title: t.title,
       projectId: project.id,
       status: t.status,
+      assigneeId: t.assigneeId ?? null,
       assigneeName: t.assigneeName ?? null,
       dueDate: (t.ccTcd || t.dueDate) ?? null,
       phaseName: phases.find((ph: any) => ph.id === (t.phaseId || null))?.name ?? null,
