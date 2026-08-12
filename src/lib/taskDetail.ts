@@ -5,6 +5,7 @@ import { User } from '@/models/User';
 import { task as taskS, date as toIso } from '@/lib/serialize';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { projectRef } from '@/lib/projectRef';
+import { factsForTask } from '@/lib/ai/workMemoryStore';
 
 /**
  * Assemble the full task-detail payload for `id`, scoped to the viewer.
@@ -76,6 +77,23 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       createdAt: toIso(e.createdAt),
     }));
 
+    let workMemory = null;
+    try {
+      const nameById = new Map<string, string>();
+      if (assignee) nameById.set(String((assignee as any)._id), (assignee as any).name);
+      workMemory = await factsForTask({
+        title: (t as any).title || '',
+        assigneeId: (t as any).assigneeId ? String((t as any).assigneeId) : null,
+        teamId: (project as any)?.teamId ? String((project as any).teamId) : null,
+        projectId: (t as any).projectId,
+        nameById,
+      });
+      if (!workMemory.lines.length) workMemory = null;
+    } catch (e) {
+      console.error('[work-memory] task-detail', e);
+      workMemory = null;
+    }
+
     return {
       ...taskS(t as any, {
         assigneeName: (assignee as any)?.name || null,
@@ -88,6 +106,7 @@ export async function getTaskDetail(id: string, userId: string, role?: string | 
       }),
       comments,
       effortLog,
+      workMemory,
     };
   } catch (e) {
     // Never crash the page — log and let the client refetch surface the real

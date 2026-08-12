@@ -15,6 +15,7 @@ import { logOperation } from '@/lib/audit';
 import { recordTaskFlowEvent } from '@/lib/flow/events';
 import { bustDashboardCache } from '@/lib/leadDashboard';
 import { bustProjectsPageCache } from '@/lib/projectList';
+import { rememberTask, forgetTask } from '@/lib/ai/workMemoryStore';
 
 export const runtime = 'nodejs';
 
@@ -64,7 +65,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     );
     if (forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const body = await readBody(req, TaskUpdateSchema);
-    const current = await Task.findById(params.id).select('status assigneeId privateToUserId').lean();
+    const current = await Task.findById(params.id)
+      .select(
+        'status assigneeId privateToUserId title createdAt completedAt dueDate ccTcd taskType projectId',
+      )
+      .lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     // Contributors may edit only the description and due date, and only on a
@@ -222,6 +227,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     void bustDashboardCache(user!.sub, user!.role);
     void bustProjectsPageCache(user!.sub, user!.role);
+
+    // Work memory learns from the completion itself — fire-and-forget so a
+    // store hiccup never blocks the status the user just set.
+    const becameDone = body.status === 'done' && current.status !== 'done';
+    const leftDone = !!body.status && body.status !== 'done' && current.status === 'done';
+    if (!isPrivateTask && (becameDone || leftDone)) {
+      void (becameDone ? rememberTask(fresh as any) : forgetTask(current as any)).catch((e) =>
+        console.error('[work-memory]', e),
+      );
+    }
+
     return NextResponse.json(taskS(fresh));
   } catch (e) {
     return handleError(e);

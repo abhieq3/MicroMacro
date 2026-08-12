@@ -18,6 +18,8 @@ import {
 } from '@/lib/workMixer';
 import { normalizeRole } from '@/lib/auth';
 import { buildDeliveryProfiles, buildOpenLoad, scoreSlipRisk } from '@/lib/ai/slipRisk';
+import { factsForViewer } from '@/lib/ai/workMemoryStore';
+import type { WorkMemoryFacts } from '@/lib/ai/workMemory';
 
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3, done: 4 };
 
@@ -56,6 +58,8 @@ export interface LeadDashboardData {
    *  WORK_MIXER_ENABLED=true; absent (undefined) by default, so existing
    *  consumers are unaffected. Never used to render UI in Phase 1. */
   workMixer?: WorkMixerResult | null;
+  /** Learned facts from completed work. Empty `lines` = render nothing. */
+  workMemory?: WorkMemoryFacts | null;
 }
 
 /**
@@ -475,6 +479,22 @@ async function computeLeadDashboardData(jwtUser: {
     }
   }
 
+  // Work memory — incremental facts from completed work. Silent until there
+  // are enough samples. Never blocks the dashboard if the store is empty.
+  let workMemory: WorkMemoryFacts | null = null;
+  try {
+    workMemory = await factsForViewer({
+      userId: jwtUser.sub,
+      teamIds: teams.map((t) => String(t._id)),
+      projects: projects.map((p) => ({ _id: p._id, teamId: (p as any).teamId })),
+      fallbackTasks: teamTasksRaw as any,
+    });
+    if (!workMemory.lines.length) workMemory = null;
+  } catch (e) {
+    console.error('[work-memory] dashboard', e);
+    workMemory = null;
+  }
+
   return {
     user: { id: jwtUser.sub, name: jwtUser.name, email: jwtUser.email, role: jwtUser.role },
     projects: projectList,
@@ -484,5 +504,6 @@ async function computeLeadDashboardData(jwtUser: {
     // Number of teams the viewer belongs to (or all teams, for admin).
     teamCount: teams.length,
     flowSignal,
+    workMemory,
   };
 }

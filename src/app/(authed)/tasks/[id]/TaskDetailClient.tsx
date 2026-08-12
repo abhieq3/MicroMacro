@@ -387,6 +387,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             )}
           </div>
           <h1 className="text-xl font-bold text-slate-900 leading-snug">{task.title}</h1>
+          {task.workMemory?.lines?.length ? (
+            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+              {task.workMemory.lines.join(' · ')}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-2 mt-2.5">
             <StatusTag status={task.status} />
             <PriorityTag priority={task.priority} />

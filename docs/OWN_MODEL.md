@@ -51,8 +51,24 @@ Until that beats the heuristic, **do not ship a model**. Ship the whiteboard job
 
 ---
 
+## What is shipping: incremental work memory
+
+The store learns **on every completion** (and unlearns if a task is reopened). Current projects seed it once; every future done-task updates the same buckets. End users see facts only:
+
+| Surface | What they see (when n ≥ 3) | What they never see |
+| --- | --- | --- |
+| Today | “You usually finish in ~4 days · 11 of 14 dated tasks on time” | Foresight, pep, invented urgency |
+| Task | “Work like this usually takes ~5 days · last finished by Priya” | Chat, “AI says”, a fake finish date |
+
+Buckets: per assignee, per title token, per task type, per team. Private / personal tasks never enter the store.
+
+Kill criterion is unchanged: if a later ranker is no better than last-assignee / this median, delete the ranker. The memory stays — it is just counts.
+
+---
+
 ## Hook already in the product
 
 - Promote from the project board writes `POST /tasks` with the box text.
-- Next honest hook: `/api/tasks/suggest` ranks assignees from history (heuristic first, model later).
+- Completing a task updates work memory (`rememberTask` / `forgetTask`).
+- `/api/tasks/suggest` ranks assignees from history (heuristic first, model later).
 - Vision/OCR of ink: API only, never a weekend custom CNN.
