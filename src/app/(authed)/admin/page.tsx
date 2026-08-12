@@ -9,6 +9,8 @@ import { Project } from '@/models/Project';
 import { Task } from '@/models/Task';
 import { Invite } from '@/models/Invite';
 import { AuditLog } from '@/models/AuditLog';
+import { AccessRequest } from '@/models/AccessRequest';
+import { AccessRequestsPanel } from './AccessRequestsPanel';
 import {
   UsersRound,
   Users,
@@ -59,6 +61,7 @@ export default async function AdminConsolePage() {
     openTasks,
     overdueTasks,
     pendingInvites,
+    pendingAccess,
     recentOps,
   ] = await Promise.all([
     User.countDocuments({ active: { $ne: false } }),
@@ -75,6 +78,7 @@ export default async function AdminConsolePage() {
     Task.countDocuments({ status: { $ne: 'done' }, projectId: { $nin: personalIds } }),
     Task.countDocuments({ status: { $ne: 'done' }, dueDate: { $lt: now }, projectId: { $nin: personalIds } }),
     Invite.countDocuments({ consumedAt: null, revokedAt: null, expiresAt: { $gt: now } }),
+    AccessRequest.countDocuments({ status: 'pending' }),
     AuditLog.find({}).sort({ createdAt: -1 }).limit(12).lean(),
   ]);
 
@@ -103,6 +107,13 @@ export default async function AdminConsolePage() {
       label: `${u.name} is locked out`,
       detail: `Too many failed sign-ins · ${ago(u.lockedAt)}`,
       href: '/people',
+    });
+  }
+  if (pendingAccess > 0) {
+    attention.push({
+      label: `${pendingAccess} access request${pendingAccess === 1 ? '' : 's'}`,
+      detail: 'A stranger asked to be let in',
+      href: '/admin#access-requests',
     });
   }
   if (pendingInvites > 0) {
@@ -198,7 +209,7 @@ export default async function AdminConsolePage() {
           </div>
           {attention.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-slate-400 dark:text-white/40">
-              All clear — no locked accounts, no pending invites.
+              All clear — no locked accounts, no pending requests.
             </div>
           ) : (
             <div className="divide-y divide-slate-100 dark:divide-white/5">
@@ -254,6 +265,10 @@ export default async function AdminConsolePage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div id="access-requests">
+        <AccessRequestsPanel />
       </div>
 
       <div className="card p-5">

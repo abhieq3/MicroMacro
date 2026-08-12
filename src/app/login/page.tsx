@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { PragatiMark } from '@/components/PragatiMark';
 import { BirdsEyeLoader } from '@/components/BirdsEyeLoader';
@@ -554,12 +555,18 @@ export default function LoginPage() {
               </div>
 
               <p
-                className="fade-up-2 text-center text-white/55 mt-5 leading-relaxed mx-auto"
-                style={{ fontSize: 14, maxWidth: 320 }}
+                className="fade-up-2 text-center text-white/70 mt-5 leading-relaxed mx-auto"
+                style={{ fontSize: 16, maxWidth: 340, fontWeight: 600 }}
               >
-                A bird's-eye view of every project,
+                Everyone sees the whole board.
+              </p>
+              <p
+                className="fade-up-2 text-center text-white/45 mt-2 leading-relaxed mx-auto"
+                style={{ fontSize: 13, maxWidth: 340 }}
+              >
+                Overdue, blocked, due, owner.
                 <br />
-                every action, every contributor.
+                If you can see it, you don&apos;t need a status meeting.
               </p>
             </div>
 
@@ -592,7 +599,7 @@ export default function LoginPage() {
                 <PragatiMark size={44} />
               </div>
               <div className="brand-wordmark text-[2rem] text-white mt-3 drop-shadow">Pragati</div>
-              <div className="text-sm text-white/70 mt-1">The view from above</div>
+              <div className="text-sm text-white/70 mt-1">Everyone sees the whole board</div>
             </div>
 
             {/* White card on mobile to contrast the shimmer; transparent on desktop */}
@@ -966,6 +973,25 @@ export default function LoginPage() {
                           </p>
                         </div>
                       )}
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        <Link
+                          href="/request-access"
+                          className="text-sm font-semibold text-blue-600 hover:underline"
+                        >
+                          Need a workspace? Request access
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmail('demo.lead@pragati.local');
+                            setPassword('Demo@1234');
+                            setErr('');
+                          }}
+                          className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+                        >
+                          Try the public demo
+                        </button>
+                      </div>
                     </>
                   )}
                 </div>

@@ -52,7 +52,8 @@ they don't. Everyone gets a view of everything moving in their team, plus a
 truly private personal space nobody else can see, admins included. Born in
 pharma quality work, so every change is recorded and nothing is quietly
 deleted; the model itself works anywhere. Invite-only — there is no public
-sign-up.
+sign-up. Request access at
+[pragatialm.vercel.app/request-access](https://pragatialm.vercel.app/request-access).
 
 | Role | What they see |
 | --- | --- |

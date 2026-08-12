@@ -31,6 +31,17 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-08-13',
+    title: 'A stranger can ask to be let in',
+    tags: ['feature'],
+    highlight: true,
+    body: [
+      'Login now says what the product is in one breath: everyone sees the whole board — overdue, blocked, due, owner.',
+      'Request access is a public form. No account needed. An admin reviews it on the console and still adds the person on People.',
+      'Invite-only stays closed. Public registration is still off. The form is the inbound path, not a sign-up.',
+    ],
+  },
+  {
+    date: '2026-08-13',
     title: 'Delete theater. Celebrate real finishes.',
     tags: ['improvement', 'feature'],
     highlight: true,

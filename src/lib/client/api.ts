@@ -29,6 +29,9 @@ const AUTH_ENDPOINTS = [
   '/auth/password',
   // A wrong-PIN 401 must render under the PIN pad, not bounce to /login.
   '/auth/unlock',
+  // Public conversion form — a 401 here is a server misconfig, not a
+  // missing session. Bounce would look like the request vanished.
+  '/access-requests',
 ];
 
 function isAuthEndpoint(path: string): boolean {
