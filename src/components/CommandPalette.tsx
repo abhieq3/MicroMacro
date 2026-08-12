@@ -62,7 +62,7 @@ interface Section {
 
 const MIN_QUERY = 2;
 const MAX_DYNAMIC = 6;
-const DEBOUNCE_MS = 220;
+const DEBOUNCE_MS = 80;
 
 export function CommandPalette({
   open,
@@ -142,7 +142,10 @@ export function CommandPalette({
 
   useEffect(() => setActiveIndex(0), [query]);
 
-  const go = (href: string) => () => router.push(href);
+  const go = (href: string) => () => {
+    window.dispatchEvent(new Event('pragati:nav-start'));
+    router.push(href);
+  };
 
   const pages: Entry[] = useMemo(() => {
     const items: Entry[] = [

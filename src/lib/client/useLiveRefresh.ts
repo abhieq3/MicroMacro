@@ -55,7 +55,7 @@ export function useLiveRefresh(
     let debounce: ReturnType<typeof setTimeout> | null = null;
     const onEvent = () => {
       if (debounce) clearTimeout(debounce);
-      debounce = setTimeout(() => ref.current(), 350);
+      debounce = setTimeout(() => ref.current(), 80);
     };
     const evtList = eventsKey ? eventsKey.split(',').filter(Boolean) : [];
     evtList.forEach((name) => window.addEventListener(name, onEvent));

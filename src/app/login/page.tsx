@@ -312,7 +312,7 @@ export default function LoginPage() {
       // sluggish (1–2s of visual blank). The veil (and then the dashboard's
       // skeleton) covers the swap.
       setUnlocked(true);
-      setTimeout(() => router.replace('/'), 450);
+      router.replace('/');
     } catch (e: any) {
       setPin('');
       setShake(true);

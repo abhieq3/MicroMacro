@@ -11,6 +11,7 @@ import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
 import { WHITEBOARD_ENABLED } from '@/lib/features';
+import { NavigationProgress } from './NavigationProgress';
 
 // Heavy shell chrome — lazy so first paint of every authed page does not pay
 // for command palette search + calendar month math until the shell is idle.
@@ -302,6 +303,25 @@ export default function AppShell({
     };
   }, [router]);
 
+  // Warm the primary routes while the shell is idle so the next hop is instant.
+  useEffect(() => {
+    const warm = () => {
+      for (const href of ['/', '/projects', '/teams', '/my-day', '/settings', '/whiteboard']) {
+        try {
+          router.prefetch(href);
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+    const ric = (window as any).requestIdleCallback as undefined | ((cb: () => void, opts?: { timeout: number }) => number);
+    const id = ric ? ric(warm, { timeout: 1800 }) : window.setTimeout(warm, 400);
+    return () => {
+      if (ric && (window as any).cancelIdleCallback) (window as any).cancelIdleCallback(id);
+      else clearTimeout(id);
+    };
+  }, [router]);
+
   // ── Global keyboard shortcuts ───────────────────────────────────────────────
   // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, G→W: Whiteboard,
   // ?: shortcuts modal
@@ -358,6 +378,7 @@ export default function AppShell({
         };
         if (dest[e.key]) {
           e.preventDefault();
+          window.dispatchEvent(new Event('pragati:nav-start'));
           router.push(dest[e.key]);
         }
       }
@@ -894,7 +915,27 @@ export default function AppShell({
         {/* Fixed-height app shell: the shell itself never scrolls (overflow-hidden),
         so the sidebar stays put — only <main> scrolls. This is what keeps the
         sidebar pinned regardless of how far the page content scrolls. */}
-        <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-page)' }}>
+        <div
+          className="h-screen flex overflow-hidden"
+          style={{ background: 'var(--bg-page)' }}
+          onPointerOver={(e) => {
+            const a = (e.target as HTMLElement).closest('a[href^="/"]') as HTMLAnchorElement | null;
+            if (!a) return;
+            const href = a.getAttribute('href');
+            if (!href || href.startsWith('//')) return;
+            try {
+              router.prefetch(href);
+            } catch {
+              /* ignore */
+            }
+          }}
+          onClick={(e) => {
+            const a = (e.target as HTMLElement).closest('a[href^="/"]') as HTMLAnchorElement | null;
+            if (!a || a.target === '_blank' || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            window.dispatchEvent(new Event('pragati:nav-start'));
+          }}
+        >
+          <NavigationProgress />
           {/* Mobile backdrop */}
           <div
             className={`lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${
