@@ -42,9 +42,9 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
-import { ForecastChip } from '@/components/ForecastChip';
 import { chimeIfEnabled, playDropTick } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
+import { ProjectClearSurprise } from '@/components/ProjectClearSurprise';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import { ExportMenu } from '@/components/ExportMenu';
@@ -1250,9 +1250,12 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [savingDesc, setSavingDesc] = useState(false);
   // Milestone celebration — set when finishing a task closes out its phase or
   // the whole project. The Celebration overlay fires a fanfare + confetti.
-  const [celebration, setCelebration] = useState<{ title: string; subtitle?: string; emoji?: string } | null>(
-    null,
-  );
+  const [celebration, setCelebration] = useState<{
+    kind: 'phase' | 'project';
+    title: string;
+    subtitle?: string;
+    emoji?: string;
+  } | null>(null);
   // Per-task mini-celebration toast (bottom-right). Distinct from `celebration`
   // (which is the full-screen phase/project milestone) — this pops on every
   // individual task close and reads its type so the line feels personalised.
@@ -1416,9 +1419,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       await api(`/projects/${id}`, { method: 'PATCH', body: { status: newStatus } });
       if (newStatus === 'completed') {
         setCelebration({
-          title: 'Project complete! 🎉',
-          subtitle: `${project.name} is closed out and in control.`,
-          emoji: '🏆',
+          kind: 'project',
+          title: 'Project clear',
+          subtitle: `${project.name} — every task closed.`,
         });
       } else {
         showToast('Project status updated');
@@ -1441,9 +1444,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     setPendingStatus(null);
     if (becameComplete) {
       setCelebration({
-        title: 'Project complete! 🎉',
-        subtitle: `${project.name} is closed out and in control.`,
-        emoji: '🏆',
+        kind: 'project',
+        title: 'Project clear',
+        subtitle: `${project.name} — every task closed.`,
       });
     } else {
       showToast('Project status updated');
@@ -1539,9 +1542,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     const done = (t: any) => t.status === 'done';
     if (projected.length > 0 && projected.every(done)) {
       setCelebration({
-        title: 'Project complete!',
-        subtitle: `Every task in ${project?.name || 'this project'} is closed and in control. Beautifully done.`,
-        emoji: '🏆',
+        kind: 'project',
+        title: 'Project clear',
+        subtitle: `${project?.name || 'This project'} — nothing left open.`,
       });
       return true;
     }
@@ -1552,10 +1555,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     if (phaseTasks.length > 0 && phaseTasks.every(done)) {
       const phaseName = phases.find((p: any) => p.id === pid)?.name;
       setCelebration({
-        title: 'Phase complete!',
-        subtitle: phaseName
-          ? `“${phaseName}” is fully closed out — a real milestone. Onwards.`
-          : 'A phase milestone reached — onwards to the next.',
+        kind: 'phase',
+        title: 'Phase complete',
+        subtitle: phaseName ? `“${phaseName}” is closed.` : 'This phase is closed.',
         emoji: '✅',
       });
       return true;
@@ -1698,14 +1700,21 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           </div>
         </div>
       )}
-      {celebration && (
+      {celebration?.kind === 'project' ? (
+        <ProjectClearSurprise
+          title={celebration.title}
+          subtitle={celebration.subtitle}
+          onDone={() => setCelebration(null)}
+        />
+      ) : celebration ? (
         <Celebration
           title={celebration.title}
           subtitle={celebration.subtitle}
           emoji={celebration.emoji}
+          duration={4200}
           onDone={() => setCelebration(null)}
         />
-      )}
+      ) : null}
       <TaskCompletePop task={taskPop} onDone={() => setTaskPop(null)} />
 
       {/* Header — stacks vertically on mobile (title block → meta → actions),
@@ -1884,7 +1893,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             )}
             {!project.isPersonal && <LifecycleTag lifecycle={project.lifecycle} />}
             <PriorityTag priority={project.priority} />
-            {!project.isPersonal && !project.archived && <ForecastChip projectId={project.id} />}
+
           </div>
           {/* Description — owner can hover to reveal edit affordance, click to edit inline */}
           {editingDesc ? (

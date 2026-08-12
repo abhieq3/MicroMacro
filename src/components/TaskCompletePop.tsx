@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CheckCircle2 } from 'lucide-react';
+import { hapticSuccess } from '@/lib/haptics';
 
 /**
  * Task-completion micro-celebration — a small toast that pops in the
@@ -67,7 +68,7 @@ export function TaskCompletePop({
   useEffect(() => {
     if (!task) return;
     setShow(true);
-    // Slide out + unmount. 2.6s on screen is enough to read without lingering.
+    hapticSuccess();
     const t1 = setTimeout(() => setShow(false), 2400);
     const t2 = setTimeout(() => onDone(), 2700);
     return () => {
@@ -94,12 +95,14 @@ export function TaskCompletePop({
       }}
     >
       <div
-        className="rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-white shadow-xl"
+        className="relative overflow-hidden rounded-xl px-3.5 py-2.5 flex items-center gap-2.5 text-white shadow-xl"
         style={{
           background: 'linear-gradient(120deg, #15803d 0%, #16a34a 50%, #1565C0 100%)',
           boxShadow: '0 12px 30px rgba(15,23,42,0.22)',
         }}
       >
+        <span className="pointer-events-none absolute -right-1 -top-2 h-8 w-8 rounded-full bg-white/25 blur-[2px]" />
+        <span className="pointer-events-none absolute right-6 -bottom-2 h-4 w-4 rounded-full bg-amber-200/50 blur-[1px]" />
         <CheckCircle2 size={18} className="shrink-0" />
         <div className="min-w-0">
           <div className="text-[12px] font-black leading-tight">

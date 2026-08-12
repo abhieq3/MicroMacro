@@ -49,7 +49,7 @@ export async function login(page: Page, who = TEST_LEAD) {
 
 /** Quick check that all the navigation links in the sidebar work. */
 export async function clickEverySidebarLink(page: Page) {
-  const links = ['Dashboard', 'Projects', 'Team', 'Insights', 'Settings'];
+  const links = ['Dashboard', 'Projects', 'Team', 'Settings'];
   for (const label of links) {
     const link = page.getByRole('link', { name: new RegExp(`^${label}`, 'i') }).first();
     if (await link.count()) {

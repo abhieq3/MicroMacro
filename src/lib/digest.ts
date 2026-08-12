@@ -5,7 +5,6 @@ import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { DigestSetting, type DigestSettingDoc } from '@/models/DigestSetting';
 import { sendEmail, mailerConfigured } from '@/lib/mailer';
-import { resolveIndustry, pickInsight } from '@/lib/insights';
 import { projectRef } from '@/lib/projectRef';
 import { normalizeRole } from '@/lib/auth';
 
@@ -325,14 +324,6 @@ export interface RenderInput {
    *  reads as "your plate" to an IC, "you first, then the team" to a lead,
    *  and "the workspace" to the admin. */
   role?: string;
-  /** Optional curated industry insight (see lib/insights) — the continuous
-   *  "thought worth a minute" feed, tuned to the workspace's niche. */
-  insight?: { tag: string; title: string; body: string } | null;
-  /** One personal, computed Delivery-Foresight line (see lib/ai/
-   *  deliveryForesight) — the forward-looking counterpart to the task list:
-   *  "on pace to clear by ~Jun 20" / "X is trending to miss — start it today".
-   *  Null when the person has too little history to forecast. */
-  foresightLine?: string | null;
   leadershipBrief?: {
     headline: string;
     team?: {
@@ -461,9 +452,7 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     dateLabel,
     winsYesterday = 0,
     role,
-    insight,
     leadershipBrief,
-    foresightLine,
   } = input;
   // Task rows show the project *reference* (ccNo||code) to match the app, but
   // fall back to the project name when no reference resolves (a caller that
@@ -609,15 +598,6 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   }</p>`;
   void winsYesterday;
 
-  // ── Foresight ─────────────────────────────────────────────────────────
-  // The forward-looking counterpart to the task list: a single quiet line
-  // (not a competing card) computed from the recipient's own delivery
-  // history (lib/ai/deliveryForesight). The "Foresight:" prefix is stripped
-  // since the label already provides it.
-  const foresightHtml = foresightLine
-    ? `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.55;"><strong style="color:#6d28d9;">Foresight —</strong> ${escapeHtml(foresightLine.replace(/^Foresight:\s*/i, ''))}</p>`
-    : '';
-
   const html = `<!doctype html><html><body style="margin:0;background:#f1f5f9;padding:24px 12px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
     <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
@@ -629,17 +609,9 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
         <div style="font-size:16px;color:#0f172a;font-weight:700;margin:0 0 14px;">Good morning, ${escapeHtml(first)}</div>
         ${openingHtml}
         ${focusHtml}
-        ${foresightHtml}
         ${sectionsHtml}
         ${leadershipHtml}
         ${openBtn ? `<div style="margin-top:4px;">${openBtn}</div>` : ''}
-        ${
-          insight
-            ? `<div style="margin-top:22px;padding-top:14px;border-top:1px solid #f1f5f9;font-size:12.5px;color:#64748b;line-height:1.55;"><strong style="color:#1565C0;">${escapeHtml(
-                insight.tag,
-              )} —</strong> <strong style="color:#0f172a;">${escapeHtml(insight.title)}.</strong> ${escapeHtml(insight.body)}</div>`
-            : ''
-        }
       </td></tr>
       <tr><td style="padding:16px 26px;background:#f8fafc;border-top:1px solid #e2e8f0;">
         <div style="font-size:12px;color:#94a3b8;line-height:1.5;">
@@ -676,9 +648,6 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   if (focus) {
     const pn = projLabel(focus.projectId);
     lines.push('YOUR MORNING PRIORITY', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
-  }
-  if (foresightLine) {
-    lines.push('FORESIGHT', `  ${foresightLine.replace(/^Foresight:\s*/i, '')}`, '');
   }
   const textSection = (heading: string, items: DigestTask[]) => {
     if (!items.length) return;
@@ -906,64 +875,6 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
   // One curated, industry-tuned insight per day, shared across the workspace
   // (a common "thought for the day"). Single-tenant reads PRAGATI_INDUSTRY;
   // the multi-tenant path will resolve the tenant's stored niche here.
-  const dailyInsight = pickInsight(resolveIndustry(), 0, now);
-
-  // ── Delivery Foresight ──────────────────────────────────────────────────
-  // One forward-looking, computed line per recipient (lib/ai/
-  // deliveryForesight) — the predictive counterpart to the task list. Fully
-  // self-contained and best-effort: two batched queries for the whole run
-  // (each recipient's recent completed history + their open plate), the shared
-  // cached prior, then the pure deterministic engine. A failure here — or
-  // simply too little history to forecast — must never block the brief.
-  const foresightByUser = new Map<string, string>();
-  try {
-    const { computeForesight, getWorkspacePrior, seedFromId } = await import('@/lib/ai/deliveryForesight');
-    const prior = await getWorkspacePrior(now);
-    const histSince = new Date(now.getTime() - 180 * DAY_MS);
-    const [historyRows, foreOpenRows] = await Promise.all([
-      Task.find({ assigneeId: { $in: ids }, status: 'done', completedAt: { $gte: histSince } })
-        .select('assigneeId createdAt completedAt dueDate ccTcd')
-        .limit(15000)
-        .lean(),
-      Task.find({ assigneeId: { $in: ids }, status: { $ne: 'done' } })
-        .select('assigneeId title status priority dueDate ccTcd')
-        .limit(8000)
-        .lean(),
-    ]);
-    const histByUser = new Map<string, any[]>();
-    for (const t of historyRows as any[]) {
-      const k = String(t.assigneeId);
-      (histByUser.get(k) || histByUser.set(k, []).get(k)!).push(t);
-    }
-    const openByUser = new Map<string, any[]>();
-    for (const t of foreOpenRows as any[]) {
-      const k = String(t.assigneeId);
-      (openByUser.get(k) || openByUser.set(k, []).get(k)!).push(t);
-    }
-    for (const r of recipients) {
-      const uid = String(r.user._id);
-      const f = computeForesight({
-        completed: histByUser.get(uid) || [],
-        open: (openByUser.get(uid) || []).map((t) => ({
-          id: String(t._id),
-          title: t.title,
-          status: t.status,
-          priority: t.priority,
-          dueDate: t.dueDate,
-          ccTcd: t.ccTcd,
-        })),
-        prior: prior.cycle,
-        gapPrior: prior.gap,
-        now,
-        trials: 1200,
-        seed: seedFromId(uid),
-      });
-      if (f.digestLine) foresightByUser.set(uid, f.digestLine);
-    }
-  } catch {
-    // best-effort — the brief still sends without the foresight line.
-  }
-
   for (const r of recipients) {
     const uid = String(r.user._id);
     const raw = tasksByUser.get(uid) || [];
@@ -1005,9 +916,7 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       test: opts.test,
       dateLabel,
       winsYesterday: winsByUser.get(uid) || 0,
-      insight: dailyInsight,
       leadershipBrief,
-      foresightLine: foresightByUser.get(uid) || null,
     });
 
     const res = await sendEmail({ to: r.email, toName: (r.user as any).name, subject, html, text });

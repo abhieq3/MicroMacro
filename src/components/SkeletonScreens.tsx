@@ -15,7 +15,7 @@ function Skel({ className = '' }: { className?: string }) {
 
 /* ── Shared ghosts for the redesigned profile / settings / team pages ──────
    Kept structurally faithful (cover height, straddling avatar, the 4 impact
-   tiles, the Foresight panel) so the real content lands without a jump. */
+   tiles) so the real content lands without a jump. */
 function ProfileHeroGhost() {
   return (
     <div className="card p-5 sm:p-6">
@@ -57,27 +57,7 @@ function StatTilesGhost() {
   );
 }
 
-function ForesightGhost() {
-  return (
-    <div className="card p-5">
-      <div className="flex items-center gap-2.5 mb-4">
-        <Skel className="h-8 w-8 rounded-lg shrink-0" />
-        <div className="flex-1 space-y-1.5">
-          <Skel className="h-3.5 w-44 rounded" />
-          <Skel className="h-2.5 w-64 max-w-full rounded" />
-        </div>
-        <Skel className="h-5 w-24 rounded-full shrink-0" />
-      </div>
-      <div className="flex items-center gap-4">
-        <Skel className="h-[72px] w-[72px] rounded-full shrink-0" />
-        <div className="flex-1 space-y-2.5">
-          <Skel className="h-4 w-3/4 rounded" />
-          <Skel className="h-3 w-1/2 rounded" />
-        </div>
-      </div>
-    </div>
-  );
-}
+
 
 function HeaderSkeleton({ action = true }: { action?: boolean }) {
   return (
@@ -632,7 +612,6 @@ export function SettingsSkeleton() {
       </div>
       <ProfileHeroGhost />
       <StatTilesGhost />
-      <ForesightGhost />
       <div className="card p-5 space-y-4">
         <div className="flex items-center gap-2.5">
           <Skel className="h-8 w-8 rounded-lg shrink-0" />
@@ -752,7 +731,6 @@ export function ProfileSkeleton() {
       </div>
       <ProfileHeroGhost />
       <StatTilesGhost />
-      <ForesightGhost />
       <div className="card p-5 space-y-4">
         <div className="flex items-center gap-2.5">
           <Skel className="h-8 w-8 rounded-lg shrink-0" />

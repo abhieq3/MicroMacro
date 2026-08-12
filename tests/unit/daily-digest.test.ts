@@ -212,19 +212,16 @@ describe('renderDigestEmail', () => {
     assert.ok(!out.subject.includes('ugly, truncated'));
   });
 
-  it('renders the foresight line as plain text, not a competing card', () => {
+  it('does not render foresight or insight theater', () => {
     const out = renderDigestEmail({
       name: 'Sam',
       sections: { overdue: [], today: [], soon: [], projectUpdates: [] },
       projectName: () => null,
       appUrl: '',
       dateLabel: 'Monday, 8 June',
-      foresightLine: 'Foresight: on pace to clear your plate by ~Jun 20.',
     });
-    assert.match(out.html, /Foresight —/);
-    assert.match(out.html, /on pace to clear your plate by ~Jun 20\./);
-    // The old rendering wrapped this in its own bordered/filled card.
-    assert.ok(!out.html.includes('#faf5ff'));
+    assert.ok(!out.html.includes('Foresight'));
+    assert.ok(!out.html.toLowerCase().includes('insight'));
   });
 });
 

@@ -64,22 +64,12 @@ sign-up.
 
 These aren't features so much as defaults:
 
-- **The most important task comes first.** The dashboard opens on the single
-  highest-leverage task on your plate — with the reasons shown, so you can
-  disagree with it.
+- **The board is the product.** Overdue, blocked, due, owner. Everything else
+  is optional chrome.
 - **Think at a whiteboard, not in a deck.** A full-page drawing surface, in
-  the main nav for every role, private to its owner — which is exactly what
-  makes people willing to think honestly on it.
-- **Top 5 Things.** Everyone writes five lines a week — what they're working
-  on, watching, worried about. The feed is open to the whole team, with no
-  layer between an observation and whoever needs to hear it. Deliberately
-  un-audited: thoughts stop being honest the moment they become paperwork.
-- **The forecast shows its slack.** Alongside the statistical finish dates,
-  every project gets a *speed-of-light* date — the fastest it could possibly
-  finish if nothing ever waited in a queue. The gap between that and the
-  forecast is exactly the delay a lead can act on.
-- **Evenings belong to your people.** After hours, the app stops cheering you
-  toward the backlog and starts pointing you home. The work will keep.
+  the main nav for every role, private to its owner.
+- **Celebrate finished work.** A toast when a task closes. Confetti when a
+  phase closes. A surprise when the whole project clears.
 
 ## Engineering at a glance
 

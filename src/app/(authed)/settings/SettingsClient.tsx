@@ -46,12 +46,6 @@ import { linkMeta, type LinkBrand } from '@/lib/links';
 import { ProfileHero } from '@/components/ProfileHero';
 import { SelfImpactTiles } from '@/components/ProfileStatTiles';
 
-// Foresight panel is below the fold — keep it out of the settings first paint.
-const DeliveryForesight = dynamic(
-  () => import('@/components/DeliveryForesight').then((m) => m.DeliveryForesight),
-  { ssr: false, loading: () => <div className="h-28 rounded-xl bg-slate-50 animate-pulse" /> },
-);
-
 /* ── Profile avatar wrapper ───────────────────────────────────────────────
    Renders the user's monogram avatar with a hover-overlay "edit" hint.
    The avatar is always the standard Avatar component — the editor below
@@ -1571,9 +1565,6 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
 
       {/* ── Impact row — your delivery at a glance (matches the public profile) ── */}
       <SelfImpactTiles />
-
-      {/* ── Delivery Foresight — predictive read over the heavy engine ──── */}
-      <DeliveryForesight userId={user.id} isSelf />
 
       {/* ── Activity — the star feature, front and centre ────────────────── */}
       <div id="activity" className="scroll-mt-6">

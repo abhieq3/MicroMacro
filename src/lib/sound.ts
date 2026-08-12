@@ -101,6 +101,39 @@ export function playFanfare() {
   }
 }
 
+/** Project-clear victory — longer, louder, not the everyday chime. */
+export function playVictory() {
+  hapticCelebrate();
+  if (!soundEnabled()) return;
+  const c = getCtx();
+  if (!c) return;
+  try {
+    if (c.state === 'suspended') c.resume();
+    const now = c.currentTime;
+    const notes = [
+      { freq: 523.25, start: 0.0, dur: 0.18 },
+      { freq: 659.25, start: 0.12, dur: 0.18 },
+      { freq: 783.99, start: 0.24, dur: 0.2 },
+      { freq: 1046.5, start: 0.38, dur: 0.28 },
+      { freq: 1318.5, start: 0.58, dur: 0.45 },
+    ];
+    for (const n of notes) {
+      const osc = c.createOscillator();
+      const gain = c.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = n.freq;
+      gain.gain.setValueAtTime(0, now + n.start);
+      gain.gain.linearRampToValueAtTime(0.12, now + n.start + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + n.start + n.dur);
+      osc.connect(gain).connect(c.destination);
+      osc.start(now + n.start);
+      osc.stop(now + n.start + n.dur + 0.02);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Short "thunk" played after a successful drag-and-drop (kanban moves, dashboard
  * task reorders). Different tone from the success chime so the two events stay

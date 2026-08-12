@@ -49,51 +49,6 @@ interface UserNote {
   updatedAt: string;
 }
 
-/* Time-of-day encouragement in the house voice (Jensen's): mornings are for
-   the highest-priority work — same ritual, every day; afternoons for finishing;
-   evenings belong to your people, not your backlog; and past midnight the app
-   is allowed one raised eyebrow. Rotated by day-of-year within each window so
-   the line changes daily but never mid-morning. */
-const MORNING_LINES = [
-  'Do your highest-priority work first',
-  'Same ritual, every morning: the main thing first',
-  'Pick the one thing that matters, then start',
-  'Morning brain is for the hard problem',
-  'First principles before first meeting',
-];
-const AFTERNOON_LINES = [
-  'Finish beats start — close something out',
-  'One clear thought at a time',
-  'Small steps, real progress',
-  'Capture it, then conquer it',
-  'Progress beats perfection',
-];
-const EVENING_LINES = [
-  'Wrap it up — the people at home outrank the backlog',
-  'Write tomorrow’s first move, then log off',
-  'The work will keep. Dinner won’t',
-  'Park your thoughts here and go home proud',
-];
-const LATE_NIGHT_LINES = [
-  'Still here? Write it down and go to bed',
-  'Nothing on this list beats eight hours of sleep',
-  'The board will still be here at sunrise. You should not be',
-];
-function encouragement() {
-  const d = new Date();
-  const h = d.getHours();
-  const pool =
-    h >= 5 && h < 12
-      ? MORNING_LINES
-      : h >= 12 && h < 18
-        ? AFTERNOON_LINES
-        : h >= 18 && h < 23
-          ? EVENING_LINES
-          : LATE_NIGHT_LINES;
-  const dayOfYear = Math.floor((d.getTime() - new Date(d.getFullYear(), 0, 0).getTime()) / 86_400_000);
-  return pool[dayOfYear % pool.length];
-}
-
 function useDateLabel() {
   const [label, setLabel] = useState('');
   useEffect(() => {
@@ -622,13 +577,11 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
               )}
             </div>
             <h1 className="text-[1.7rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
-              <span suppressHydrationWarning>
-                {encouragement()}
-                {firstName ? ', ' : '.'}
-              </span>
+              My Day
               {firstName && (
-                <span className="text-blue-700 dark:text-blue-400" suppressHydrationWarning>
-                  {firstName}.
+                <span className="text-blue-700 dark:text-blue-400">
+                  {' '}
+                  · {firstName}
                 </span>
               )}
             </h1>
@@ -858,7 +811,6 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
             </div>
           )}
 
-          <MyDayForesight />
           <TodayFromProjects />
         </div>
       </div>
@@ -1120,65 +1072,6 @@ function PromoteModal({
         </div>
       </div>
     </ModalPortal>
-  );
-}
-
-/* ── Delivery Foresight strip ─────────────────────────────────────────────────
-   The forward-looking counterpart to the task list: one computed line over the
-   heavy engine (lib/ai/deliveryForesight), and — when something is trending to
-   miss — a single "start here" pointer at the task most likely to slip. This is
-   "optimal order" in its minimal form: not a re-sorted list, just the one move
-   that matters today. Silent until there's enough history to forecast. */
-function MyDayForesight() {
-  const [f, setF] = useState<any | null>(null);
-  useEffect(() => {
-    api('/me/foresight')
-      .then((d: any) => setF(d))
-      .catch(() => setF(null));
-  }, []);
-
-  if (!f || !f.hasSignal) return null;
-  // Nothing forward-looking to add on a clear plate — the list speaks for itself.
-  if (f.status === 'clear' && !f.topRisk) return null;
-
-  const clearLabel = f.clearDateP80
-    ? new Date(f.clearDateP80).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    : null;
-  const accent =
-    f.status === 'at_risk' || f.status === 'overloaded'
-      ? '#d97706'
-      : f.status === 'cooling'
-        ? '#64748b'
-        : '#7c3aed';
-
-  return (
-    <div
-      className="mt-5 rounded-xl border border-slate-200/80 dark:border-white/[0.07] bg-white dark:bg-white/[0.025] px-3.5 py-3"
-      style={{ borderLeft: `3px solid ${accent}` }}
-    >
-      <div className="flex items-center gap-1.5 mb-1">
-        <Sparkles size={12} style={{ color: accent }} className="shrink-0" />
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent }}>
-          Foresight
-        </span>
-        {clearLabel && f.openTasks > 0 && (
-          <span className="ml-auto text-[10px] font-medium text-slate-400 dark:text-white/30">
-            plate clears ~{clearLabel}
-          </span>
-        )}
-      </div>
-      <p className="text-[12.5px] text-slate-700 dark:text-white/75 leading-snug">{f.headline}</p>
-      {f.topRisk && (
-        <Link
-          href={`/tasks/${f.topRisk.id}`}
-          className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/[0.1] border border-amber-200/70 dark:border-amber-400/20 px-2.5 py-1.5 text-[12px] font-semibold text-amber-700 dark:text-amber-300 transition hover:bg-amber-100 dark:hover:bg-amber-500/[0.16]"
-        >
-          <Zap size={12} strokeWidth={2.5} className="shrink-0" />
-          <span className="truncate">Start here: {f.topRisk.title}</span>
-          <ArrowRight size={12} className="shrink-0" />
-        </Link>
-      )}
-    </div>
   );
 }
 

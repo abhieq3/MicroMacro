@@ -154,21 +154,15 @@ export async function PATCH(req: NextRequest) {
       const to = ((user as any).notifyEmail || '').trim() || (user as any).email || '';
       if (to && !to.endsWith('@pragati.local')) {
         const { renderWelcomeEmail, defaultDigestHour, digestTimeZone } = await import('@/lib/digest');
-        const { resolveIndustry, pickInsight } = await import('@/lib/insights');
         const hour = (user as any).digestHour ?? defaultDigestHour();
         const h12 = hour % 12 === 0 ? 12 : hour % 12;
         const minute = (user as any).digestMinute ?? 0;
         const hourLabel = `${h12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'} (${digestTimeZone()})`;
-        // Industry-tuned insight (single-tenant reads PRAGATI_INDUSTRY; the
-        // multi-tenant path will pass the tenant's stored niche here). seed=1
-        // so the welcome's insight differs from the day's brief insight.
-        const insight = pickInsight(resolveIndustry(), 1);
         const { subject, html, text } = renderWelcomeEmail({
           name: (user as any).name || '',
           role: (user as any).role,
           appUrl: appBaseUrl(),
           hourLabel,
-          insight,
         });
         // Fire-and-forget — a mail hiccup must never fail the settings save.
         void sendEmail({ to, toName: (user as any).name, subject, html, text }).catch(() => {});

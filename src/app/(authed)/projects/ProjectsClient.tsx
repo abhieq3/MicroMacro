@@ -90,7 +90,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
         <div>
           <h1 className="page-title">Projects</h1>
           <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
-            All quality projects across teams &amp; lifecycles.
+            Every project on the board — owners, dates, exceptions.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">

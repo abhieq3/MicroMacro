@@ -30,6 +30,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-08-13',
+    title: 'Delete theater. Celebrate real finishes.',
+    tags: ['improvement', 'feature'],
+    highlight: true,
+    body: [
+      'Removed Insights, Delivery Foresight, project forecast chips, Top 5 Things, and the dashboard Start here / morning spotlight. The board is the product.',
+      'Task done: a toast. Phase done: confetti card. Project clear: a surprise — spaghetti rain, launch, or burst. You don’t pick it. The finish does.',
+    ],
+  },
+  {
     date: '2026-06-25',
     title: 'Quality (QMS) tracking is now a generic, configurable tracker',
     tags: ['feature', 'improvement'],

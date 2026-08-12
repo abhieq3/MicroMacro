@@ -71,7 +71,7 @@ export function Celebration({
     >
       {/* Confetti layer */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 70 }).map((_, i) => (
+        {Array.from({ length: 110 }).map((_, i) => (
           <ConfettiPiece key={i} i={i} />
         ))}
       </div>
