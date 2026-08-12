@@ -154,7 +154,7 @@ export function CommandPalette({
       { id: 'p-teams', label: 'Teams', icon: Users, run: go('/teams') },
       { id: 'p-myday', label: 'My Day', icon: NotebookPen, run: go('/my-day') },
       ...(WHITEBOARD_ENABLED
-        ? [{ id: 'p-whiteboard', label: 'Whiteboard', icon: Presentation, run: go('/whiteboard') }]
+        ? [{ id: 'p-whiteboard', label: 'Think (project board)', icon: Presentation, run: go('/whiteboard') }]
         : []),
       { id: 'p-settings', label: 'Profile & activity', icon: UserCircle, run: go('/settings') },
     ];

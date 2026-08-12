@@ -15,6 +15,7 @@ const StrokePointSchema = new Schema(
 
 const StrokeSchema = new Schema(
   {
+    id: { type: String },
     tool: {
       type: String,
       enum: ['pen', 'highlighter', 'eraser', 'text', 'rect', 'ellipse', 'arrow'],
@@ -24,13 +25,18 @@ const StrokeSchema = new Schema(
     size: { type: Number, default: 2.5 },
     points: { type: [StrokePointSchema], default: [] },
     text: { type: String, default: '' },
+    promotedTaskId: { type: String, default: '' },
   },
   { _id: false },
 );
 
 const WhiteboardSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
+    // Personal pad (legacy). Sparse so project boards don't need a userId.
+    userId: { type: Schema.Types.ObjectId, ref: 'User', unique: true, sparse: true },
+    // One living board per project — team-visible.
+    projectId: { type: Schema.Types.ObjectId, ref: 'Project', unique: true, sparse: true },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     strokes: { type: [StrokeSchema], default: [] },
   },
   { timestamps: true },

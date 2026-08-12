@@ -34,10 +34,24 @@ export async function POST(req: NextRequest) {
       String((project as any).ownerId) === user!.sub;
     const privateToMe = !!body.privateToMe;
     if (!privateToMe && !ownsPersonal && !isLead(user!.role)) {
-      return NextResponse.json(
-        { error: 'Only team leaders can add tasks to shared projects' },
-        { status: 403 },
-      );
+      // Anyone who can see the project may add a bare todo (whiteboard → task).
+      // Structure (assignee, dates, compliance) stays lead-owned.
+      const leadOnly = [
+        'assigneeId',
+        'phaseId',
+        'gxpCritical',
+        'requiresQaSignoff',
+        'dueDate',
+        'ccTcd',
+        'priority',
+      ];
+      const extras = leadOnly.filter((k) => (body as any)[k] !== undefined && (body as any)[k] !== '');
+      if (extras.length > 0) {
+        return NextResponse.json(
+          { error: 'Only team leaders can assign, date, or structure tasks.' },
+          { status: 403 },
+        );
+      }
     }
     const task = await Task.create({
       projectId: body.projectId,

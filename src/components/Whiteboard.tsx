@@ -20,7 +20,9 @@ import {
   Circle,
   ArrowRight as ArrowIcon,
   Download,
+  ListTodo,
 } from 'lucide-react';
+import Link from 'next/link';
 import { api } from '@/lib/client/api';
 // onSaveToNotes removed — whiteboard is a scratch surface; notes are independent
 
@@ -47,13 +49,17 @@ import { api } from '@/lib/client/api';
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'rect' | 'ellipse' | 'arrow';
 interface Stroke {
+  id?: string;
   tool: Tool;
   color: string;
   size: number;
   points: { x: number; y: number }[];
-  // For text strokes only — the canvas owns rendering; we store the typed
-  // label and one anchor point.
   text?: string;
+  promotedTaskId?: string;
+}
+
+function strokeId() {
+  return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }
 type Doc = { strokes: Stroke[] };
 
@@ -68,7 +74,13 @@ const COLORS: { value: string; label: string }[] = [
 
 const PEN_SIZES = [1.5, 2.5, 4, 6];
 
-export function Whiteboard() {
+export function Whiteboard({
+  endpoint = '/scratch/whiteboard',
+  projectId,
+}: {
+  endpoint?: string;
+  projectId?: string;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState({ w: 800, h: 480 });
@@ -106,7 +118,7 @@ export function Whiteboard() {
 
   // Initial load from the server.
   useEffect(() => {
-    api<{ strokes: Stroke[]; updatedAt?: string }>('/scratch/whiteboard')
+    api<{ strokes: Stroke[]; updatedAt?: string }>(endpoint)
       .then((d) => {
         const strokes = Array.isArray(d?.strokes) ? d.strokes : [];
         setDoc({ strokes });
@@ -116,7 +128,7 @@ export function Whiteboard() {
       .catch(() => {
         /* empty board */
       });
-  }, []);
+  }, [endpoint]);
 
   // Debounced autosave — fires 1.5s after the last change.
   useEffect(() => {
@@ -131,7 +143,7 @@ export function Whiteboard() {
     setBusy(true);
     try {
       const strokes = doc.strokes.slice(0, pointer);
-      await api('/scratch/whiteboard', { method: 'PUT', body: { strokes } });
+      await api(endpoint, { method: 'PUT', body: { strokes } });
       setSavedAt(new Date());
       dirty.current = false;
     } catch {
@@ -274,7 +286,7 @@ export function Whiteboard() {
     drawing.current = true;
     activePointerId.current = e.pointerId;
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    currentStroke.current = { tool, color, size: penSize, points: [p] };
+    currentStroke.current = { id: strokeId(), tool, color, size: penSize, points: [p] };
     paintLive();
   }
 
@@ -334,6 +346,7 @@ export function Whiteboard() {
       return;
     }
     const s: Stroke = {
+      id: strokeId(),
       tool: 'text',
       color,
       size: penSize,
@@ -367,6 +380,31 @@ export function Whiteboard() {
     a.href = url;
     a.download = `whiteboard-${new Date().toISOString().slice(0, 10)}.png`;
     a.click();
+  }
+
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+  const notes = visibleStrokes.filter((s) => s.tool === 'text' && (s.text || '').trim());
+
+  async function promoteNote(s: Stroke) {
+    if (!projectId || !s.text?.trim() || promotingId) return;
+    const key = s.id || s.text;
+    setPromotingId(key);
+    try {
+      const task = await api<{ id: string }>('/tasks', {
+        method: 'POST',
+        body: { projectId, title: s.text.trim().slice(0, 300) },
+      });
+      setDoc((d) => ({
+        strokes: d.strokes.map((x) =>
+          x === s || (s.id && x.id === s.id) ? { ...x, promotedTaskId: task.id } : x,
+        ),
+      }));
+      dirty.current = true;
+    } catch {
+      /* keep the note */
+    } finally {
+      setPromotingId(null);
+    }
   }
 
   function clearAll() {
@@ -560,15 +598,57 @@ export function Whiteboard() {
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-center max-w-sm">
               <Pen size={26} className="mx-auto mb-2 text-slate-300" />
-              <div className="text-sm font-bold text-slate-500">Start drawing</div>
+              <div className="text-sm font-bold text-slate-500">
+                {projectId ? 'Think out loud on this project' : 'Start drawing'}
+              </div>
               <div className="text-xs text-slate-400 mt-1 leading-relaxed">
-                Drag to draw. Switch to highlighter, eraser, or text. Undo with Cmd/Ctrl + Z. Nothing precious
-                — start over any time.
+                {projectId
+                  ? 'The team sees this board. Type a box, then make it a task. When the problem is solved, wipe it.'
+                  : 'Drag to draw. Switch to text. Undo with Cmd/Ctrl + Z.'}
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {projectId && notes.length > 0 && (
+        <div className="shrink-0 border-t border-slate-100 dark:border-white/[0.06] max-h-36 overflow-y-auto">
+          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            On the board · make a task
+          </div>
+          <ul className="divide-y divide-slate-50 dark:divide-white/[0.04]">
+            {notes.map((s, i) => {
+              const key = s.id || `${s.text}-${i}`;
+              const busyNote = promotingId === key || promotingId === s.id;
+              return (
+                <li key={key} className="flex items-center gap-2 px-3 py-1.5">
+                  <span className="min-w-0 flex-1 text-[12.5px] text-slate-700 dark:text-white/75 truncate">
+                    {s.text}
+                  </span>
+                  {s.promotedTaskId ? (
+                    <Link
+                      href={`/tasks/${s.promotedTaskId}`}
+                      className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0"
+                    >
+                      Open task →
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busyNote}
+                      onClick={() => void promoteNote(s)}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 disabled:opacity-40 shrink-0"
+                    >
+                      <ListTodo size={12} />
+                      {busyNote ? '…' : 'Make task'}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

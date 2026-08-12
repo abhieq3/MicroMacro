@@ -405,14 +405,10 @@ export default function AppShell({
   // user management (create/reset/unlock/delete/promote accounts) is an
   // admin-only surface, appended via adminExtra below.
   // My Day and Whiteboard are NOT in the main nav list — they render pinned
-  // just above the user footer as the viewer's *personal* surfaces, kept
-  // together and always reachable without scrolling. Whiteboard sits beside
-  // My Day because they're the same kind of space: yours alone, for thinking
-  // and capturing before work becomes tracked records. (The three record
-  // surfaces — Dashboard/Projects/Teams — are the shared org view above.)
+  // Think sits beside My Day: capture vs the project meeting board.
   const whiteboardItem: NavItem = {
     href: '/whiteboard',
-    label: 'Whiteboard',
+    label: 'Think',
     icon: Presentation,
     iconColor: '#0E7490',
     iconBg: '#E0F7FA',
@@ -1233,7 +1229,7 @@ export default function AppShell({
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
                   >
-                    <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
+                    <Presentation size={18} style={{ color: '#0E7490' }} /> Think
                   </Link>
                 )}
                 {/* Admin-only links — these never fit in the 4-tab bottom nav, so

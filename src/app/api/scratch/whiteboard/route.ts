@@ -11,11 +11,13 @@ const Body = z.object({
   strokes: z
     .array(
       z.object({
+        id: z.string().max(40).optional(),
         tool: z.enum(['pen', 'highlighter', 'eraser', 'text', 'rect', 'ellipse', 'arrow']),
         color: z.string().max(20),
         size: z.number().finite().min(0.1).max(40),
         points: z.array(z.object({ x: z.number().finite(), y: z.number().finite() })).max(2500),
         text: z.string().max(500).optional().default(''),
+        promotedTaskId: z.string().max(40).optional().default(''),
       }),
     )
     .max(800),

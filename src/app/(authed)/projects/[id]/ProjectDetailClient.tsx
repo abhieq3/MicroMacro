@@ -40,6 +40,7 @@ import {
   Eye,
   Sparkles,
   ChevronDown,
+  PenLine,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { chimeIfEnabled, playDropTick } from '@/lib/sound';
@@ -2028,6 +2029,13 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           {/* Actions — Export (PDF/CSV/HTML) for everyone; Archive + Delete
               admin-only. */}
           <div className="flex flex-wrap items-center md:justify-end gap-2">
+            <Link
+              href={`/whiteboard?project=${id}`}
+              className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:bg-slate-50 dark:hover:bg-white/[0.05] hover:text-blue-700 transition-colors"
+              title="Think on this project's board — team sees it"
+            >
+              <PenLine size={13} /> Think
+            </Link>
             <BirdEyeButton scopeKey={`project:${id}`} onClick={() => setShowBirdEye(true)} />
             <ExportMenu
               onExcel={

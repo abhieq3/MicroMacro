@@ -40,6 +40,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Interaction pass: pages fade in, nav icons lift, cards press, project tiles stagger, Healthy badges gone. The board should feel like a machine, not a brochure.',
       'Bird’s-eye is a work surface: open tasks by default (done stays off), click a node to update it, exception counts in the header. Incl. done is opt-in.',
       'Every hop is water: idle prefetch of the main routes, hover-prefetch of links, a 2px liquid bar on navigation, faster page fade, snappier palette and live refresh.',
+      'Whiteboard has a job: one board per project, team-visible. Type a box, Make task. Docs: which AI is worth training (docs/OWN_MODEL.md) — rank assignees from history, don’t train a chat model.',
     ],
   },
   {
