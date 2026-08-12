@@ -99,7 +99,7 @@ export default function TeamsClient({
   // Realtime: refresh team rollups on focus / interval / app-wide changes.
   useLiveRefresh(load); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canManage = me?.role === 'lead' || me?.role === 'admin';
+  const canManage = me?.role === 'lead' || me?.role === 'admin' || me?.role === 'master_admin';
   const uMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const filtered = teams;
 

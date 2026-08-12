@@ -15,7 +15,7 @@ export function useCurrentUser(): CurrentUser | null {
 /** True when the current user can mutate projects/tasks (team lead or admin). */
 export function useIsLead(): boolean {
   const u = useCurrentUser();
-  return u?.role === 'lead' || u?.role === 'admin';
+  return u?.role === 'lead' || u?.role === 'admin' || u?.role === 'master_admin';
 }
 
 /** True only for the workspace admin — used to surface admin-only affordances. */

@@ -30,6 +30,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: '2026-08-13',
+    title: 'Today: act from home, title is Today, healthy days stay quiet',
+    tags: ['improvement', 'feature'],
+    highlight: true,
+    body: [
+      'Home heading is Today (name and date sit under it). Overdue or blocked work gets a Clear first card you can finish without leaving.',
+      'Todo starts from the circle; in-progress / review / blocked finish there. Capture notes stay visible and can become a private task in one tap. Leads add a task on the project card.',
+      'A single project expands. Collapsed cards peek the next two tasks. People shows faces when closed. Empty Due no longer repeats Zero exceptions.',
+    ],
+  },
+  {
     date: '2026-08-10',
     title: 'Terafab polish: blocker dialog + multi-tab offline lock',
     tags: ['improvement', 'fix'],

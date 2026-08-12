@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,11 +15,17 @@ import {
 import { DatePicker } from '@/components/DatePicker';
 import { UserAvatar } from '@/components/AvatarRegistry';
 import { useIsLead } from '@/components/CurrentUserContext';
+import { useToast } from '@/components/Toast';
+import { notifyCalendarChange } from '@/components/SidebarCalendar';
+import type { CompleteAck } from '@/components/TaskCompletePop';
 import dynamic from 'next/dynamic';
 import {
   AlertTriangle,
   FolderKanban,
+  Check,
   CheckCircle2,
+  Circle,
+  Play,
   Users as UsersIcon,
   ChevronDown,
   TrendingUp,
@@ -52,6 +58,10 @@ import { api } from '@/lib/client/api';
 // Flow strip is secondary; keep first paint light. Off when FLOW_SIGNAL_MODE=off.
 const FlowSignalStrip = dynamic(
   () => import('@/components/FlowSignalStrip').then((m) => m.FlowSignalStrip),
+  { ssr: false, loading: () => null },
+);
+const TaskCompletePop = dynamic(
+  () => import('@/components/TaskCompletePop').then((m) => m.TaskCompletePop),
   { ssr: false, loading: () => null },
 );
 import type { FlowSignalPayload } from '@/components/FlowSignalStrip';
@@ -200,11 +210,119 @@ function buildBirdsEyeDataFromDash(dash: DashResp): BirdsEyeData {
   };
 }
 
-/** One-line capture on Today — lands in personal scratch; full Capture for board. */
+/* ── Today actions (start / finish / add without leaving home) ──────────── */
+const DashActionsCtx = createContext<{
+  markDone: (task: TeamTask) => Promise<void>;
+  startWork: (task: TeamTask) => Promise<void>;
+  addTask: (projectId: string, title: string) => Promise<void>;
+  busyId: string | null;
+  myId: string;
+  isLead: boolean;
+}>({
+  markDone: async () => {},
+  startWork: async () => {},
+  addTask: async () => {},
+  busyId: null,
+  myId: '',
+  isLead: false,
+});
+
+function useDashActions() {
+  return useContext(DashActionsCtx);
+}
+
+function canFinish(task: TeamTask, myId: string, isLead: boolean) {
+  return isLead || (!!task.assigneeId && task.assigneeId === myId);
+}
+
+function DoneButton({ task }: { task: TeamTask }) {
+  const { markDone, startWork, busyId, myId, isLead } = useDashActions();
+  if (task.status === 'done' || !canFinish(task, myId, isLead)) {
+    return <span className="h-6 w-6 shrink-0" aria-hidden />;
+  }
+  const busy = busyId === task.id;
+  const isStart = task.status === 'todo';
+  return (
+    <button
+      type="button"
+      title={isStart ? 'Start' : 'Mark done'}
+      aria-label={isStart ? `Start “${task.title}”` : `Mark “${task.title}” done`}
+      disabled={busy}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        void (isStart ? startWork(task) : markDone(task));
+      }}
+      className={`group/done shrink-0 grid h-6 w-6 place-items-center rounded-full text-slate-300 dark:text-white/25 transition-colors disabled:opacity-40 ${
+        isStart
+          ? 'hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10'
+          : 'hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
+      }`}
+    >
+      {busy ? (
+        <span
+          className={`h-3.5 w-3.5 rounded-full border-2 border-t-transparent animate-spin ${
+            isStart ? 'border-blue-400' : 'border-emerald-400'
+          }`}
+        />
+      ) : isStart ? (
+        <>
+          <Circle size={15} strokeWidth={2} className="group-hover/done:hidden" />
+          <Play size={12} strokeWidth={2.4} className="hidden group-hover/done:block" fill="currentColor" />
+        </>
+      ) : (
+        <>
+          <Circle size={15} strokeWidth={2} className="group-hover/done:hidden" />
+          <CheckCircle2 size={15} strokeWidth={2.2} className="hidden group-hover/done:block" />
+        </>
+      )}
+    </button>
+  );
+}
+
+function urgencyRank(t: TeamTask): number {
+  if (isOverdue(t.ccTcd || t.dueDate, t.status)) return 0;
+  if (t.status === 'blocked') return 1;
+  const d = daysUntil(t.ccTcd || t.dueDate);
+  if (d === 0) return 2;
+  if (t.status === 'in_progress') return 3;
+  if (t.status === 'review') return 4;
+  if (d !== null && d > 0 && d <= 2) return 5;
+  if (d !== null && d > 0 && d <= 7) return 6;
+  return 9;
+}
+
+function sortByMorning(a: TeamTask, b: TeamTask) {
+  const ra = urgencyRank(a);
+  const rb = urgencyRank(b);
+  if (ra !== rb) return ra - rb;
+  const da = daysUntil(a.ccTcd || a.dueDate) ?? 999;
+  const db = daysUntil(b.ccTcd || b.dueDate) ?? 999;
+  return da - db;
+}
+
+type ScratchNoteRow = { id: string; text: string; done: boolean; createdAt: string };
+
+/** One-line capture on Today — lands in personal scratch; open notes stay visible. */
 function TodayCapture() {
+  const router = useRouter();
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
+  const [notes, setNotes] = useState<ScratchNoteRow[]>([]);
+  const [actingId, setActingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    api<{ open: ScratchNoteRow[] }>('/scratch')
+      .then((d) => {
+        if (live) setNotes((d.open || []).slice(0, 5));
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -212,8 +330,9 @@ function TodayCapture() {
     if (!t || busy) return;
     setBusy(true);
     try {
-      await api('/scratch', { method: 'POST', body: { text: t } });
+      const created = await api<ScratchNoteRow>('/scratch', { method: 'POST', body: { text: t } });
       setText('');
+      if (created?.id) setNotes((prev) => [created, ...prev].slice(0, 5));
       setFlash('Captured');
       setTimeout(() => setFlash(null), 1600);
     } catch {
@@ -224,39 +343,160 @@ function TodayCapture() {
     }
   }
 
+  async function toggleNote(n: ScratchNoteRow) {
+    setNotes((prev) => prev.filter((x) => x.id !== n.id));
+    try {
+      await api(`/scratch/${n.id}`, { method: 'PATCH', body: { done: true } });
+    } catch {
+      setNotes((prev) => [n, ...prev].slice(0, 5));
+    }
+  }
+
+  async function promoteNote(n: ScratchNoteRow) {
+    if (actingId) return;
+    setActingId(n.id);
+    try {
+      const personal = await api<{ id: string }>('/projects/personal');
+      const task = await api<{ id: string }>('/tasks', {
+        method: 'POST',
+        body: { projectId: personal.id, title: n.text, privateToMe: true },
+      });
+      await api(`/scratch/${n.id}`, {
+        method: 'PATCH',
+        body: { done: true, promotedTaskId: task.id },
+      });
+      setNotes((prev) => prev.filter((x) => x.id !== n.id));
+      setFlash('On your board');
+      setTimeout(() => setFlash(null), 1800);
+      router.refresh();
+    } catch {
+      setFlash('Could not make a task');
+      setTimeout(() => setFlash(null), 2200);
+    } finally {
+      setActingId(null);
+    }
+  }
+
   return (
-    <form
-      onSubmit={submit}
-      className="mb-5 flex items-center gap-2 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#222327] px-3 py-2 sm:px-3.5 sm:py-2.5 shadow-sm dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
-    >
-      <input
-        className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] sm:text-sm text-slate-800 dark:text-white/90 placeholder:text-slate-400 dark:placeholder:text-white/30 py-1"
-        placeholder="Capture a thought…"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        disabled={busy}
-        maxLength={500}
-        aria-label="Capture a thought"
-      />
-      <button
-        type="submit"
-        disabled={busy || !text.trim()}
-        className="btn-primary text-xs shrink-0 disabled:opacity-40 !py-1.5 !px-3"
-      >
-        Add
-      </button>
-      {flash && (
-        <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
-          {flash}
-        </span>
+    <div className="mb-5 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#222327] shadow-sm dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] overflow-hidden">
+      <form onSubmit={submit} className="flex items-center gap-2 px-3 py-2 sm:px-3.5 sm:py-2.5">
+        <input
+          className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] sm:text-sm text-slate-800 dark:text-white/90 placeholder:text-slate-400 dark:placeholder:text-white/30 py-1"
+          placeholder="Capture a thought…"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          disabled={busy}
+          maxLength={500}
+          aria-label="Capture a thought"
+        />
+        <button
+          type="submit"
+          disabled={busy || !text.trim()}
+          className="btn-primary text-xs shrink-0 disabled:opacity-40 !py-1.5 !px-3"
+        >
+          Add
+        </button>
+        {flash && (
+          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+            {flash}
+          </span>
+        )}
+        <Link
+          href="/my-day"
+          className="text-[11px] font-bold text-slate-400 hover:text-blue-600 dark:text-white/35 dark:hover:text-blue-400 shrink-0 hidden sm:inline pl-0.5"
+        >
+          Board →
+        </Link>
+      </form>
+      {notes.length > 0 && (
+        <ul className="border-t border-slate-100 dark:border-white/[0.06] divide-y divide-slate-50 dark:divide-white/[0.04]">
+          {notes.map((n) => (
+            <li key={n.id} className="flex items-center gap-2 px-3 sm:px-3.5 py-1.5">
+              <button
+                type="button"
+                title="Clear note"
+                aria-label={`Clear “${n.text}”`}
+                onClick={() => void toggleNote(n)}
+                className="group/note shrink-0 grid h-5 w-5 place-items-center rounded-full text-slate-300 dark:text-white/25 hover:text-emerald-600 dark:hover:text-emerald-400"
+              >
+                <Circle size={13} className="group-hover/note:hidden" />
+                <Check size={13} strokeWidth={2.6} className="hidden group-hover/note:block" />
+              </button>
+              <span className="min-w-0 flex-1 text-[12px] text-slate-600 dark:text-white/60 truncate">
+                {n.text}
+              </span>
+              <button
+                type="button"
+                title="Make this a task"
+                disabled={actingId === n.id}
+                onClick={() => void promoteNote(n)}
+                className="shrink-0 text-[10px] font-bold text-slate-400 hover:text-blue-600 dark:text-white/35 dark:hover:text-blue-400 disabled:opacity-40"
+              >
+                {actingId === n.id ? '…' : 'Task'}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
-      <Link
-        href="/my-day"
-        className="text-[11px] font-bold text-slate-400 hover:text-blue-600 dark:text-white/35 dark:hover:text-blue-400 shrink-0 hidden sm:inline pl-0.5"
-      >
-        Board →
-      </Link>
-    </form>
+    </div>
+  );
+}
+
+/** The single most urgent exception — overdue or blocked only. Never far-out work. */
+function ClearFirstCard({ task }: { task: TeamTask }) {
+  const due = task.ccTcd || task.dueDate;
+  const overdue = isOverdue(due, task.status);
+  const dueIn = daysUntil(due);
+  const why = overdue
+    ? dueIn !== null
+      ? `${Math.abs(dueIn)}d overdue`
+      : 'Overdue'
+    : 'Blocked';
+  return (
+    <div className="mb-5 rounded-2xl border border-red-200/80 dark:border-red-500/25 bg-gradient-to-r from-red-50/90 to-white dark:from-red-500/[0.10] dark:to-[#222327] overflow-hidden">
+      <div className="px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-start gap-3">
+        <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-300 shrink-0">
+          <AlertTriangle size={14} strokeWidth={2.4} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-red-600/80 dark:text-red-300/70">
+            Clear first
+          </div>
+          <Link
+            href={`/tasks/${task.id}`}
+            className="mt-0.5 block text-[14px] font-bold text-slate-900 dark:text-white/90 hover:text-blue-700 dark:hover:text-blue-400 line-clamp-2 leading-snug"
+          >
+            {task.title}
+          </Link>
+          <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-white/40 flex-wrap">
+            <span className="font-bold text-red-600 dark:text-red-400">{why}</span>
+            {task.projectCode && (
+              <>
+                <span className="text-slate-300 dark:text-white/15">·</span>
+                <span className="font-mono font-bold text-slate-500 dark:text-white/40">
+                  {shortProjectCode(task.projectCode)}
+                </span>
+              </>
+            )}
+            {task.assigneeName && (
+              <>
+                <span className="text-slate-300 dark:text-white/15">·</span>
+                <span className="truncate max-w-[140px]">{task.assigneeName}</span>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+          <DoneButton task={task} />
+          <Link
+            href={`/tasks/${task.id}`}
+            className="text-[11px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 hidden sm:inline"
+          >
+            Open →
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -265,6 +505,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   const dash = initialData;
   const router = useRouter();
   const isLead = useIsLead();
+  const toast = useToast();
   // Realtime: the dashboard is server-rendered, so re-running the server
   // component (router.refresh) is the cheapest way to pull fresh rollups when
   // the tab regains focus, on a gentle interval, and on app-wide change events.
@@ -277,6 +518,10 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   // (below) can own the expand control — keeping both column titles on one
   // inline header row instead of two floating labels.
   const [upNextExpanded, setUpNextExpanded] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
+  const [statusOverride, setStatusOverride] = useState<Record<string, string>>({});
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState<CompleteAck | null>(null);
 
   // First-run: a lead/admin whose workspace has no projects yet. Show a
   // guided setup path instead of a wall of empty panels — this is the
@@ -292,9 +537,83 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   // visibility their lead does into how their project is progressing. Leads
   // and admins always see everything.
   const myId = dash.user.id;
-  const visibleTasks = useMemo(
-    () => (isLead ? dash.teamTasks : dash.teamTasks.filter((t) => t.assigneeId === myId)),
-    [dash, isLead, myId],
+  const visibleTasks = useMemo(() => {
+    const scoped = isLead ? dash.teamTasks : dash.teamTasks.filter((t) => t.assigneeId === myId);
+    const live = dismissedIds.size === 0 ? scoped : scoped.filter((t) => !dismissedIds.has(t.id));
+    if (Object.keys(statusOverride).length === 0) return live;
+    return live.map((t) => (statusOverride[t.id] ? { ...t, status: statusOverride[t.id] } : t));
+  }, [dash, isLead, myId, dismissedIds, statusOverride]);
+
+  const markDone = useCallback(
+    async (task: TeamTask) => {
+      if (busyId) return;
+      setBusyId(task.id);
+      setDismissedIds((prev) => {
+        const next = new Set(prev);
+        next.add(task.id);
+        return next;
+      });
+      try {
+        const res = await api<{ projectClear?: boolean; projectName?: string | null }>(
+          `/tasks/${task.id}`,
+          { method: 'PATCH', body: { status: 'done' } },
+        );
+        notifyCalendarChange();
+        setCelebrate({
+          id: task.id,
+          title: task.title,
+          projectClear: !!res?.projectClear,
+          projectName: res?.projectName ?? task.projectName ?? null,
+        });
+        router.refresh();
+      } catch (e: any) {
+        setDismissedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(task.id);
+          return next;
+        });
+        toast.error(e?.message || 'Could not mark done');
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [busyId, router, toast],
+  );
+
+  const startWork = useCallback(
+    async (task: TeamTask) => {
+      if (busyId) return;
+      setBusyId(task.id);
+      setStatusOverride((prev) => ({ ...prev, [task.id]: 'in_progress' }));
+      try {
+        await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: 'in_progress' } });
+        notifyCalendarChange();
+        router.refresh();
+      } catch (e: any) {
+        setStatusOverride((prev) => {
+          const next = { ...prev };
+          delete next[task.id];
+          return next;
+        });
+        toast.error(e?.message || 'Could not start task');
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [busyId, router, toast],
+  );
+
+  const addTask = useCallback(
+    async (projectId: string, title: string) => {
+      await api('/tasks', { method: 'POST', body: { projectId, title } });
+      router.refresh();
+    },
+    [router],
+  );
+
+  const dashActions = useMemo(
+    () => ({ markDone, startWork, addTask, busyId, myId, isLead }),
+    [markDone, startWork, addTask, busyId, myId, isLead],
   );
 
   const ongoingProjects = useMemo(
@@ -327,11 +646,13 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   const tasksByProject = useMemo(() => {
     const m = new Map<string, TeamTask[]>();
     for (const t of dash.teamTasks) {
-      if (!m.has(t.projectId)) m.set(t.projectId, []);
-      m.get(t.projectId)!.push(t);
+      if (dismissedIds.has(t.id)) continue;
+      const row = statusOverride[t.id] ? { ...t, status: statusOverride[t.id] } : t;
+      if (!m.has(row.projectId)) m.set(row.projectId, []);
+      m.get(row.projectId)!.push(row);
     }
     return m;
-  }, [dash.teamTasks]);
+  }, [dash.teamTasks, dismissedIds, statusOverride]);
 
   const tasksByAssignee = useMemo(() => {
     const m = new Map<string, TeamTask[]>();
@@ -356,25 +677,29 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
     }
   }, []);
 
+  const clearFirst = useMemo(() => {
+    const pool = [...overdueTasks, ...blockedTasks.filter((t) => !overdueTasks.some((o) => o.id === t.id))];
+    if (pool.length === 0) return null;
+    return [...pool].sort(sortByMorning)[0] ?? null;
+  }, [overdueTasks, blockedTasks]);
+
   return (
+    <DashActionsCtx.Provider value={dashActions}>
     <div className="pb-12 max-w-[1440px]">
-      {/* ── Greeting — brand blue, not peach ─────────────────────────────── */}
+      <TaskCompletePop task={celebrate} onDone={() => setCelebrate(null)} />
+      {/* ── Greeting — page is Today; name + date sit under the title ───── */}
       <div className="mb-5 sm:mb-6 flex items-end justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-white/35 mb-1">
+          <h1 className="font-display text-[1.85rem] sm:text-[2.05rem] font-black tracking-tight leading-none text-slate-900 dark:text-white">
             Today
-          </div>
-          <h1
-            className="font-display text-[1.85rem] sm:text-[2.05rem] font-black tracking-tight leading-none text-slate-900 dark:text-white"
+          </h1>
+          <div
+            className="mt-1.5 text-[13px] font-medium text-slate-500 dark:text-white/40"
             suppressHydrationWarning
           >
             {firstName}
-          </h1>
-          {dateLabel && (
-            <div className="mt-1.5 text-[12px] font-medium text-slate-400 dark:text-white/35" suppressHydrationWarning>
-              {dateLabel}
-            </div>
-          )}
+            {dateLabel ? ` · ${dateLabel}` : ''}
+          </div>
         </div>
         {/* Bird's-eye — opt-in power tool, not the morning path. */}
         <div className="flex items-center gap-2 shrink-0 pb-0.5">
@@ -405,7 +730,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               Renders nothing when FLOW_SIGNAL_MODE=off or nothing to surface. */}
           <FlowSignalStrip data={dash.flowSignal} />
 
-          {/* Exceptions first — the only morning numbers that matter. */}
+          {/* Exceptions first — one Clear-first task, then the counts. */}
+          {clearFirst && <ClearFirstCard task={clearFirst} />}
           {overdueTasks.length > 0 || blockedTasks.length > 0 ? (
             <div className="flex flex-wrap gap-2 mb-5">
               {overdueTasks.length > 0 && (
@@ -426,16 +752,16 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               )}
             </div>
           ) : (
-            <div className="mb-5 flex items-center gap-2.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-500/20 bg-gradient-to-r from-emerald-50/90 to-teal-50/40 dark:from-emerald-500/[0.12] dark:to-teal-500/[0.06] px-3.5 py-2.5">
-              <span className="grid h-7 w-7 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0">
-                <CheckCircle2 size={15} strokeWidth={2.4} />
+            <div className="mb-5 flex items-center gap-2.5 rounded-2xl border border-emerald-200/80 dark:border-emerald-500/20 bg-gradient-to-r from-emerald-50/90 to-teal-50/40 dark:from-emerald-500/[0.12] dark:to-teal-500/[0.06] px-3.5 py-2">
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0">
+                <CheckCircle2 size={14} strokeWidth={2.4} />
               </span>
               <div className="min-w-0">
                 <div className="text-[13px] font-bold text-emerald-900 dark:text-emerald-200 tracking-tight">
                   Zero exceptions
                 </div>
                 <div className="text-[11px] text-emerald-700/75 dark:text-emerald-300/55">
-                  Nothing overdue or blocked. Board is clear.
+                  Nothing overdue or blocked.
                 </div>
               </div>
             </div>
@@ -510,6 +836,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               projects={ongoingProjects}
               tasksByProject={tasksByProject}
               suppressHeaderDesktop
+              expandSolo
             />
 
             {/* Right column — Due Center + "My tasks" (for leads: also Contributors). */}
@@ -531,6 +858,7 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       {/* Onboarding tour is mounted centrally in AppShell so every role
           sees it on whichever page they land on. */}
     </div>
+    </DashActionsCtx.Provider>
   );
 }
 
@@ -784,6 +1112,7 @@ function SummaryTaskPopup({
                     className={`block px-4 py-3 transition-colors ${overdue ? 'hover:bg-red-50/60' : 'hover:bg-slate-50/60'}`}
                   >
                     <div className="flex items-start justify-between gap-3">
+                      <DoneButton task={t} />
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-bold text-slate-800 dark:text-white/80 line-clamp-1">
                           {t.title}
@@ -961,10 +1290,12 @@ function ProjectsColumn({
   projects,
   tasksByProject,
   suppressHeaderDesktop,
+  expandSolo,
 }: {
   projects: DashProject[];
   tasksByProject: Map<string, TeamTask[]>;
   suppressHeaderDesktop?: boolean;
+  expandSolo?: boolean;
 }) {
   const isLead = useIsLead();
   return (
@@ -1007,9 +1338,19 @@ function ProjectsColumn({
         </div>
       ) : (
         <div className="space-y-3">
-          {projects.map((p) => (
-            <ProjectRow key={p.id} project={p} tasks={tasksByProject.get(p.id) || []} />
-          ))}
+          {projects.map((p) => {
+            const tasks = tasksByProject.get(p.id) || [];
+            const hasFire =
+              p.overdueCount > 0 || tasks.some((t) => t.status === 'blocked' || t.status === 'in_progress');
+            return (
+              <ProjectRow
+                key={p.id}
+                project={p}
+                tasks={tasks}
+                defaultOpen={!!expandSolo && (projects.length === 1 || hasFire)}
+              />
+            );
+          })}
         </div>
       )}
     </section>
@@ -1023,6 +1364,7 @@ function ProjectsColumn({
    removed dashboard drag-reordering: a quick bird's-eye list shouldn't carry
    hidden per-user state, and TCD order is the one an auditor expects.) */
 function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId: string }) {
+  const { myId, isLead } = useDashActions();
   const sorted = useMemo(() => {
     const keyOf = (t: TeamTask) => {
       const d = t.ccTcd || t.dueDate;
@@ -1117,10 +1459,12 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
                   style={{ background: dotColor, opacity: isDone ? 0.25 : 0.75 }}
                 />
 
-                {/* Status dot */}
+                {/* Status / done — circle is the verb on open work */}
                 <div className="shrink-0 mt-0.5">
                   {isDone ? (
                     <CheckCircle2 size={15} style={{ color: dotColor, opacity: 0.5 }} />
+                  ) : canFinish(t, myId, isLead) ? (
+                    <DoneButton task={t} />
                   ) : (
                     <span
                       title={dotTitle}
@@ -1208,20 +1552,79 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
           </Link>
         </div>
       )}
+      <ProjectQuickAdd projectId={projectId} />
     </div>
+  );
+}
+
+function ProjectQuickAdd({ projectId }: { projectId: string }) {
+  const { isLead, addTask } = useDashActions();
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  if (!isLead) return null;
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await addTask(projectId, t);
+      setText('');
+    } catch (e: any) {
+      setErr(e?.message || 'Could not add task');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      className="flex items-center gap-2 px-4 py-2 border-t border-slate-100 dark:border-white/[0.06] bg-white/70 dark:bg-white/[0.02]"
+    >
+      <input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Add a task…"
+        disabled={busy}
+        maxLength={300}
+        aria-label="Add a task"
+        className="flex-1 min-w-0 bg-transparent border-0 outline-none text-[12.5px] text-slate-800 dark:text-white/85 placeholder:text-slate-400 dark:placeholder:text-white/30 py-1"
+      />
+      {err && <span className="text-[10px] text-red-500 shrink-0">{err}</span>}
+      <button
+        type="submit"
+        disabled={busy || !text.trim()}
+        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 disabled:opacity-40 shrink-0"
+      >
+        Add
+      </button>
+    </form>
   );
 }
 
 function ProjectRow({
   project,
   tasks,
+  defaultOpen = false,
 }: {
   project: DashProject;
   tasks: TeamTask[];
+  defaultOpen?: boolean;
 }) {
-  // Collapsed by default — the dashboard should land quiet. The user expands
-  // only what they want to inspect.
-  const [open, setOpen] = useState(false);
+  // Quiet by default unless this is the only project or it is on fire —
+  // a single collapsed card on a healthy board reads as an empty page.
+  const [open, setOpen] = useState(defaultOpen);
+  const peek = useMemo(() => {
+    return tasks
+      .filter((t) => t.status !== 'done')
+      .slice()
+      .sort(sortByMorning)
+      .slice(0, 2);
+  }, [tasks]);
   const health = HEALTH_META[project.health];
   const total = project.taskCount ?? 0;
   const done = project.tasksDone ?? 0;
@@ -1342,6 +1745,46 @@ function ProjectRow({
         </div>
       </header>
 
+      {!open && peek.length > 0 && (
+        <ul className="border-t border-slate-100 dark:border-white/[0.06] divide-y divide-slate-50 dark:divide-white/[0.04] bg-slate-50/40 dark:bg-black/[0.08]">
+          {peek.map((t) => {
+            const due = t.ccTcd || t.dueDate;
+            const dueIn = daysUntil(due);
+            const overdue = isOverdue(due, t.status);
+            return (
+              <li key={t.id}>
+                <Link
+                  href={`/tasks/${t.id}`}
+                  className="flex items-center gap-2 px-4 py-2 hover:bg-white dark:hover:bg-white/[0.04] transition-colors group"
+                >
+                  <DoneButton task={t} />
+                  <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-slate-700 dark:text-white/75 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
+                    {t.title}
+                  </span>
+                  {overdue ? (
+                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 shrink-0">
+                      {dueIn !== null ? `${Math.abs(dueIn)}d over` : 'Overdue'}
+                    </span>
+                  ) : t.status === 'blocked' ? (
+                    <span className="text-[10px] font-bold text-red-600 dark:text-red-400 shrink-0">
+                      Blocked
+                    </span>
+                  ) : due && dueIn !== null && dueIn <= 7 ? (
+                    <span className="text-[10px] font-semibold text-slate-400 dark:text-white/30 shrink-0 tabular-nums">
+                      {dueIn === 0 ? 'Today' : `in ${dueIn}d`}
+                    </span>
+                  ) : t.status === 'in_progress' ? (
+                    <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 shrink-0">
+                      In progress
+                    </span>
+                  ) : null}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
       {/* Tasks panel — slightly sunken look separates it from the project header */}
       {open && (
         <div className="border-t-2 border-slate-100 dark:border-white/[0.08] fade-in-soft">
@@ -1359,6 +1802,9 @@ function ProjectRow({
               >
                 Open the project board →
               </Link>
+              <div className="mt-3 text-left">
+                <ProjectQuickAdd projectId={project.id} />
+              </div>
             </div>
           ) : (
             <DashboardTaskFlow tasks={tasks} projectId={project.id} />
@@ -1444,34 +1890,23 @@ function TaskTableRow({ t }: { t: TeamTask }) {
 /* ────────────────────────────────────────────────────────────────────────── */
 function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
   const myOpen = tasks.filter((t) => t.assigneeId === myId && t.status !== 'done');
-  // Morning surface: only fire + near-term (≤7d). Far-out backlog stays off Today.
-  const isNear = (t: TeamTask) => {
+  // Morning surface: exceptions, work already in flight, and near-term due.
+  // Far-out todo stays off Today — in-progress/review is not invented urgency.
+  const isOnToday = (t: TeamTask) => {
     if (isOverdue(t.ccTcd || t.dueDate, t.status)) return true;
-    if (t.status === 'blocked') return true;
+    if (t.status === 'blocked' || t.status === 'in_progress' || t.status === 'review') return true;
     const d = daysUntil(t.ccTcd || t.dueDate);
     return d !== null && d >= 0 && d <= 7;
   };
-  const focus = myOpen.filter(isNear);
-  const later = myOpen.filter((t) => !isNear(t));
-  const myTasks = focus.slice().sort((a, b) => {
-    const rank = (t: TeamTask) => {
-      if (isOverdue(t.ccTcd || t.dueDate, t.status)) return 0;
-      if (t.status === 'blocked') return 1;
-      const d = daysUntil(t.ccTcd || t.dueDate);
-      if (d === 0) return 2;
-      if (d !== null && d > 0 && d <= 2) return 3;
-      return 4;
-    };
-    const ra = rank(a);
-    const rb = rank(b);
-    if (ra !== rb) return ra - rb;
-    const da = daysUntil(a.ccTcd || a.dueDate) ?? 999;
-    const db = daysUntil(b.ccTcd || b.dueDate) ?? 999;
-    return da - db;
-  });
+  const focus = myOpen.filter(isOnToday);
+  const later = myOpen.filter((t) => !isOnToday(t));
+  const myTasks = focus.slice().sort(sortByMorning);
+  const nextLater = later
+    .slice()
+    .sort((a, b) => (daysUntil(a.ccTcd || a.dueDate) ?? 999) - (daysUntil(b.ccTcd || b.dueDate) ?? 999))[0];
   const myDone = tasks.filter((t) => t.assigneeId === myId && t.status === 'done').length;
   const myOverdue = myTasks.filter((t) => isOverdue(t.ccTcd || t.dueDate, t.status)).length;
-  const myBlocked = myTasks.filter((t) => t.status === 'blocked').length;
+  const myBlocked = myTasks.filter((t) => t.status === 'blocked');
 
   if (myOpen.length === 0 && myDone === 0) return null;
 
@@ -1485,7 +1920,7 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
         tint={PANEL_TINTS.emerald}
         title="You"
         count={myTasks.length}
-        countSuffix={myTasks.length === 1 ? ' due soon' : ' due soon'}
+        countSuffix={myTasks.length === 1 ? ' on Today' : ' on Today'}
         trailing={
           <span className="flex items-center gap-1">
             {myOverdue > 0 && (
@@ -1493,28 +1928,35 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
                 {myOverdue} overdue
               </span>
             )}
-            {myBlocked > 0 && (
+            {myBlocked.length > 0 && (
               <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-full">
-                {myBlocked} blocked
+                {myBlocked.length} blocked
               </span>
             )}
           </span>
         }
       />
       {myTasks.length === 0 ? (
-        <div className="py-7 text-center px-4">
-          <CheckCircle2 size={18} className="mx-auto text-emerald-400 dark:text-emerald-400/70 mb-1.5" />
+        <div className="px-4 py-3">
           <div className="text-[12px] font-semibold text-slate-600 dark:text-white/50">
-            Nothing due this week
+            Nothing on your plate this week
           </div>
-          {later.length > 0 && (
-            <div className="text-[11px] text-slate-400 dark:text-white/30 mt-1">
-              {later.length} later · far-out work stays off Today
-            </div>
-          )}
-          {myDone > 0 && later.length === 0 && (
+          {nextLater ? (
+            <Link
+              href={`/tasks/${nextLater.id}`}
+              className="mt-1.5 flex items-center gap-2 text-[11px] text-slate-500 dark:text-white/40 hover:text-blue-600 dark:hover:text-blue-400"
+            >
+              <span className="text-slate-400 dark:text-white/30 shrink-0">Next</span>
+              <span className="min-w-0 truncate font-semibold">{nextLater.title}</span>
+              <span className="shrink-0 tabular-nums">
+                {nextLater.ccTcd || nextLater.dueDate
+                  ? formatDate(nextLater.ccTcd || nextLater.dueDate)
+                  : 'undated'}
+              </span>
+            </Link>
+          ) : myDone > 0 ? (
             <div className="text-[11px] text-slate-400 dark:text-white/30 mt-1">{myDone} done.</div>
-          )}
+          ) : null}
         </div>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-white/[0.06] max-h-72 overflow-y-auto">
@@ -1522,31 +1964,20 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
             const due = t.ccTcd || t.dueDate;
             const dueIn = daysUntil(due);
             const overdue = isOverdue(due, t.status);
-            const dotColor =
-              t.status === 'in_progress'
-                ? '#42A5F5'
-                : t.status === 'review'
-                  ? '#8B5CF6'
-                  : t.status === 'blocked'
-                    ? '#EF4444'
-                    : '#94A3B8';
             return (
               <li key={t.id}>
                 <Link
                   href={`/tasks/${t.id}`}
-                  className={`flex items-start gap-3 px-4 py-2.5 transition-colors group ${overdue ? 'hover:bg-red-50/40 dark:hover:bg-red-500/[0.05]' : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'}`}
+                  className={`flex items-start gap-2.5 px-3 py-2.5 transition-colors group ${overdue ? 'hover:bg-red-50/40 dark:hover:bg-red-500/[0.05]' : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'}`}
                 >
-                  <span
-                    className="mt-1.5 w-2 h-2 rounded-full shrink-0"
-                    style={{ background: dotColor, boxShadow: `0 0 0 3px ${dotColor}28` }}
-                  />
+                  <DoneButton task={t} />
                   <div className="min-w-0 flex-1">
                     <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/80 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
                       {t.title}
                     </div>
                     <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-white/30 flex-wrap">
                       <span className="font-mono font-bold text-slate-500 dark:text-white/40">
-                        {t.projectCode}
+                        {shortProjectCode(t.projectCode)}
                       </span>
                       {due && (
                         <>
@@ -1763,7 +2194,7 @@ function UpNextPanel({
               emptyHint={
                 filter === 'untilDate' && !untilDate
                   ? 'Pick a date to see upcoming work.'
-                  : 'Zero exceptions.'
+                  : 'Nothing due in this window.'
               }
               hideHeader
             />
@@ -1824,9 +2255,8 @@ function ActionGroup({
         </div>
       )}
       {tasks.length === 0 ? (
-        <div className="px-3 py-4 sm:px-4 sm:py-6 text-center">
-          <CheckCircle2 size={16} className="mx-auto text-emerald-300 mb-1" />
-          <div className="text-[11px] text-slate-400 dark:text-white/25">{emptyHint || 'None'}</div>
+        <div className="px-3 py-2.5 sm:px-4 text-[11px] text-slate-400 dark:text-white/30">
+          {emptyHint || 'None'}
         </div>
       ) : (
         <ul className="divide-y divide-slate-100 dark:divide-white/[0.05]">
@@ -1870,6 +2300,7 @@ function ActionGroup({
                       : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'
                   }`}
                 >
+                  <DoneButton task={t} />
                   <div className="min-w-0 flex-1">
                     <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/85 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-300">
                       {t.title}
@@ -1929,8 +2360,9 @@ function ContributorsPanel({
   people: DashPerson[];
   tasksByAssignee: Map<string, TeamTask[]>;
 }) {
-  // Desktop: collapsed by default. Mobile: stay collapsed (extra density).
-  const [panelOpen, setPanelOpen] = useState(false);
+  const overduePeople = people.filter((p) => p.overdueCount > 0).length;
+  // Open when someone is late — otherwise stay collapsed so the morning stays quiet.
+  const [panelOpen, setPanelOpen] = useState(overduePeople > 0);
   const [activityPerson, setActivityPerson] = useState<DashPerson | null>(null);
 
   if (people.length === 0) return null;
@@ -1952,12 +2384,31 @@ function ContributorsPanel({
         count={people.length}
         onClick={() => setPanelOpen((o) => !o)}
         trailing={
-          <span className="inline-flex p-1 rounded-full text-violet-500 dark:text-violet-400" aria-hidden>
-            <ChevronDown
-              size={14}
-              className="transition-transform duration-200"
-              style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
-            />
+          <span className="flex items-center gap-2">
+            {!panelOpen && (
+              <span className="flex -space-x-1.5" aria-hidden>
+                {sorted.slice(0, 5).map((p) => (
+                  <span
+                    key={p.id}
+                    className="rounded-full ring-2 ring-white dark:ring-[#222327]"
+                  >
+                    <UserAvatar userId={p.id} name={p.name} size={18} />
+                  </span>
+                ))}
+              </span>
+            )}
+            {overduePeople > 0 && (
+              <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full">
+                {overduePeople} late
+              </span>
+            )}
+            <span className="inline-flex p-1 rounded-full text-violet-500 dark:text-violet-400" aria-hidden>
+              <ChevronDown
+                size={14}
+                className="transition-transform duration-200"
+                style={{ transform: panelOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+              />
+            </span>
           </span>
         }
       />
@@ -2194,6 +2645,7 @@ function ContributorRow({
                       href={`/tasks/${t.id}`}
                       className={`flex items-start gap-2.5 px-3 py-2.5 transition-colors group ${overdue ? 'hover:bg-red-50/40 dark:hover:bg-red-500/[0.04]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.03]'}`}
                     >
+                      <DoneButton task={t} />
                       <span
                         className="mt-1 w-1.5 h-1.5 rounded-full shrink-0"
                         style={{

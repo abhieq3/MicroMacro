@@ -40,7 +40,7 @@ function stepForRole(role: string): Step {
 
   return {
     title: 'See your work',
-    body: 'Assigned tasks show on the dashboard. Open My Day for your private list. Finish one thing today.',
+    body: 'Assigned tasks show on Today. Open Capture for your private list. Finish one thing today.',
     ctaLabel: 'Open My Day',
     ctaHref: '/my-day',
   };
