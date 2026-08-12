@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/client/api';
-import { Card, useToast, formatFullDate, daysUntil } from '@/components/ui';
+import { Card, useToast, formatDate } from '@/components/ui';
 import { Select } from '@/components/Select';
 import { DatePicker } from '@/components/DatePicker';
 import { Plus, X, Trash2, Pencil, Repeat, ArrowUpRight, Power } from 'lucide-react';
@@ -21,32 +21,14 @@ interface RecurringActivity {
   assigneeId: string | null;
   assigneeName?: string | null;
   priority: 'low' | 'medium' | 'high' | 'critical';
-  scheduleKind?: 'interval' | 'monthly_weekday';
   intervalUnit: 'day' | 'week' | 'month' | 'year';
   intervalCount: number;
-  weekday?: number | null;
-  weekdayOrdinal?: number | null;
   cadence: string;
   startDate: string | null;
   nextDueDate: string | null;
-  /** Open occurrence due if any, else nextDueDate — what the list should show. */
-  displayNextDue?: string | null;
-  openOccurrenceDueDate?: string | null;
   leadTimeDays: number;
   active: boolean;
   lastOccurrenceTaskId: string | null;
-}
-
-/** Compact due label: "30 Aug" this year, "28 Jun 2026" otherwise; marks overdue. */
-function formatNextLabel(iso: string | null | undefined): { text: string; overdue: boolean } {
-  if (!iso) return { text: '—', overdue: false };
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return { text: '—', overdue: false };
-  const until = daysUntil(iso);
-  const overdue = until !== null && until < 0;
-  // formatFullDate always includes year — clearer when series spans years.
-  const text = formatFullDate(iso);
-  return { text, overdue };
 }
 
 const UNIT_OPTS = [
@@ -61,37 +43,14 @@ const PRIORITY_OPTS = [
   { value: 'high', label: 'High' },
   { value: 'critical', label: 'Critical' },
 ];
-const SCHEDULE_KIND_OPTS = [
-  { value: 'interval', label: 'Every N days / weeks / months' },
-  { value: 'monthly_weekday', label: 'On a weekday each month (e.g. last Sunday)' },
-];
-const WEEKDAY_OPTS = [
-  { value: '0', label: 'Sunday' },
-  { value: '1', label: 'Monday' },
-  { value: '2', label: 'Tuesday' },
-  { value: '3', label: 'Wednesday' },
-  { value: '4', label: 'Thursday' },
-  { value: '5', label: 'Friday' },
-  { value: '6', label: 'Saturday' },
-];
-const ORDINAL_OPTS = [
-  { value: '1', label: '1st' },
-  { value: '2', label: '2nd' },
-  { value: '3', label: '3rd' },
-  { value: '4', label: '4th' },
-  { value: '-1', label: 'Last' },
-];
 
 type Draft = {
   title: string;
   description: string;
   assigneeId: string;
   priority: string;
-  scheduleKind: 'interval' | 'monthly_weekday';
   intervalCount: number;
   intervalUnit: string;
-  weekday: string; // '0'..'6'
-  weekdayOrdinal: string; // '1'|'2'|'3'|'4'|'-1'
   startDate: string;
   leadTimeDays: number;
   checklist: string[];
@@ -102,11 +61,8 @@ const EMPTY_DRAFT: Draft = {
   description: '',
   assigneeId: '',
   priority: 'medium',
-  scheduleKind: 'interval',
   intervalCount: 1,
   intervalUnit: 'month',
-  weekday: '0',
-  weekdayOrdinal: '-1',
   startDate: '',
   leadTimeDays: 0,
   checklist: [''],
@@ -118,11 +74,8 @@ function draftFrom(a: RecurringActivity): Draft {
     description: a.description || '',
     assigneeId: a.assigneeId || '',
     priority: a.priority,
-    scheduleKind: a.scheduleKind === 'monthly_weekday' ? 'monthly_weekday' : 'interval',
     intervalCount: a.intervalCount,
     intervalUnit: a.intervalUnit,
-    weekday: String(typeof a.weekday === 'number' ? a.weekday : 0),
-    weekdayOrdinal: String(typeof a.weekdayOrdinal === 'number' ? a.weekdayOrdinal : -1),
     startDate: a.startDate ? a.startDate.slice(0, 10) : '',
     leadTimeDays: a.leadTimeDays || 0,
     checklist: a.checklist.length ? a.checklist.map((c) => c.title) : [''],
@@ -170,28 +123,17 @@ export function RecurringPanel({
   }
 
   function payloadFrom(d: Draft) {
-    const scheduleKind = d.scheduleKind === 'monthly_weekday' ? 'monthly_weekday' : 'interval';
-    const base: Record<string, unknown> = {
+    return {
       title: d.title.trim(),
       description: d.description.trim() || undefined,
       assigneeId: d.assigneeId || null,
       priority: d.priority,
-      scheduleKind,
+      intervalUnit: d.intervalUnit,
       intervalCount: Math.max(1, Number(d.intervalCount) || 1),
       startDate: d.startDate,
       leadTimeDays: Math.max(0, Number(d.leadTimeDays) || 0),
       checklist: d.checklist.map((t) => t.trim()).filter(Boolean).map((title) => ({ title })),
     };
-    if (scheduleKind === 'monthly_weekday') {
-      base.intervalUnit = 'month';
-      base.weekday = Number(d.weekday);
-      base.weekdayOrdinal = Number(d.weekdayOrdinal);
-    } else {
-      base.intervalUnit = d.intervalUnit;
-      base.weekday = null;
-      base.weekdayOrdinal = null;
-    }
-    return base;
   }
 
   async function save() {
@@ -277,7 +219,8 @@ export function RecurringPanel({
               Recurring activities
             </h3>
             <p className="text-[11px] text-slate-400 leading-snug">
-              Repeat on a schedule. Each cycle creates a task with checklist.
+              Scheduled chores that repeat — each occurrence shows on the calendar &amp; dashboard with
+              its checklist.
             </p>
           </div>
         </div>
@@ -293,7 +236,7 @@ export function RecurringPanel({
 
       {/* Create / edit form */}
       {isLead && editing !== null && (
-        <div className="rounded-xl border border-slate-200 dark:border-[#2f3336] p-4 mb-4 space-y-3 bg-slate-50/60 dark:bg-white/[0.02]">
+        <div className="rounded-xl border border-slate-200 dark:border-white/10 p-4 mb-4 space-y-3 bg-slate-50/60 dark:bg-white/[0.02]">
           <div className="flex items-center justify-between">
             <div className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
               {editing === 'new' ? 'New recurring activity' : 'Edit activity'}
@@ -343,67 +286,7 @@ export function RecurringPanel({
             </div>
           </div>
 
-          <div>
-            <label className="label">Schedule type</label>
-            <Select
-              value={draft.scheduleKind}
-              onChange={(v) =>
-                setDraft((d) => ({
-                  ...d,
-                  scheduleKind: v === 'monthly_weekday' ? 'monthly_weekday' : 'interval',
-                  intervalUnit: v === 'monthly_weekday' ? 'month' : d.intervalUnit,
-                }))
-              }
-              ariaLabel="Schedule type"
-              options={SCHEDULE_KIND_OPTS}
-            />
-          </div>
-
-          {draft.scheduleKind === 'monthly_weekday' ? (
-            <div className="rounded-xl border border-violet-200/80 dark:border-violet-500/20 bg-violet-50/40 dark:bg-violet-500/[0.06] p-3 space-y-3">
-              <p className="text-[11px] text-violet-700/80 dark:text-violet-300/70 leading-snug">
-                e.g. <strong>Last Sunday of each month</strong>
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="label">Which</label>
-                  <Select
-                    value={draft.weekdayOrdinal}
-                    onChange={(v) => setDraft((d) => ({ ...d, weekdayOrdinal: v }))}
-                    ariaLabel="Weekday ordinal"
-                    options={ORDINAL_OPTS}
-                  />
-                </div>
-                <div>
-                  <label className="label">Weekday</label>
-                  <Select
-                    value={draft.weekday}
-                    onChange={(v) => setDraft((d) => ({ ...d, weekday: v }))}
-                    ariaLabel="Weekday"
-                    options={WEEKDAY_OPTS}
-                  />
-                </div>
-                <div>
-                  <label className="label">Every</label>
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="number"
-                      min={1}
-                      className="input w-16"
-                      value={draft.intervalCount}
-                      onChange={(e) =>
-                        setDraft((d) => ({
-                          ...d,
-                          intervalCount: Math.max(1, Number(e.target.value) || 1),
-                        }))
-                      }
-                    />
-                    <span className="text-xs text-slate-500 dark:text-white/40 shrink-0">month(s)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="label">Repeats every</label>
               <div className="flex gap-2">
@@ -426,34 +309,14 @@ export function RecurringPanel({
                 </div>
               </div>
             </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="label">
-                {editing === 'new'
-                  ? draft.scheduleKind === 'monthly_weekday'
-                    ? 'Start from (snaps to next match)'
-                    : 'First due date'
-                  : 'Re-anchor due date'}
-              </label>
+              <label className="label">{editing === 'new' ? 'First due date' : 'Re-anchor due date'}</label>
               <DatePicker
                 block
-                placeholder={
-                  editing === 'new'
-                    ? draft.scheduleKind === 'monthly_weekday'
-                      ? 'On or after this date'
-                      : 'Pick first due date'
-                    : 'Leave blank to keep'
-                }
+                placeholder={editing === 'new' ? 'Pick first due date' : 'Leave blank to keep'}
                 value={draft.startDate || null}
                 onChange={(v) => setDraft((d) => ({ ...d, startDate: v || '' }))}
               />
-              {draft.scheduleKind === 'monthly_weekday' && (
-                <p className="text-[10px] text-slate-400 mt-1 leading-snug">
-                  We pick the next matching day on or after this date (e.g. last Sunday on or after 1 Aug).
-                </p>
-              )}
             </div>
             <div>
               <label className="label">Appear ahead (days)</label>
@@ -535,7 +398,7 @@ export function RecurringPanel({
               key={a.id}
               className={`rounded-xl border p-3 ${
                 a.active
-                  ? 'border-slate-200 dark:border-[#2f3336]'
+                  ? 'border-slate-200 dark:border-white/10'
                   : 'border-slate-100 dark:border-white/5 opacity-60'
               }`}
             >
@@ -554,37 +417,11 @@ export function RecurringPanel({
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-1">
-                    <span>{memberName(a.assigneeId)}</span>
-                    {(() => {
-                      const open = a.openOccurrenceDueDate;
-                      const following = a.nextDueDate;
-                      const show = a.displayNextDue || open || following;
-                      if (!show) return null;
-                      const { text, overdue } = formatNextLabel(show);
-                      const hasOpen = !!open;
-                      // When an open occurrence is overdue, also surface the
-                      // healed following cycle (e.g. due 28 Jun · next 30 Aug).
-                      let followingNote: string | null = null;
-                      if (hasOpen && following && open && following.slice(0, 10) !== open.slice(0, 10)) {
-                        const f = formatNextLabel(following);
-                        if (!f.overdue) followingNote = `next ${f.text}`;
-                      }
-                      return (
-                        <span className={overdue ? 'text-red-600 font-semibold' : ''}>
-                          · {hasOpen ? 'due' : 'next'} {text}
-                          {overdue ? ' · overdue' : ''}
-                          {followingNote ? (
-                            <span className="text-slate-400 font-normal"> · {followingNote}</span>
-                          ) : null}
-                        </span>
-                      );
-                    })()}
-                    {a.checklist.length > 0 && (
-                      <span>
-                        · {a.checklist.length} step{a.checklist.length === 1 ? '' : 's'}
-                      </span>
-                    )}
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    {memberName(a.assigneeId)}
+                    {a.nextDueDate && ` · next ${formatDate(a.nextDueDate)}`}
+                    {a.checklist.length > 0 &&
+                      ` · ${a.checklist.length} step${a.checklist.length === 1 ? '' : 's'}`}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">

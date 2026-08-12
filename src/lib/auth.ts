@@ -34,8 +34,9 @@ export interface JwtPayload {
   // Populated by validateSession from the DB so the UI can enforce the
   // mandatory-PIN-setup gate without a second round-trip.
   hasPin?: boolean;
-  // Runtime-only: full logins completed. Quick-PIN is offered at login ≥ 3
-  // so first visit is never password + PIN + tour stacked.
+  // Runtime-only: how many full logins this account has completed. Used to
+  // defer the Quick-PIN modal until the second login — the first time around
+  // the user is busy with the password-change + onboarding tour.
   loginCount?: number;
   // Runtime-only: ISO of when the user dismissed the Quick-PIN prompt, if
   // they chose to set it up later. When present, suppress the modal.

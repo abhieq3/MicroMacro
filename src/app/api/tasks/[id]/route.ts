@@ -64,56 +64,34 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     );
     if (forbidden) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     const body = await readBody(req, TaskUpdateSchema);
-    const current = await Task.findById(params.id)
-      .select('status assigneeId privateToUserId pendingWith')
-      .lean();
+    const current = await Task.findById(params.id).select('status assigneeId privateToUserId').lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Assignees may update status, waiting-on, description, and due date.
-    // Everything else stays lead-owned. Personal project owners edit freely.
-    // Contributor writes fold assigneeId into the update filter (TOCTOU-safe).
+    // Contributors may edit only the description and due date, and only on a
+    // task that is assigned to them. Everything else — status, assignee,
+    // priority, compliance flags, reference fields — stays lead-owned, and a
+    // task assigned to someone else (or unassigned) is fully read-only for an
+    // IC. Exception: inside their own personal project the owner edits freely.
+    //
+    // The permission check uses `current.assigneeId`, but we close the TOCTOU
+    // race (a concurrent lead re-assignment sneaking between the permission
+    // read and the actual write) by folding the assignee guard into the update
+    // filter for contributor-scoped edits. If the task was reassigned before
+    // our write lands, findOneAndUpdate returns null and we surface a 403
+    // rather than silently mutating a task the caller no longer owns.
     const icEdit = !canMutate(user!.role) && !ownsPersonal && !ownsPrivate;
     if (icEdit) {
       const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
       const keys = Object.keys(body).filter((k) => body[k as keyof typeof body] !== undefined);
-      const IC_EDITABLE = new Set(['description', 'dueDate', 'status', 'pendingWith']);
+      const IC_EDITABLE = new Set(['description', 'dueDate']);
       const onlyAllowed = isAssignee && keys.length > 0 && keys.every((k) => IC_EDITABLE.has(k));
       if (!onlyAllowed) {
         return NextResponse.json(
           {
             error:
-              'You can update status, waiting-on, description, and due date on tasks assigned to you. Other fields are lead-owned.',
+              'Contributors can edit only the description and due date of a task assigned to them; everything else is read-only.',
           },
           { status: 403 },
-        );
-      }
-    }
-
-    // Blocked without a named cause is a lie.
-    if (body.status === 'blocked') {
-      const waiting = String(
-        body.pendingWith !== undefined ? body.pendingWith : (current as any).pendingWith || '',
-      ).trim();
-      if (!waiting) {
-        return NextResponse.json(
-          { error: 'Blocked requires who or what is waiting — name the blocker.' },
-          { status: 400 },
-        );
-      }
-    }
-
-    // Critical-path predecessor must be another task on the same project.
-    // Setting a predecessor implies the task is on the critical path.
-    if (body.blockedByTaskId !== undefined && body.blockedByTaskId) {
-      if (String(body.blockedByTaskId) === String(params.id)) {
-        return NextResponse.json({ error: 'A task cannot block itself.' }, { status: 400 });
-      }
-      const self = await Task.findById(params.id).select('projectId').lean();
-      const pred = await Task.findById(body.blockedByTaskId).select('projectId').lean();
-      if (!pred || !self || String((pred as any).projectId) !== String((self as any).projectId)) {
-        return NextResponse.json(
-          { error: 'Predecessor must be a task on the same project.' },
-          { status: 400 },
         );
       }
     }
@@ -122,16 +100,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     for (const [k, v] of Object.entries(body)) {
       if (v === undefined) continue;
       if (['startDate', 'dueDate', 'ccTcd'].includes(k)) set[k] = v ? new Date(v as string) : null;
-      else if (k === 'blockedByTaskId') set[k] = v || null;
       else set[k] = v;
     }
-    if (body.blockedByTaskId) set.onCriticalPath = true;
     if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();
     else if (body.status && body.status !== 'done') set.completedAt = null;
-    // Leaving blocked clears the bottleneck name unless the client sets a new one.
-    if (body.status && body.status !== 'blocked' && current.status === 'blocked') {
-      if (body.pendingWith === undefined) set.pendingWith = '';
-    }
     set.lastActivityAt = new Date();
 
     // For contributor edits we add `assigneeId` to the update filter so the
@@ -230,7 +202,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const proj = await Project.findById((fresh as any)?.projectId)
-      .select('isPersonal code isSystem name')
+      .select('isPersonal code')
       .lean();
     if (
       !isPrivateTask &&
@@ -248,30 +220,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       });
     }
 
-    // Jensen milestone: only when the last open task on a *real* project
-    // closes. System (recurring) boards never count — they are perpetual.
-    let projectClear = false;
-    let projectName: string | null = null;
-    if (body.status === 'done' && current.status !== 'done' && (fresh as any)?.projectId) {
-      const isSys = !!(proj as any)?.isSystem;
-      if (!isSys) {
-        const stillOpen = await Task.exists({
-          projectId: (fresh as any).projectId,
-          status: { $ne: 'done' },
-        });
-        projectClear = !stillOpen;
-        projectName = (proj as any)?.name || null;
-      }
-    }
-
     void bustDashboardCache(user!.sub, user!.role);
     void bustProjectsPageCache(user!.sub, user!.role);
-    return NextResponse.json({
-      ...taskS(fresh),
-      ...(body.status === 'done' && current.status !== 'done'
-        ? { projectClear, projectName }
-        : {}),
-    });
+    return NextResponse.json(taskS(fresh));
   } catch (e) {
     return handleError(e);
   }

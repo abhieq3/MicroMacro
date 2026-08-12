@@ -31,12 +31,11 @@ export default async function AuthedLayout({ children }: { children: React.React
     };
   }
 
-  // Classic brand: light default; dark when cookie says so.
-  // Prefer pragati_theme; fall back to legacy `theme` so a refresh mid-fix
-  // does not dump users back to light.
-  const themeCookie =
-    cookies().get('pragati_theme')?.value ?? cookies().get('theme')?.value;
-  const initialDark = themeCookie === 'dark';
+  // Read the dark-mode preference server-side so AppShell mounts in the
+  // correct theme on first paint. Eliminates the flash-of-light-content
+  // that previously appeared on every navigation when the localStorage
+  // useEffect kicked in after hydration.
+  const initialDark = cookies().get('theme')?.value === 'dark';
 
   // Persisted sidebar width — clamped server-side so an invalid cookie can't
   // produce a broken layout. Falls back to 220 if the cookie is absent.
@@ -62,7 +61,7 @@ export default async function AuthedLayout({ children }: { children: React.React
         avatarBg: (dbUser as any)?.avatarBg || '',
         avatarFont: (dbUser as any)?.avatarFont ?? 0,
         avatarImage: (dbUser as any)?.avatarImage || '',
-        soundDropEnabled: !!(dbUser as any)?.soundDropEnabled,
+        soundDropEnabled: (dbUser as any)?.soundDropEnabled !== false,
         hasSeenTour: (dbUser as any)?.hasSeenTour !== false,
       }}
       initialDark={initialDark}

@@ -67,7 +67,7 @@ export function u(user: any) {
     avatarBg: user.avatarBg || '',
     avatarImage: user.avatarImage || '',
     avatarFont: typeof user.avatarFont === 'number' ? user.avatarFont : 0,
-    soundDropEnabled: !!user.soundDropEnabled,
+    soundDropEnabled: user.soundDropEnabled !== false,
     githubUrl: user.githubUrl || '',
     links: (user.links || [])
       .map((l: any) => ({ url: String(l?.url || ''), label: String(l?.label || '') }))
@@ -130,7 +130,6 @@ export function project(p: any, extras: Any = {}) {
     archivedBy: id(p.archivedBy),
     isPersonal: !!(p.isPersonal || p.personal),
     personal: !!(p.isPersonal || p.personal),
-    isSystem: !!p.isSystem,
     ccNo: p.ccNo || '',
     refLabel: p.refLabel || '',
     createdAt: date(p.createdAt),
@@ -189,12 +188,8 @@ export function task(t: any, extras: Any = {}) {
     deployStage: t.deployStage || 'na',
     remarks: t.remarks || '',
     pendingWith: t.pendingWith || '',
-    onCriticalPath: !!t.onCriticalPath,
-    blockedByTaskId: id(t.blockedByTaskId),
     privateToUserId: id(t.privateToUserId),
     isPrivate: !!t.privateToUserId,
-    // Present when this task is an occurrence of a team recurring activity.
-    recurringActivityId: id(t.recurringActivityId),
     aiTriage: t.aiTriage
       ? {
           severity: t.aiTriage.severity,

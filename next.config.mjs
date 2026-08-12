@@ -48,43 +48,11 @@ const nextConfig = {
       : ['mongoose', 'mongodb-memory-server'],
     // Transform barrel imports (e.g. lucide-react) into direct per-icon
     // imports at build time. Harmless win; lucide-react is imported in 26 files.
-    optimizePackageImports: ['lucide-react', 'exceljs'],
+    optimizePackageImports: ['lucide-react'],
   },
-  // Immutable hashed assets — browsers keep them forever; deploys change hashes.
-  generateEtags: true,
   eslint: { ignoreDuringBuilds: true },
   async headers() {
-    return [
-      { source: '/(.*)', headers: securityHeaders },
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
-        ],
-      },
-      {
-        source: '/icons/(.*)',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=604800, stale-while-revalidate=86400' },
-        ],
-      },
-      // Service worker + manifest must be fetchable without aggressive caching
-      // so a deploy's new SW takes effect promptly.
-      {
-        source: '/sw.js',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
-          { key: 'Service-Worker-Allowed', value: '/' },
-        ],
-      },
-      {
-        source: '/manifest.webmanifest',
-        headers: [
-          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
-          { key: 'Content-Type', value: 'application/manifest+json' },
-        ],
-      },
-    ];
+    return [{ source: '/(.*)', headers: securityHeaders }];
   },
 };
 

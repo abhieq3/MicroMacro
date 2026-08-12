@@ -184,8 +184,7 @@ describe('buildWorkMixer', () => {
 });
 
 describe('morning-spotlight "pressing" gate — near-term cause, not static score', () => {
-  // "Pressing" = near-term cause (overdue / due soon / blocked / stalled).
-  // Used by ranking engines; the dashboard no longer opens a separate ritual.
+  // The dashboard's morning spotlight spawns only when this composition is true.
   // Kept identical to leadDashboard: overdue || dueSoon || blocked || waiting || stalled.
   const pressing = (c: WorkCandidate) => {
     const s = classifyWorkCandidate(c, NOW);

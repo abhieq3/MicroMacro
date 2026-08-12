@@ -18,6 +18,7 @@ import {
   Check,
 } from 'lucide-react';
 import { linkMeta, type LinkBrand } from '@/lib/links';
+import { DeliveryForesight } from '@/components/DeliveryForesight';
 import { ProfileStatTiles } from '@/components/ProfileStatTiles';
 
 // Map a detected brand to a lucide icon. Anything without a dedicated mark
@@ -218,6 +219,11 @@ export default function ProfileView({
           </div>
         </div>
       </div>
+
+      {/* ── Delivery Foresight — forward-looking read, kept last so the page
+          reads backward-then-forward: identity, impact, activity, then where
+          they're heading. Self sees the full forecast; a colleague sees rhythm. */}
+      <DeliveryForesight userId={profile.id} isSelf={isSelf} />
     </div>
   );
 }

@@ -7,8 +7,7 @@
  *   output.
  *
  * Nothing here runs unless a caller invokes it. The optional shadow integration
- * scoring helpers are used by the lead dashboard for leverage/pressing. The
- * full Work Mixer product payload was deleted (shadow mode never shipped). By
+ * in leadDashboard.ts is gated behind WORK_MIXER_ENABLED (default false), so by
  * default this module is dead-simple, dead-safe, dead weight — exactly as Phase
  * 1 intends.
  */

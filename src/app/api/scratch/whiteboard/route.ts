@@ -19,7 +19,6 @@ const Body = z.object({
       }),
     )
     .max(800),
-  prompt: z.string().max(280).optional(),
 });
 
 /**
@@ -35,7 +34,6 @@ export async function GET(req: NextRequest) {
     const doc = await Whiteboard.findOne({ userId: user!.sub }).lean();
     return NextResponse.json({
       strokes: doc?.strokes || [],
-      prompt: (doc as any)?.prompt || '',
       updatedAt: (doc as any)?.updatedAt || null,
     });
   } catch (e) {
@@ -49,16 +47,13 @@ export async function PUT(req: NextRequest) {
     if (error) return error;
     await connectDB();
     const body = await readBody(req, Body);
-    const $set: { strokes: typeof body.strokes; prompt?: string } = { strokes: body.strokes };
-    if (typeof body.prompt === 'string') $set.prompt = body.prompt;
     const doc = await Whiteboard.findOneAndUpdate(
       { userId: user!.sub },
-      { $set },
+      { $set: { strokes: body.strokes } },
       { upsert: true, new: true },
     ).lean();
     return NextResponse.json({
       strokes: doc?.strokes || [],
-      prompt: (doc as any)?.prompt || '',
       updatedAt: (doc as any)?.updatedAt || null,
     });
   } catch (e) {

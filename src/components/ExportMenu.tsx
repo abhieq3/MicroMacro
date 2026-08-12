@@ -81,8 +81,8 @@ export function ExportMenu({
       ? [
           {
             key: 'pdf',
-            label: 'PDF / Print',
-            hint: 'Executive report — decisions, owners, next 14 days',
+            label: 'PDF',
+            hint: 'Formatted report, ready to share',
             icon: FileText,
             onClick: onPdf,
             tint: '#dc2626',
@@ -94,7 +94,7 @@ export function ExportMenu({
           {
             key: 'csv',
             label: 'CSV',
-            hint: 'Full task ledger — filters, pivots, audit history',
+            hint: 'Raw data — import to any spreadsheet',
             icon: Sheet,
             onClick: onCsv,
             tint: '#16a34a',

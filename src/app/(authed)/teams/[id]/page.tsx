@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ModalPortal } from '@/components/ModalPortal';
 import Link from 'next/link';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { api } from '@/lib/client/api';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import {
@@ -15,10 +15,6 @@ import {
   CheckCircle2,
   ListTodo,
   AlertTriangle,
-  ChevronRight,
-  Search,
-  Filter,
-  Repeat,
 } from 'lucide-react';
 import { TeamDetailSkeleton } from '@/components/SkeletonScreens';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
@@ -30,6 +26,11 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
   loading: () => null,
 });
 const ActivityGraph = dynamic(() => import('@/components/ActivityGraph').then((m) => m.ActivityGraph), {
+  ssr: false,
+  loading: () => <div className="h-40 skeleton rounded-xl" />,
+});
+// Predictive engine UI — only mounts when the Foresight tab is open.
+const TeamForesight = dynamic(() => import('@/components/TeamForesight').then((m) => m.TeamForesight), {
   ssr: false,
   loading: () => <div className="h-40 skeleton rounded-xl" />,
 });
@@ -52,9 +53,8 @@ import {
   ProgressBar,
   LifecycleTag,
   StatusTag,
-  PriorityTag,
   RoleBadge,
-  formatFullDate,
+  formatDate,
   isOverdue,
   TaskLink,
 } from '@/components/ui';
@@ -63,37 +63,15 @@ import { downloadTeamReport, printTeamReport, downloadTeamCsv } from './report';
 import { ExportMenu } from '@/components/ExportMenu';
 import { Select } from '@/components/Select';
 
-type WorkFilter = 'open' | 'overdue' | 'done' | 'all';
-
-function taskSortKey(t: any): number {
-  // Overdue first, then soonest due, then no-date, done last.
-  const done = t.status === 'done' ? 1 : 0;
-  const overdue = isOverdue(t.dueDate, t.status) ? 0 : 1;
-  const due = t.dueDate ? new Date(t.dueDate).getTime() : Number.MAX_SAFE_INTEGER / 2;
-  return done * 1e15 + overdue * 1e14 + due;
-}
-
 /* One task line, reused by the Work view (grouped by person for leads, flat for
    an IC). When grouped under a person we drop the redundant assignee chip. */
 function TeamTaskRow({ t, showAssignee }: { t: any; showAssignee: boolean }) {
   const overdue = isOverdue(t.dueDate, t.status);
-  const done = t.status === 'done';
   return (
-    <div
-      className={`py-2.5 flex items-center gap-3 text-sm rounded-lg px-1.5 -mx-1.5 transition-colors ${
-        overdue
-          ? 'bg-red-50/50 dark:bg-red-500/[0.06]'
-          : done
-            ? 'opacity-60'
-            : 'hover:bg-slate-50/80 dark:hover:bg-white/[0.03]'
-      }`}
-    >
+    <div className="py-2.5 flex items-center gap-3 text-sm">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <TaskLink task={t} />
-          {t.priority && t.priority !== 'medium' && t.priority !== 'low' && (
-            <PriorityTag priority={t.priority} />
-          )}
         </div>
         <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5 min-w-0">
           <Link href={`/projects/${t.projectId}`} className="hover:underline font-medium truncate shrink-0">
@@ -116,55 +94,11 @@ function TeamTaskRow({ t, showAssignee }: { t: any; showAssignee: boolean }) {
       </div>
       <StatusTag status={t.status} />
       <span
-        className={`text-[11px] w-[5.5rem] text-right shrink-0 tabular-nums ${
-          overdue ? 'text-red-600 font-semibold' : done ? 'text-slate-400' : 'text-slate-500'
-        }`}
-        title={t.dueDate ? formatFullDate(t.dueDate) : undefined}
+        className={`text-xs w-24 text-right shrink-0 ${overdue ? 'text-red-600 font-semibold' : 'text-slate-500'}`}
       >
-        {t.dueDate ? formatFullDate(t.dueDate) : '—'}
+        {t.dueDate ? formatDate(t.dueDate) : '—'}
       </span>
     </div>
-  );
-}
-
-function WorkFilterChip({
-  active,
-  onClick,
-  label,
-  count,
-  danger,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  count?: number;
-  danger?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all border ${
-        active
-          ? danger
-            ? 'bg-red-600 text-white border-red-600 shadow-sm'
-            : 'bg-brand-600 text-white border-brand-600 shadow-sm'
-          : danger && (count ?? 0) > 0
-            ? 'bg-white text-red-600 border-red-200 hover:bg-red-50'
-            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-white/[0.03] dark:border-white/10 dark:text-white/60'
-      }`}
-    >
-      {label}
-      {typeof count === 'number' && (
-        <span
-          className={`tabular-nums rounded-full px-1.5 py-px text-[10px] font-bold ${
-            active ? 'bg-white/20' : 'bg-slate-100 text-slate-500 dark:bg-white/10'
-          }`}
-        >
-          {count}
-        </span>
-      )}
-    </button>
   );
 }
 
@@ -199,31 +133,15 @@ function HeroStat({
   value,
   sub,
   accent,
-  onClick,
-  active,
-  hint,
 }: {
   icon?: any;
   label: string;
   value: React.ReactNode;
   sub?: string;
   accent?: string;
-  onClick?: () => void;
-  active?: boolean;
-  hint?: string;
 }) {
-  const Comp: any = onClick ? 'button' : 'div';
   return (
-    <Comp
-      type={onClick ? 'button' : undefined}
-      onClick={onClick}
-      title={hint}
-      className={`min-w-0 rounded-xl border px-3 py-2.5 text-left transition-all ${
-        active
-          ? 'border-brand-300 bg-blue-50/80 ring-1 ring-brand-200/80 dark:border-blue-500/40 dark:bg-blue-500/10'
-          : 'border-slate-200/70 bg-slate-50/60 dark:border-white/[0.07] dark:bg-white/[0.02]'
-      } ${onClick ? 'cursor-pointer hover:border-brand-200 hover:bg-blue-50/40 dark:hover:bg-white/[0.04]' : ''}`}
-    >
+    <div className="min-w-0 rounded-xl border border-slate-200/70 dark:border-white/[0.07] bg-slate-50/60 dark:bg-white/[0.02] px-3 py-2.5">
       <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
         {Icon && <Icon size={12} className="shrink-0" style={accent ? { color: accent } : undefined} />}
         <span className="truncate">{label}</span>
@@ -237,7 +155,7 @@ function HeroStat({
         </span>
         {sub && <span className="text-[11px] text-slate-400">{sub}</span>}
       </div>
-    </Comp>
+    </div>
   );
 }
 
@@ -266,26 +184,12 @@ export default function TeamDetailPage() {
   // bars), so they're merged into one Projects overview (team-wide summary +
   // per-project rows). "Work" answers the lead's daily question — who is doing
   // what — by grouping tasks under each person; an IC sees only their own.
-  // Everyone opens on Work — unless deep-linked via ?view= (e.g. from a Recurring project).
-  const searchParams = useSearchParams();
-  const viewParam = searchParams?.get('view');
-  const initialView = (
-    viewParam === 'recurring' ||
-    viewParam === 'projects' ||
-    viewParam === 'qms' ||
-    viewParam === 'tickets' ||
-        viewParam === 'work'
-      ? viewParam
-      : 'work'
-  ) as 'work' | 'projects' | 'qms' | 'tickets' | 'recurring';
+  // "Foresight" (lead/admin only) sits between the two — the predictive capacity
+  // read, on demand rather than taking up permanent vertical space. Everyone
+  // opens on Work.
   const [view, setView] = useState<
-    'work' | 'projects' | 'qms' | 'tickets' | 'recurring'
-  >(initialView);
-  // Work board focus — default Open so Done noise doesn't bury real work
-  // (screenshot: entire "Who's doing what" was green Done rows).
-  const [workFilter, setWorkFilter] = useState<WorkFilter>('open');
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
-  const [workQuery, setWorkQuery] = useState('');
+    'work' | 'foresight' | 'projects' | 'qms' | 'tickets' | 'recurring'
+  >('work');
 
   async function load() {
     setLoadError('');
@@ -434,53 +338,10 @@ export default function TeamDetailPage() {
   const heroTaskDone = heroProjects.reduce((s: number, p: any) => s + (p.tasksDone || 0), 0);
   const heroPct = heroTaskTotal ? Math.round((heroTaskDone / heroTaskTotal) * 100) : 0;
   const heroOpen = visibleBoard.filter((t: any) => t.status !== 'done').length;
-  const heroOverdue = visibleBoard.filter((t: any) => isOverdue(t.dueDate, t.status)).length;
+  const heroOverdue = visibleBoard.filter(
+    (t: any) => isOverdue(t.dueDate, t.status),
+  ).length;
   const cover = FUNCTION_COVER[team.function] || DEFAULT_COVER;
-
-  function focusWork(filter: WorkFilter, memberId: string | null = selectedMemberId) {
-    setView('work');
-    setWorkFilter(filter);
-    setSelectedMemberId(memberId);
-  }
-
-  function matchesWorkFilter(t: any, filter: WorkFilter) {
-    if (filter === 'open') return t.status !== 'done';
-    if (filter === 'overdue') return isOverdue(t.dueDate, t.status);
-    if (filter === 'done') return t.status === 'done';
-    return true;
-  }
-
-  const filteredWork = visibleBoard
-    .filter((t: any) => {
-      if (selectedMemberId) {
-        if (selectedMemberId === '__unassigned') {
-          if (t.assigneeId) return false;
-        } else if (t.assigneeId !== selectedMemberId) {
-          return false;
-        }
-      }
-      if (!matchesWorkFilter(t, workFilter)) return false;
-      if (workQuery.trim()) {
-        const q = workQuery.trim().toLowerCase();
-        const hay = `${t.title || ''} ${t.projectCode || ''} ${t.assigneeName || ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    })
-    .slice()
-    .sort((a: any, b: any) => taskSortKey(a) - taskSortKey(b));
-
-  // Per-member open counts for the sidebar (from the board, not analytics).
-  const openByMember = new Map<string, number>();
-  const overdueByMember = new Map<string, number>();
-  for (const t of visibleBoard) {
-    if (t.status === 'done') continue;
-    const k = t.assigneeId || '__unassigned';
-    openByMember.set(k, (openByMember.get(k) || 0) + 1);
-    if (isOverdue(t.dueDate, t.status)) {
-      overdueByMember.set(k, (overdueByMember.get(k) || 0) + 1);
-    }
-  }
 
   // The bird's-eye tree — built once from data already on the page, shared by
   // the interactive view and the headless Export-menu download.
@@ -582,178 +443,126 @@ export default function TeamDetailPage() {
           </div>
         </ModalPortal>
       )}
-      {/* Team header — identity strip + glanceable, clickable stats. */}
-      <section className="card overflow-hidden">
-        <div className="h-1.5 w-full" style={{ background: cover }} aria-hidden />
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex min-w-0 items-center gap-4">
-              <div className="shrink-0 flex flex-col items-center gap-1">
-                <div
-                  className="relative cursor-pointer rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-[#262624]"
-                  onMouseEnter={() => setAvatarHover(true)}
-                  onMouseLeave={() => setAvatarHover(false)}
-                  onClick={() => isOwnerOrAdmin && avatarInputRef.current?.click()}
-                  title={isOwnerOrAdmin ? 'Change team avatar' : undefined}
-                >
-                  {avatarImage ? (
-                    <img
-                      src={avatarImage}
-                      alt={`${team.name} avatar`}
-                      className="h-16 w-16 rounded-xl object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="flex h-16 w-16 items-center justify-center rounded-xl"
-                      style={{ background: cover }}
-                    >
-                      <span className="select-none text-2xl font-black text-white/90">
-                        {team.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  {isOwnerOrAdmin && (avatarHover || avatarUploading) && (
-                    <div className="absolute inset-1 flex items-center justify-center rounded-xl bg-black/40">
-                      {avatarUploading ? (
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      ) : (
-                        <Camera size={18} className="text-white" />
-                      )}
-                    </div>
-                  )}
-                </div>
-                {isOwnerOrAdmin && avatarImage && (
-                  <button
-                    onClick={removeAvatar}
-                    disabled={avatarUploading}
-                    className="text-[10.5px] text-slate-400 transition-colors hover:text-red-500"
-                  >
-                    Remove
-                  </button>
-                )}
-                {isOwnerOrAdmin && (
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleAvatarFileChange}
+      {/* Quiet, information-first team header: identity and primary actions only. */}
+      <section className="card p-5 sm:p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-center gap-4">
+            {/* Owner/admin can change the avatar directly without a decorative cover. */}
+            <div className="shrink-0 flex flex-col items-center gap-1">
+              <div
+                className="relative cursor-pointer rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-white/10 dark:bg-[#262624]"
+                onMouseEnter={() => setAvatarHover(true)}
+                onMouseLeave={() => setAvatarHover(false)}
+                onClick={() => isOwnerOrAdmin && avatarInputRef.current?.click()}
+                title={isOwnerOrAdmin ? 'Change team avatar' : undefined}
+              >
+                {avatarImage ? (
+                  <img
+                    src={avatarImage}
+                    alt={`${team.name} avatar`}
+                    className="h-16 w-16 rounded-xl object-cover"
                   />
-                )}
-              </div>
-
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <h1 className="break-words text-xl font-black leading-tight tracking-tight text-slate-900 dark:text-white sm:text-2xl">
-                    {team.name}
-                  </h1>
-                  <span
-                    className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                      (
-                        {
-                          rtb: 'bg-blue-50 text-blue-700 border-blue-200',
-                          ctb: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                        } as Record<string, string>
-                      )[team.function] || 'bg-slate-50 text-slate-600 border-slate-200'
-                    }`}
+                ) : (
+                  <div
+                    className="flex h-16 w-16 items-center justify-center rounded-xl"
+                    style={{ background: cover }}
                   >
-                    {FUNCTION_LABEL[team.function] || team.function}
-                  </span>
-                </div>
-                {team.description && (
-                  <p className="mt-1.5 max-w-2xl text-sm leading-snug text-slate-500 dark:text-white/50">
-                    {team.description}
-                  </p>
+                    <span className="select-none text-2xl font-black text-white/90">
+                      {team.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                 )}
-                {team.leadName && (
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Lead · <span className="font-semibold text-slate-600 dark:text-white/60">{team.leadName}</span>
-                  </p>
+                {isOwnerOrAdmin && (avatarHover || avatarUploading) && (
+                  <div className="absolute inset-1 flex items-center justify-center rounded-xl bg-black/40">
+                    {avatarUploading ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Camera size={18} className="text-white" />
+                    )}
+                  </div>
                 )}
               </div>
+              {isOwnerOrAdmin && avatarImage && (
+                <button
+                  onClick={removeAvatar}
+                  disabled={avatarUploading}
+                  className="text-[10.5px] text-slate-400 transition-colors hover:text-red-500"
+                >
+                  Remove
+                </button>
+              )}
+              {isOwnerOrAdmin && (
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarFileChange}
+                />
+              )}
             </div>
 
-            {(isOwnerOrAdmin || isLead) && (
-              <div className="flex shrink-0 items-center gap-1.5 self-start">
-                <BirdEyeButton
-                  scopeKey={`team:${id}`}
-                  onClick={() => setShowBirdEye(true)}
-                  label="Bird’s-eye"
-                  className="border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]"
-                />
-                <ExportMenu
-                  onPdf={() => printTeamReport(team, progress, board, me?.name || me?.email || '')}
-                  onCsv={() => downloadTeamCsv(team, board, me?.name || me?.email || '')}
-                  onBirdEyeSvg={() => setBirdEyeExport('svg')}
-                  onBirdEyePng={() => setBirdEyeExport('png')}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Overall progress — quiet bar under identity */}
-          {heroTaskTotal > 0 && (
-            <div className="mt-4">
-              <div className="mb-1.5 flex items-center justify-between text-[11px]">
-                <span className="font-semibold text-slate-500">Team completion</span>
-                <span className="tabular-nums text-slate-400">
-                  <strong className="text-slate-700 dark:text-white/75">{heroTaskDone}</strong>/{heroTaskTotal} ·{' '}
-                  <strong className="text-brand-600">{heroPct}%</strong>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="break-words text-xl font-black leading-tight tracking-tight text-slate-900 dark:text-white sm:text-2xl">
+                  {team.name}
+                </h1>
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                    (
+                      {
+                        rtb: 'bg-blue-50 text-blue-700 border-blue-200',
+                        ctb: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                      } as Record<string, string>
+                    )[team.function] || 'bg-slate-50 text-slate-600 border-slate-200'
+                  }`}
+                >
+                  {FUNCTION_LABEL[team.function] || team.function}
                 </span>
               </div>
-              <ProgressBar value={heroPct} />
+              {team.description && (
+                <p className="mt-1.5 max-w-2xl text-sm leading-snug text-slate-500 dark:text-white/50">
+                  {team.description}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {(isOwnerOrAdmin || isLead) && (
+            <div className="flex shrink-0 items-center gap-1.5 self-start">
+              <BirdEyeButton
+                scopeKey={`team:${id}`}
+                onClick={() => setShowBirdEye(true)}
+                label="Bird’s-eye"
+                className="border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]"
+              />
+              <ExportMenu
+                onPdf={() => printTeamReport(team, progress, board, me?.name || me?.email || '')}
+                onCsv={() => downloadTeamCsv(team, board, me?.name || me?.email || '')}
+                onBirdEyeSvg={() => setBirdEyeExport('svg')}
+                onBirdEyePng={() => setBirdEyeExport('png')}
+              />
             </div>
           )}
+        </div>
 
-          {/* Stat strip — click Open / Overdue / Projects to jump into the right lens. */}
-          <div className="mt-5 grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-            <HeroStat
-              icon={Users}
-              label="Members"
-              value={team.members.length}
-              hint="Team roster"
-              active={view === 'work' && !selectedMemberId && workFilter === 'open'}
-              onClick={() => {
-                setSelectedMemberId(null);
-                focusWork('open', null);
-              }}
-            />
-            <HeroStat
-              icon={FolderKanban}
-              label="Projects"
-              value={heroProjects.length}
-              hint="Open projects tab"
-              active={view === 'projects'}
-              onClick={() => setView('projects')}
-            />
-            <HeroStat
-              icon={CheckCircle2}
-              label="Tasks done"
-              value={`${heroTaskDone}/${heroTaskTotal || 0}`}
-              sub={`${heroPct}%`}
-              hint="Show completed work"
-              active={view === 'work' && workFilter === 'done'}
-              onClick={() => focusWork('done')}
-            />
-            <HeroStat
-              icon={ListTodo}
-              label={isLead ? 'Open' : 'My open'}
-              value={heroOpen}
-              accent={heroOpen > 0 ? '#1565C0' : undefined}
-              hint="Show open work"
-              active={view === 'work' && workFilter === 'open'}
-              onClick={() => focusWork('open')}
-            />
-            <HeroStat
-              icon={AlertTriangle}
-              label={isLead ? 'Overdue' : 'My overdue'}
-              value={heroOverdue}
-              accent={heroOverdue > 0 ? '#dc2626' : undefined}
-              hint="Show overdue only"
-              active={view === 'work' && workFilter === 'overdue'}
-              onClick={() => focusWork('overdue')}
-            />
-          </div>
+        {/* Stat strip — the team at a glance, from data already on screen. */}
+        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-white/[0.06] grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <HeroStat icon={Users} label="Members" value={team.members.length} />
+          <HeroStat icon={FolderKanban} label="Projects" value={heroProjects.length} />
+          <HeroStat
+            icon={CheckCircle2}
+            label="Tasks done"
+            value={`${heroTaskDone}/${heroTaskTotal}`}
+            sub={`${heroPct}%`}
+          />
+          <HeroStat icon={ListTodo} label={isLead ? 'Open' : 'My open'} value={heroOpen} />
+          <HeroStat
+            icon={AlertTriangle}
+            label={isLead ? 'Overdue' : 'My overdue'}
+            value={heroOverdue}
+            accent={heroOverdue > 0 ? '#dc2626' : undefined}
+          />
         </div>
       </section>
 
@@ -767,14 +576,16 @@ export default function TeamDetailPage() {
                   className="text-xs font-bold text-brand-700 hover:text-brand-800 px-2 py-1 rounded-md hover:bg-blue-50 transition-colors"
                   onClick={() => setAdding((v) => !v)}
                 >
-                  {adding ? 'Cancel' : '+ Add'}
+                  {adding ? 'Cancel' : '+ Add member'}
                 </button>
               ) : undefined
             }
           >
+            {/* Helper note — membership IS the access mechanism */}
             {isOwnerOrAdmin && (
-              <div className="mb-3 -mt-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2 leading-snug dark:bg-white/[0.03] dark:border-white/10">
-                Members can access all projects on this team.
+              <div className="mb-3 -mt-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2 leading-snug">
+                Add someone here to give them access to every project assigned to this team. Membership is the
+                tag — no separate permissions needed.
               </div>
             )}
             {adding && isOwnerOrAdmin && (
@@ -795,94 +606,47 @@ export default function TeamDetailPage() {
                 </button>
               </div>
             )}
-            {isLead && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedMemberId(null);
-                  focusWork(workFilter === 'all' ? 'open' : workFilter, null);
-                }}
-                className={`mb-2 w-full text-left rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-colors border ${
-                  !selectedMemberId
-                    ? 'border-brand-200 bg-blue-50 text-brand-700'
-                    : 'border-transparent text-slate-500 hover:bg-slate-50 dark:hover:bg-white/[0.04]'
-                }`}
-              >
-                Everyone · {heroOpen} open
-              </button>
-            )}
-            <div className="space-y-1">
+            <div className="space-y-2">
               {team.members.map((m: any) => {
-                const p = progress?.members?.find((x: any) => x.id === m.id);
-                const openN = openByMember.get(m.id) || 0;
-                const overdueN = overdueByMember.get(m.id) || 0;
-                const selected = selectedMemberId === m.id;
+                const p = progress?.members.find((x: any) => x.id === m.id);
                 return (
                   <div
                     key={m.id}
-                    className={`group flex items-center gap-2 rounded-xl px-2 py-2 border transition-all ${
-                      selected
-                        ? 'border-brand-200 bg-blue-50/70 dark:border-blue-500/30 dark:bg-blue-500/10'
-                        : 'border-transparent hover:border-slate-100 hover:bg-slate-50/80 dark:hover:bg-white/[0.03]'
-                    }`}
+                    className="group flex items-center gap-2 py-1.5 border-b border-slate-100 last:border-b-0"
                   >
-                    <button
-                      type="button"
-                      className="flex flex-1 min-w-0 items-center gap-2 text-left"
-                      onClick={() => {
-                        if (!isLead) return;
-                        setSelectedMemberId(selected ? null : m.id);
-                        setView('work');
-                        if (workFilter === 'done') setWorkFilter('open');
-                      }}
-                      title={isLead ? `Filter work to ${m.name}` : undefined}
-                    >
-                      <UserAvatar userId={m.id} name={m.name} />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-sm font-semibold text-slate-800 dark:text-white/85 truncate">
-                            {m.name}
-                          </span>
-                          {isLead && openN > 0 && (
-                            <span className="shrink-0 text-[10px] font-bold tabular-nums text-brand-700 bg-blue-50 border border-blue-100 rounded-full px-1.5 py-px">
-                              {openN}
-                            </span>
-                          )}
-                          {isLead && overdueN > 0 && (
-                            <span className="shrink-0 text-[10px] font-bold tabular-nums text-red-600 bg-red-50 border border-red-100 rounded-full px-1.5 py-px">
-                              {overdueN}!
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-400 truncate">
-                          {m.title || m.role}
-                          {isLead && p && ` · ${p.done}/${p.assigned} done`}
-                        </div>
-                        {isLead && p && p.assigned > 0 && (
-                          <ProgressBar value={Math.round((p.done / p.assigned) * 100)} className="mt-1" />
-                        )}
+                    <UserAvatar userId={m.id} name={m.name} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{m.name}</div>
+                      <div className="text-xs text-slate-500 truncate">
+                        {m.title || m.role}
+                        {/* Per-member progress is only shown to leads/admins —
+                            an IC never sees a teammate's done/overdue counts. */}
+                        {isLead &&
+                          p &&
+                          ` · ${p.done}/${p.assigned} done${p.overdue ? ` · ${p.overdue} overdue` : ''}`}
                       </div>
-                    </button>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {isLead && (
-                        <button
-                          onClick={() => setActivityMember(m)}
-                          title={`View ${m.name}'s activity`}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-white transition-colors"
-                        >
-                          <BarChart3 size={14} />
-                        </button>
-                      )}
-                      {isOwnerOrAdmin && (
-                        <button
-                          onClick={() => removeMember(m.id)}
-                          title="Remove from team"
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      {isLead && p && p.assigned > 0 && (
+                        <ProgressBar value={Math.round((p.done / p.assigned) * 100)} className="mt-1" />
                       )}
                     </div>
+                    {isLead && (
+                      <button
+                        onClick={() => setActivityMember(m)}
+                        title={`View ${m.name}'s activity`}
+                        className="text-slate-400 hover:text-blue-600 transition-colors shrink-0"
+                      >
+                        <BarChart3 size={14} />
+                      </button>
+                    )}
+                    {isOwnerOrAdmin && (
+                      <button
+                        onClick={() => removeMember(m.id)}
+                        title="Remove from team"
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-600 transition-opacity"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -891,147 +655,47 @@ export default function TeamDetailPage() {
         </div>
 
         <div className="lg:col-span-3 space-y-4">
-          {/* Segmented tabs with counts */}
-          <div className="flex flex-wrap gap-1.5 p-1 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/60 dark:border-white/[0.06] w-fit max-w-full">
+          <div className="flex gap-2">
             {(
               [
-                ['work', isLead ? 'Work' : 'My tasks', heroOpen],
-                ['projects', 'Projects', heroProjects.length],
+                ['work', isLead ? 'Work' : 'My tasks'],
+                ['projects', 'Projects'],
                 ...(WORKBENCH_MODULES_ENABLED && team.modules?.qms?.enabled
-                  ? [['qms', 'Trackers', null]]
+                  ? [['qms', 'QMS']]
                   : []),
                 ...(WORKBENCH_MODULES_ENABLED && team.modules?.tickets?.enabled
-                  ? [['tickets', 'Tickets', null]]
+                  ? [['tickets', 'Tickets']]
                   : []),
-                // Recurring is core schedule infrastructure — not industry chrome.
-                ...(team.modules?.recurring?.enabled ? [['recurring', 'Recurring', null]] : []),
-              ] as [string, string, number | null][]
-            ).map(([k, l, count]) => (
+                ...(WORKBENCH_MODULES_ENABLED && team.modules?.recurring?.enabled
+                  ? [['recurring', 'Recurring']]
+                  : []),
+                // Foresight is forward-looking — kept last so the team reads
+                // current work first, then the outlook.
+                ...(isLead ? [['foresight', 'Foresight']] : []),
+              ] as [string, string][]
+            ).map(([k, l]) => (
               <button
                 key={k}
                 onClick={() => setView(k as any)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                  view === k
-                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200/80 dark:bg-[#1a1a1a] dark:text-white dark:border-white/10'
-                    : 'text-slate-500 hover:text-slate-800 border border-transparent dark:hover:text-white/80'
+                className={`px-3 py-1.5 rounded text-sm ${
+                  view === k ? 'bg-brand-600 text-white' : 'bg-white border border-slate-200'
                 }`}
               >
-                {k === 'recurring' && <Repeat size={13} className="opacity-70" />}
                 {l}
-                {typeof count === 'number' && (
-                  <span
-                    className={`text-[10px] font-bold tabular-nums rounded-full px-1.5 py-px ${
-                      view === k
-                        ? 'bg-brand-50 text-brand-700'
-                        : 'bg-slate-200/80 text-slate-500 dark:bg-white/10'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                )}
               </button>
             ))}
           </div>
 
-          {/* ── Work — open first, filterable by person & status ─────────── */}
-          {view === 'work' && (
-            <Card
-              title={
-                isLead
-                  ? selectedMemberId
-                    ? `Work · ${
-                        selectedMemberId === '__unassigned'
-                          ? 'Unassigned'
-                          : team.members.find((m: any) => m.id === selectedMemberId)?.name || 'Member'
-                      }`
-                    : "Who's doing what"
-                  : 'My tasks across team projects'
-              }
-              action={
-                <span className="text-[11px] text-slate-400 tabular-nums">
-                  {filteredWork.length} shown
-                </span>
-              }
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 mb-4">
-                <div className="flex flex-wrap items-center gap-1.5 flex-1">
-                  <Filter size={13} className="text-slate-400 shrink-0 hidden sm:block" />
-                  <WorkFilterChip
-                    label="Open"
-                    count={
-                      visibleBoard.filter(
-                        (t: any) =>
-                          t.status !== 'done' &&
-                          (!selectedMemberId ||
-                            (selectedMemberId === '__unassigned'
-                              ? !t.assigneeId
-                              : t.assigneeId === selectedMemberId)),
-                      ).length
-                    }
-                    active={workFilter === 'open'}
-                    onClick={() => setWorkFilter('open')}
-                  />
-                  <WorkFilterChip
-                    label="Overdue"
-                    count={
-                      visibleBoard.filter(
-                        (t: any) =>
-                          isOverdue(t.dueDate, t.status) &&
-                          (!selectedMemberId ||
-                            (selectedMemberId === '__unassigned'
-                              ? !t.assigneeId
-                              : t.assigneeId === selectedMemberId)),
-                      ).length
-                    }
-                    active={workFilter === 'overdue'}
-                    onClick={() => setWorkFilter('overdue')}
-                    danger
-                  />
-                  <WorkFilterChip
-                    label="Done"
-                    count={
-                      visibleBoard.filter(
-                        (t: any) =>
-                          t.status === 'done' &&
-                          (!selectedMemberId ||
-                            (selectedMemberId === '__unassigned'
-                              ? !t.assigneeId
-                              : t.assigneeId === selectedMemberId)),
-                      ).length
-                    }
-                    active={workFilter === 'done'}
-                    onClick={() => setWorkFilter('done')}
-                  />
-                  <WorkFilterChip
-                    label="All"
-                    count={
-                      selectedMemberId
-                        ? visibleBoard.filter((t: any) =>
-                            selectedMemberId === '__unassigned'
-                              ? !t.assigneeId
-                              : t.assigneeId === selectedMemberId,
-                          ).length
-                        : visibleBoard.length
-                    }
-                    active={workFilter === 'all'}
-                    onClick={() => setWorkFilter('all')}
-                  />
-                </div>
-                <div className="relative sm:w-52">
-                  <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    className="input text-sm pl-8 py-1.5"
-                    placeholder="Search tasks…"
-                    value={workQuery}
-                    onChange={(e) => setWorkQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {isLead && !selectedMemberId ? (
-                (() => {
+          {/* ── Work — who is doing what ──────────────────────────────────
+              For a lead, tasks are grouped under each person (with open/total
+              counts) so the answer to "who's on what" is the page itself, not a
+              spreadsheet. An IC sees only their own tasks, flat. */}
+          {view === 'work' &&
+            (isLead ? (
+              <Card title="Who's doing what">
+                {(() => {
                   const byAssignee = new Map<string, any[]>();
-                  for (const t of filteredWork) {
+                  for (const t of visibleBoard) {
                     const k = t.assigneeId || '__unassigned';
                     (byAssignee.get(k) || byAssignee.set(k, []).get(k)!).push(t);
                   }
@@ -1042,50 +706,18 @@ export default function TeamDetailPage() {
                   }
                   const un = byAssignee.get('__unassigned');
                   if (un && un.length) groups.push({ id: '__unassigned', name: 'Unassigned', tasks: un });
-
-                  if (groups.length === 0) {
-                    return (
-                      <div className="text-center py-10 px-4">
-                        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-                          <CheckCircle2 size={18} />
-                        </div>
-                        <div className="text-sm font-semibold text-slate-700 dark:text-white/80">
-                          {workFilter === 'open'
-                            ? 'Zero open'
-                            : workFilter === 'overdue'
-                              ? 'Zero overdue'
-                              : workFilter === 'done'
-                                ? 'No completed tasks in view'
-                                : 'No match'}
-                        </div>
-                        <p className="mt-1 text-xs text-slate-400 max-w-sm mx-auto">
-                          {workFilter === 'open' ? 'Switch filter for history.' : 'Clear search or change filter.'}
-                        </p>
-                        {workFilter !== 'all' && (
-                          <button
-                            type="button"
-                            className="mt-3 text-xs font-semibold text-brand-600 hover:text-brand-800"
-                            onClick={() => setWorkFilter('all')}
-                          >
-                            Show all tasks
-                          </button>
-                        )}
-                      </div>
-                    );
-                  }
-
+                  if (groups.length === 0)
+                    return <div className="text-sm text-slate-500 py-4">No tasks yet.</div>;
                   return (
                     <div className="space-y-5">
                       {groups.map((g) => {
                         const open = g.tasks.filter((t) => t.status !== 'done').length;
-                        const overdue = g.tasks.filter((t) => isOverdue(t.dueDate, t.status)).length;
+                        const overdue = g.tasks.filter(
+                          (t) => isOverdue(t.dueDate, t.status),
+                        ).length;
                         return (
-                          <div key={g.id} className="rounded-xl border border-slate-100 dark:border-white/[0.06] p-3">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedMemberId(g.id)}
-                              className="flex w-full items-center gap-2 mb-2 text-left group/hdr"
-                            >
+                          <div key={g.id}>
+                            <div className="flex items-center gap-2 mb-1">
                               {g.id === '__unassigned' ? (
                                 <span className="w-[22px] h-[22px] rounded-full bg-slate-100 text-slate-400 text-[11px] font-bold flex items-center justify-center shrink-0">
                                   ?
@@ -1093,20 +725,15 @@ export default function TeamDetailPage() {
                               ) : (
                                 <UserAvatar userId={g.id} name={g.name} size={22} />
                               )}
-                              <span className="text-sm font-bold text-slate-800 dark:text-white/85 group-hover/hdr:text-brand-700">
-                                {g.name}
-                              </span>
+                              <span className="text-sm font-bold text-slate-700">{g.name}</span>
                               <span className="text-[11px] text-slate-400">
-                                {workFilter === 'open' || workFilter === 'overdue'
-                                  ? `${g.tasks.length} ${workFilter}`
-                                  : `${open} open · ${g.tasks.length} shown`}
-                                {overdue > 0 && workFilter !== 'overdue' && (
+                                {open} open · {g.tasks.length} total
+                                {overdue > 0 && (
                                   <span className="text-red-500 font-semibold"> · {overdue} overdue</span>
                                 )}
                               </span>
-                              <ChevronRight size={14} className="ml-auto text-slate-300 group-hover/hdr:text-brand-500" />
-                            </button>
-                            <div className="divide-y divide-slate-100 dark:divide-white/[0.05] pl-0.5">
+                            </div>
+                            <div className="divide-y divide-slate-100 pl-1">
                               {g.tasks.map((t: any) => (
                                 <TeamTaskRow key={t.id} t={t} showAssignee={false} />
                               ))}
@@ -1116,68 +743,51 @@ export default function TeamDetailPage() {
                       })}
                     </div>
                   );
-                })()
-              ) : (
-                <div className="divide-y divide-slate-100 dark:divide-white/[0.05]">
-                  {filteredWork.map((t: any) => (
-                    <TeamTaskRow key={t.id} t={t} showAssignee={isLead && !selectedMemberId} />
+                })()}
+              </Card>
+            ) : (
+              <Card title="My tasks across team projects">
+                <div className="divide-y divide-slate-100">
+                  {visibleBoard.map((t: any) => (
+                    <TeamTaskRow key={t.id} t={t} showAssignee={false} />
                   ))}
-                  {filteredWork.length === 0 && (
-                    <div className="text-center py-10">
-                      <div className="text-sm font-semibold text-slate-600 dark:text-white/70">
-                        {workFilter === 'open' ? 'No open tasks here' : 'Nothing matches this filter'}
-                      </div>
-                      <p className="mt-1 text-xs text-slate-400">
-                        {selectedMemberId
-                          ? 'Try another person or switch to All / Done.'
-                          : 'You have no tasks in this team yet.'}
-                      </p>
-                      {selectedMemberId && (
-                        <button
-                          type="button"
-                          className="mt-3 text-xs font-semibold text-brand-600"
-                          onClick={() => setSelectedMemberId(null)}
-                        >
-                          Back to everyone
-                        </button>
-                      )}
-                    </div>
+                  {visibleBoard.length === 0 && (
+                    <div className="text-sm text-slate-500 py-4">You have no tasks in this team yet.</div>
                   )}
                 </div>
-              )}
-            </Card>
-          )}
+              </Card>
+            ))}
 
+          {/* ── Foresight — predictive capacity outlook (lead/admin only) ──── */}
+          {view === 'foresight' && isLead && <TeamForesight teamId={id} />}
 
-          {/* Trackers / tickets — secondary workbench (flag + per-team). */}
+          {/* ── QMS — quality tracking (CSV Activity), opt-in per team ──────── */}
           {WORKBENCH_MODULES_ENABLED && view === 'qms' && team.modules?.qms?.enabled && (
             <QmsPanel teamId={id} isLead={isLead} />
           )}
+
+          {/* ── Tickets — support request queue, opt-in per team ───────────── */}
           {WORKBENCH_MODULES_ENABLED && view === 'tickets' && team.modules?.tickets?.enabled && (
             <TicketsPanel teamId={id} isLead={isLead} members={team.members || []} />
           )}
-          {/* Recurring — core schedule, not workbench chrome. */}
-          {view === 'recurring' && team.modules?.recurring?.enabled && (
+
+          {/* ── Recurring — scheduled team activities, opt-in per team ──────── */}
+          {WORKBENCH_MODULES_ENABLED && view === 'recurring' && team.modules?.recurring?.enabled && (
             <RecurringPanel teamId={id} isLead={isLead} members={team.members || []} />
           )}
 
           {view === 'projects' && (
             <div className="space-y-4">
+              {/* Team-wide progress summary — the headline the old separate
+                  "Team progress" tab used to carry, now at the top of Projects
+                  so there's one place for "where does the team stand". */}
               {(() => {
                 const projs = team.projects || [];
                 const total = projs.reduce((s: number, p: any) => s + (p.taskCount || 0), 0);
                 const done = projs.reduce((s: number, p: any) => s + (p.tasksDone || 0), 0);
                 const active = projs.filter((p: any) => p.status === 'in_progress').length;
                 const pct = total ? Math.round((done / total) * 100) : 0;
-                if (projs.length === 0) {
-                  return (
-                    <Card title="Projects">
-                      <div className="text-center py-10 text-sm text-slate-400">
-                        No projects on this team yet.
-                      </div>
-                    </Card>
-                  );
-                }
+                if (projs.length === 0) return null;
                 return (
                   <Card title="Team progress">
                     <div className="flex items-center justify-between gap-3 mb-2 text-sm">
@@ -1195,43 +805,27 @@ export default function TeamDetailPage() {
                   </Card>
                 );
               })()}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {(team.projects || []).map((p: any) => {
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {team.projects.map((p: any) => {
                   const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
-                  const remaining = Math.max(0, (p.taskCount || 0) - (p.tasksDone || 0));
                   return (
                     <Link
                       href={`/projects/${p.id}`}
                       key={p.id}
-                      className="card p-4 hover:shadow-md hover:border-brand-200 transition group"
+                      className="card p-4 hover:shadow-md transition"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-[11px] font-mono text-slate-400 truncate">
-                            {p.ccNo || p.code}
-                          </div>
-                          <div className="font-semibold text-slate-900 dark:text-white/90 group-hover:text-brand-700 truncate">
-                            {p.name}
-                          </div>
-                        </div>
-                        <ChevronRight
-                          size={16}
-                          className="shrink-0 text-slate-300 group-hover:text-brand-500 mt-1"
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
+                      <div className="text-xs font-mono text-slate-500">{p.ccNo || p.code}</div>
+                      <div className="font-semibold">{p.name}</div>
+                      <div className="flex gap-2 mt-2">
                         <LifecycleTag lifecycle={p.lifecycle} />
                         <StatusTag status={p.status} />
                       </div>
                       <div className="mt-3">
-                        <div className="flex justify-between text-[11px] text-slate-500 mb-1">
-                          <span className="tabular-nums">
+                        <div className="flex justify-between text-xs text-slate-500 mb-1">
+                          <span>
                             {p.tasksDone}/{p.taskCount}
-                            {remaining > 0 && (
-                              <span className="text-slate-400"> · {remaining} open</span>
-                            )}
                           </span>
-                          <span className="font-semibold tabular-nums text-slate-600">{pct}%</span>
+                          <span>{pct}%</span>
                         </div>
                         <ProgressBar value={pct} />
                       </div>

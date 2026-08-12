@@ -248,7 +248,7 @@ export default function CsvSheetClient({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-[#2f3336]">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
         <table className="text-sm border-collapse min-w-[1000px]">
           <thead>
             <tr className="bg-slate-50 dark:bg-white/[0.04] text-left">
@@ -260,7 +260,7 @@ export default function CsvSheetClient({
               {stages.map((s) => (
                 <th
                   key={s.key}
-                  className="px-2 py-2 font-semibold text-slate-500 min-w-[150px] border-l border-slate-200 dark:border-[#2f3336]"
+                  className="px-2 py-2 font-semibold text-slate-500 min-w-[150px] border-l border-slate-200 dark:border-white/10"
                 >
                   {editable ? (
                     <div className="flex items-center gap-1">
@@ -285,7 +285,7 @@ export default function CsvSheetClient({
                 </th>
               ))}
               {editable && (
-                <th className="px-2 py-2 w-10 border-l border-slate-200 dark:border-[#2f3336] text-center">
+                <th className="px-2 py-2 w-10 border-l border-slate-200 dark:border-white/10 text-center">
                   <button
                     onClick={addStage}
                     aria-label="Add column"
@@ -312,7 +312,7 @@ export default function CsvSheetClient({
               </tr>
             )}
             {sheet.rows.map((row, idx) => (
-              <tr key={row.id || idx} className="border-t border-slate-100 dark:border-[#2f3336] align-top">
+              <tr key={row.id || idx} className="border-t border-slate-100 dark:border-white/[0.06] align-top">
                 <td className="px-2 py-2 text-center text-slate-400 tabular-nums">{idx + 1}</td>
                 <td className="px-2 py-2 sticky left-0 bg-white dark:bg-[#0a0f1a]">
                   <input
@@ -349,7 +349,7 @@ export default function CsvSheetClient({
                   return (
                     <td
                       key={def.key}
-                      className="px-2 py-2 border-l border-slate-100 dark:border-[#2f3336] space-y-1"
+                      className="px-2 py-2 border-l border-slate-100 dark:border-white/[0.06] space-y-1"
                     >
                       <input
                         className="cell-input text-xs"
@@ -381,7 +381,7 @@ export default function CsvSheetClient({
                     </td>
                   );
                 })}
-                {editable && <td className="border-l border-slate-100 dark:border-[#2f3336]" />}
+                {editable && <td className="border-l border-slate-100 dark:border-white/[0.06]" />}
                 <td className="px-2 py-2 text-center tabular-nums text-slate-500 font-semibold">
                   {rowCompletion(row.stages)}%
                 </td>

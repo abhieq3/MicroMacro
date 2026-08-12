@@ -23,7 +23,7 @@ export default async function ChangelogPage() {
   return (
     <div className="max-w-3xl pb-12">
       {/* Header */}
-      <div className="pb-5 mb-6 border-b border-slate-100 dark:border-[#2f3336] pt-1">
+      <div className="pb-5 mb-6 border-b border-slate-100 dark:border-white/[0.06] pt-1">
         <Link
           href="/audit"
           className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 mb-3"
@@ -68,7 +68,7 @@ export default async function ChangelogPage() {
                 className={`rounded-2xl p-5 border ${
                   e.highlight
                     ? 'border-indigo-200 dark:border-indigo-500/30 bg-indigo-50/40 dark:bg-indigo-500/5'
-                    : 'border-slate-200/80 dark:border-[#2f3336] bg-white dark:bg-white/[0.03]'
+                    : 'border-slate-200/80 dark:border-white/10 bg-white dark:bg-white/[0.03]'
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-3 flex-wrap mb-1.5">

@@ -58,7 +58,7 @@ flowchart TD
 | ---------- | :---------: | :--: | :---: | :----------: |
 | Work assigned tasks | ✅ | ✅ | ✅ | ✅ |
 | My Day + Whiteboard + personal projects | ✅ | ✅ | ✅ | ✅ |
-| Install as PWA (home screen / dock) | ✅ | ✅ | ✅ | ✅ |
+| Top 5 Things (write yours; read your teams' open feed) | ✅ | ✅ | ✅ | ✅ |
 | Bird's-eye view (team / project) | — | ✅ | ✅ | ✅ |
 | Create shared projects / teams, assign work | — | ✅ | ✅ | ✅ |
 | See **every** team, shared project and task (workspace scope) | — | — | ✅ | ✅ |
@@ -100,7 +100,7 @@ src/
                      data builders (leadDashboard, projectDetail,
                      contributions, lifecycles)
   models/            Mongoose schemas — single source of truth for
-                     persistence (User, Project, Task, Team,
+                     persistence (User, Project, Task, Team, Top5,
                      Tenant, AuditLog, Notification, …)
 docs/                launch checklist, rollout, performance, demo env,
                      E2E, this file

@@ -5,6 +5,7 @@ import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
 import { DigestSetting, type DigestSettingDoc } from '@/models/DigestSetting';
 import { sendEmail, mailerConfigured } from '@/lib/mailer';
+import { resolveIndustry, pickInsight } from '@/lib/insights';
 import { projectRef } from '@/lib/projectRef';
 import { normalizeRole } from '@/lib/auth';
 
@@ -266,31 +267,9 @@ export function bucketTasks(
   return { overdue, today, soon };
 }
 
-/** Does a section set contain anything worth emailing?
- *  Exceptions only: overdue + due today. "Soon" alone is not a fire —
- *  silence is the product when nothing burns. */
+/** Does a section set contain anything worth emailing? */
 export function digestHasContent(s: DigestSections): boolean {
-  return s.overdue.length > 0 || s.today.length > 0;
-}
-
-/** Leadership brief has fire if team/workspace exceptions exist. */
-export function leadershipHasExceptions(brief: {
-  team?: { blocked?: unknown[]; signoffsPending?: number; overdueByMember?: unknown[] } | null;
-  workspace?: { overdueTotal?: number; risky?: unknown[] } | null;
-  my?: { overdue?: unknown[]; today?: unknown[] } | null;
-} | null | undefined): boolean {
-  if (!brief) return false;
-  if ((brief.my?.overdue?.length || 0) > 0 || (brief.my?.today?.length || 0) > 0) return true;
-  if (brief.team) {
-    if ((brief.team.blocked?.length || 0) > 0) return true;
-    if ((brief.team.signoffsPending || 0) > 0) return true;
-    if ((brief.team.overdueByMember?.length || 0) > 0) return true;
-  }
-  if (brief.workspace) {
-    if ((brief.workspace.overdueTotal || 0) > 0) return true;
-    if ((brief.workspace.risky?.length || 0) > 0) return true;
-  }
-  return false;
+  return s.overdue.length > 0 || s.today.length > 0 || s.soon.length > 0 || s.projectUpdates.length > 0;
 }
 
 function escapeHtml(s: string): string {
@@ -349,6 +328,11 @@ export interface RenderInput {
   /** Optional curated industry insight (see lib/insights) — the continuous
    *  "thought worth a minute" feed, tuned to the workspace's niche. */
   insight?: { tag: string; title: string; body: string } | null;
+  /** One personal, computed Delivery-Foresight line (see lib/ai/
+   *  deliveryForesight) — the forward-looking counterpart to the task list:
+   *  "on pace to clear by ~Jun 20" / "X is trending to miss — start it today".
+   *  Null when the person has too little history to forecast. */
+  foresightLine?: string | null;
   leadershipBrief?: {
     headline: string;
     team?: {
@@ -394,11 +378,11 @@ export function closingLine(now: Date = new Date()): string {
   return CLOSING_LINES[day % CLOSING_LINES.length];
 }
 
-/** The single next action: stalest overdue, else top due-today by priority,
- *  else soonest "coming up" only if it is already in the soon bucket
- *  (Bias for Action — never lead with far-future inventory). */
+/** The single highest-leverage item: the stalest overdue, else the top
+ *  due-today by priority. This is what the email leads with — one decision,
+ *  not a wall of rows. */
 export function pickFocus(sections: DigestSections): DigestTask | null {
-  return sections.overdue[0] || sections.today[0] || sections.soon[0] || null;
+  return sections.overdue[0] || sections.today[0] || null;
 }
 
 
@@ -418,43 +402,42 @@ export function renderWelcomeEmail(input: {
   insight?: { tag: string; title: string; body: string } | null;
 }): { subject: string; html: string; text: string } {
   const first = (input.name || '').trim().split(/\s+/)[0] || 'there';
-  const subject = `Pragati · Daily brief on · ${first}`;
-  void input.insight;
+  const subject = `Your daily brief is on, ${first}`;
 
   const cta = input.appUrl
-    ? `<a href="${input.appUrl}" style="display:inline-block;background:#1565C0;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;padding:11px 20px;">Open board</a>`
+    ? `<a href="${input.appUrl}" style="display:inline-block;background:#1565C0;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;padding:11px 20px;">Open Pragati</a>`
     : '';
 
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
 <body style="margin:0;background:#f1f5f9;padding:24px 12px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">
-  <tr><td style="height:4px;background:linear-gradient(90deg,#1565C0,#43A047);font-size:0;line-height:0;">&nbsp;</td></tr>
-  <tr><td style="padding:28px 28px 22px;">
-    <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#1565C0;margin:0 0 14px;">Pragati · Day 1</div>
-    <h1 style="margin:0 0 12px;font-size:20px;line-height:1.35;color:#0f172a;">Your daily brief is on.</h1>
-    <p style="margin:0 0 12px;font-size:14px;color:#334155;line-height:1.65;"><strong>One email. Exceptions first. One next move.</strong> No vanity metrics. No pep talk.</p>
-    <p style="margin:0 0 12px;font-size:14px;color:#334155;line-height:1.65;">Every morning at <strong>${escapeHtml(
+  <tr><td style="height:4px;background:#1565C0;background:linear-gradient(90deg,#1565C0,#43A047);font-size:0;line-height:0;">&nbsp;</td></tr>
+  <tr><td style="padding:30px 28px 24px;">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#1565C0;margin:0 0 16px;">Pragati</div>
+    <h1 style="margin:0 0 14px;font-size:21px;line-height:1.35;color:#0f172a;">Your morning brief is on.</h1>
+    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">The best morning ritual we know of is also the simplest: <strong>do your highest-priority work first</strong> — same way, every day, before the day starts doing you. The brief exists to serve exactly that.</p>
+    <p style="margin:0 0 14px;font-size:14px;color:#334155;line-height:1.65;">Each morning at <strong>${escapeHtml(
       input.hourLabel,
-    )}</strong> you get: team fire (if any), then your one highest-urgency task, then overdue / due today / coming up. Read it in under a minute. Act. Move on.</p>
-    <p style="margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.65;">If this lands, tomorrow’s brief lands. If it doesn’t, fix delivery before trusting the board.</p>
+    )}</strong>: one email. The task that matters most on top, the rest in order, overdue first. Read it in a minute, pick the main thing, start.</p>
+    <p style="margin:0 0 22px;font-size:14px;color:#64748b;line-height:1.65;">Keep the main thing the main thing. Everything else is just email — including this one.</p>
     ${cta ? `<div style="margin:0 0 4px;">${cta}</div>` : ''}
   </td></tr>
-  <tr><td style="padding:0 28px 24px;border-top:1px solid #f1f5f9;">
-    <p style="margin:14px 0 0;font-size:12px;color:#94a3b8;line-height:1.55;">Off any time: <strong>Settings → Daily task email</strong>.</p>
+  <tr><td style="padding:0 28px 28px;border-top:1px solid #f1f5f9;">
+    <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;line-height:1.55;">Nothing to set up. Switch it off any time in <strong>Settings → Daily task email</strong>.</p>
   </td></tr>
 </table>
 </td></tr></table>
 </body></html>`;
 
   const text = [
-    'Pragati · Your daily brief is on.',
+    'Your morning brief is on.',
     '',
-    'One email. Exceptions first. One next move. No vanity metrics. No pep talk.',
-    `Every morning at ${input.hourLabel}: team fire (if any), then your one highest-urgency task, then overdue / due today / coming up.`,
-    'If this lands, tomorrow’s brief lands.',
-    input.appUrl ? `\nOpen board: ${input.appUrl}` : '',
-    'Off any time: Settings → Daily task email.',
+    'The best morning ritual we know of is also the simplest: do your highest-priority work first — same way, every day, before the day starts doing you. The brief exists to serve exactly that.',
+    `Each morning at ${input.hourLabel}: one email. The task that matters most on top, the rest in order, overdue first. Read it in a minute, pick the main thing, start.`,
+    'Keep the main thing the main thing. Everything else is just email — including this one.',
+    input.appUrl ? `\nOpen Pragati: ${input.appUrl}` : '',
+    'Switch it off any time in Settings → Daily task email.',
   ]
     .filter((l) => l !== undefined)
     .join('\n');
@@ -463,9 +446,10 @@ export function renderWelcomeEmail(input: {
 
 /** Render the personal digest to { subject, html, text }. Pure.
  *
- *  Design intent (Jensen): exceptions first, one personal move, no fluff.
- *  Lead: team pulse before personal priority. No motivational quotes.
- *  Value first, inventory second. No foresight / pace theater. */
+ *  Design intent: an executive brief, not a chore list. It opens with ONE
+ *  thing to start on (leverage), acknowledges yesterday's output (momentum),
+ *  compresses the rest into scannable rows, and closes with a single line of
+ *  judgment. Value first, inventory second. */
 export function renderDigestEmail(input: RenderInput): { subject: string; html: string; text: string } {
   const {
     name,
@@ -477,54 +461,30 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
     dateLabel,
     winsYesterday = 0,
     role,
+    insight,
     leadershipBrief,
+    foresightLine,
   } = input;
-  // insight intentionally unused — motivational cards were cut.
-  void input.insight;
-  void winsYesterday;
-
+  // Task rows show the project *reference* (ccNo||code) to match the app, but
+  // fall back to the project name when no reference resolves (a caller that
+  // predates the resolver, or a project with neither ccNo nor code).
   const projLabel = (pid: string | null) => (projectRef ? projectRef(pid) : null) || projectName(pid);
   const first = (name || '').trim().split(/\s+/)[0] || 'there';
   const weekday = dateLabel.split(/[ ,]/)[0] || 'daily';
-  const isLead = role === 'lead' || role === 'pm';
-  const isAdmin = role === 'admin' || role === 'master_admin';
 
   const focus = pickFocus(sections);
 
-  const personalBits: string[] = [];
-  if (sections.overdue.length) personalBits.push(`${sections.overdue.length} overdue`);
-  if (sections.today.length) personalBits.push(`${sections.today.length} due today`);
-  if (sections.soon.length && !sections.overdue.length && !sections.today.length) {
-    personalBits.push(`${sections.soon.length} due soon`);
-  }
+  const counts: string[] = [];
+  if (sections.today.length) counts.push(`${sections.today.length} due today`);
+  if (sections.overdue.length) counts.push(`${sections.overdue.length} overdue`);
+  if (sections.soon.length) counts.push(`${sections.soon.length} due soon`);
+  // Always the short counts form — the team/workspace headline used to take
+  // over the subject for leads/admins, but it's a full sentence and got
+  // brutally truncated in an inbox list. The headline still leads the
+  // leadership card in the body, where there's room for it.
+  const subject = `${test ? '[Test] ' : ''}Your ${weekday} brief — ${counts.join(' · ') || 'all clear'}`;
 
-  // Subject — Bezos inbox scan: one line, exceptions first, no fluff.
-  // Format: "Pragati · Mon · 2 overdue · 1 due today" or "Pragati · Mon · All clear"
-  let subjectCore = personalBits.join(' · ') || 'All clear';
-  if (leadershipBrief?.team) {
-    const teamOverdue = leadershipBrief.team.overdueByMember.reduce((s, m) => s + m.count, 0);
-    const teamBits: string[] = [];
-    if (leadershipBrief.team.blocked.length) {
-      teamBits.push(`${leadershipBrief.team.blocked.length} blocked`);
-    }
-    if (teamOverdue) teamBits.push(`${teamOverdue} team overdue`);
-    if (leadershipBrief.team.signoffsPending) {
-      teamBits.push(`${leadershipBrief.team.signoffsPending} sign-offs`);
-    }
-    const you = personalBits.length ? ` · You: ${personalBits.join(', ')}` : '';
-    subjectCore = teamBits.length ? `Team: ${teamBits.join(' · ')}${you}` : `You: ${subjectCore}`;
-  } else if (leadershipBrief?.workspace) {
-    const w = leadershipBrief.workspace;
-    subjectCore =
-      w.overdueTotal > 0
-        ? `Workspace: ${w.overdueTotal} overdue`
-        : w.risky.length > 0
-          ? `Workspace: ${w.risky.length} to watch`
-          : 'Workspace: clear';
-  }
-  const shortDay = weekday.slice(0, 3);
-  const subject = `${test ? '[Test] ' : ''}Pragati · ${shortDay} · ${subjectCore}`;
-
+  // The focus item leads alone; don't list it twice.
   const rest = {
     overdue: sections.overdue.filter((t) => t !== focus),
     today: sections.today.filter((t) => t !== focus),
@@ -540,103 +500,74 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       '#0f172a',
     ),
     renderSection('Coming up', rest.soon.map(row).join(''), '#2563eb'),
-    // Intentionally no “Moved yesterday” — motion counts reward busyness.
+    sections.projectUpdates.length
+      ? renderSection(
+          'Moved yesterday',
+          sections.projectUpdates
+            .map(
+              (p) =>
+                `<tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:14px;color:#0f172a;">${escapeHtml(p.name)}</td><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;text-align:right;color:#16a34a;font-size:13px;font-weight:700;">${p.count} done</td></tr>`,
+            )
+            .join(''),
+          '#16a34a',
+        )
+      : '',
   ].join('');
 
-  // Compact metric chips — only non-zero (zeros burn attention).
-  const metricChip = (n: number, label: string, color: string) =>
-    n > 0
-      ? `<td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:${color};">${n}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">${label}</div></td>`
-      : '';
-  const metricGap = `<td width="8"></td>`;
-
-  let leadershipHtml = '';
-  if (leadershipBrief?.team) {
-    const t = leadershipBrief.team;
-    const teamOverdue = t.overdueByMember.reduce((sum, m) => sum + m.count, 0);
-    const chips = [
-      metricChip(t.blocked.length, 'Blocked', '#dc2626'),
-      metricChip(t.signoffsPending, 'Sign-offs', '#7c3aed'),
-      metricChip(teamOverdue, 'Team overdue', '#ea580c'),
-    ].filter(Boolean);
-    const chipsRow = chips.length
-      ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:4px;"><tr>${chips.join(metricGap)}</tr></table>`
-      : `<div style="font-size:13px;color:#64748b;margin-top:4px;">No team exceptions.</div>`;
-    leadershipHtml = `<div style="margin:0 0 20px;padding:14px 16px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:6px;">Team</div>
-        <div style="font-size:14px;font-weight:700;color:#0f172a;line-height:1.4;margin-bottom:10px;">${escapeHtml(leadershipBrief.headline)}</div>
-        ${chipsRow}
+  const leadershipHtml = leadershipBrief?.team
+    ? `<div style="margin:0 0 22px;padding:16px;border:1px solid #dbeafe;border-radius:14px;background:#f8fbff;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:5px;">Team pulse</div>
+        <div style="font-size:15px;font-weight:750;color:#0f172a;line-height:1.45;margin-bottom:12px;">${escapeHtml(leadershipBrief.headline)}</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#dc2626;">${leadershipBrief.team.blocked.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Blocked</div></td>
+          <td width="8"></td>
+          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#7c3aed;">${leadershipBrief.team.signoffsPending}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Sign-offs</div></td>
+          <td width="8"></td>
+          <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#ea580c;">${leadershipBrief.team.overdueByMember.reduce((sum, member) => sum + member.count, 0)}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Team overdue</div></td>
+        </tr></table>
         ${
-          t.blocked.length
-            ? `<div style="margin-top:10px;font-size:12px;color:#475569;"><strong>Blocked:</strong> ${t.blocked
+          leadershipBrief.team.blocked.length
+            ? `<div style="margin-top:12px;font-size:12px;color:#475569;"><strong>Needs intervention:</strong> ${leadershipBrief.team.blocked
                 .map(
                   (item) =>
                     `${escapeHtml(item.title)}${item.projectName ? ` · ${escapeHtml(item.projectName)}` : ''}`,
                 )
-                .join(' · ')}</div>`
+                .join(' &nbsp;•&nbsp; ')}</div>`
             : ''
         }
         ${
-          t.overdueByMember.length
-            ? `<div style="margin-top:6px;font-size:12px;color:#475569;"><strong>Overdue load:</strong> ${t.overdueByMember
-                .map((m) => `${escapeHtml(m.name)} ${m.count}`)
-                .join(' · ')}</div>`
+          leadershipBrief.team.overdueByMember.length
+            ? `<div style="margin-top:7px;font-size:12px;color:#475569;"><strong>Overdue load:</strong> ${leadershipBrief.team.overdueByMember
+                .map((member) => `${escapeHtml(member.name)} ${member.count}`)
+                .join(' &nbsp;•&nbsp; ')}</div>`
             : ''
         }
-      </div>`;
-  } else if (leadershipBrief?.workspace) {
-    const w = leadershipBrief.workspace;
-    const chips = [
-      metricChip(w.overdueTotal, 'Overdue', '#dc2626'),
-      metricChip(w.risky.length, 'At risk', '#ea580c'),
-    ].filter(Boolean);
-    leadershipHtml = `<div style="margin:0 0 20px;padding:14px 16px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff;">
-          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:6px;">Workspace</div>
-          <div style="font-size:14px;font-weight:700;color:#0f172a;line-height:1.4;margin-bottom:10px;">${escapeHtml(leadershipBrief.headline)}</div>
+      </div>`
+    : leadershipBrief?.workspace
+      ? `<div style="margin:0 0 22px;padding:16px;border:1px solid #dbeafe;border-radius:14px;background:#f8fbff;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#1d4ed8;margin-bottom:5px;">Workspace pulse</div>
+          <div style="font-size:15px;font-weight:750;color:#0f172a;line-height:1.45;margin-bottom:12px;">${escapeHtml(leadershipBrief.headline)}</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#16a34a;">${leadershipBrief.workspace.doneYesterday}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Closed yesterday</div></td>
+            <td width="8"></td>
+            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#dc2626;">${leadershipBrief.workspace.overdueTotal}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Overdue</div></td>
+            <td width="8"></td>
+            <td style="padding:10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#2563eb;">${leadershipBrief.workspace.activeProjects}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">Active projects</div></td>
+          </tr></table>
           ${
-            chips.length
-              ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${chips.join(metricGap)}</tr></table>`
+            leadershipBrief.workspace.risky.length
+              ? `<div style="margin-top:12px;font-size:12px;color:#475569;"><strong>Projects to watch:</strong> ${leadershipBrief.workspace.risky
+                  .map((project) => `${escapeHtml(project.name)} (${project.overdue} overdue)`)
+                  .join(' &nbsp;•&nbsp; ')}</div>`
               : ''
           }
-          ${
-            w.risky.length
-              ? `<div style="margin-top:10px;font-size:12px;color:#475569;"><strong>Watch:</strong> ${w.risky
-                  .map((p) => `${escapeHtml(p.name)} (${p.overdue} overdue)`)
-                  .join(' · ')}</div>`
-              : ''
-          }
-        </div>`;
-  }
+        </div>`
+      : '';
 
-  // Opening: one truth sentence — first line of a Bezos narrative memo.
-  const isEmpty = !digestHasContent(sections) && !leadershipBrief?.team && !leadershipBrief?.workspace;
-  const openingTruth = leadershipBrief?.headline
-    ? leadershipBrief.headline
-    : sections.overdue.length || sections.today.length
-      ? [
-          sections.overdue.length ? `${sections.overdue.length} overdue` : '',
-          sections.today.length ? `${sections.today.length} due today` : '',
-        ]
-          .filter(Boolean)
-          .join(' · ') + '. Start with the worst exception.'
-      : isEmpty
-        ? 'All clear — nothing overdue or due today.'
-        : sections.soon.length
-          ? `${sections.soon.length} coming up soon. Nothing burning this morning.`
-          : 'All clear.';
-  const openingHtml = `<p style="margin:0 0 16px;font-size:14px;color:#0f172a;font-weight:600;line-height:1.5;">${escapeHtml(openingTruth)}</p>`;
-
-  const focusLabel =
-    focus?.bucket === 'overdue'
-      ? 'You — clear this first'
-      : focus?.bucket === 'today'
-        ? 'You — do this today'
-        : focus
-          ? 'You — do this next'
-          : '';
+  // ── The one thing ─────────────────────────────────────────────────────
   const focusHtml = focus
-    ? `<div style="margin:0 0 20px;border:1px solid ${focus.bucket === 'overdue' ? '#fecaca' : '#bfdbfe'};border-left:4px solid ${focus.bucket === 'overdue' ? '#dc2626' : '#1565C0'};border-radius:12px;padding:14px 16px;background:${focus.bucket === 'overdue' ? '#fff7f7' : '#f8fbff'};">
-        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">${focusLabel}</div>
+    ? `<div style="margin:0 0 22px;border:1px solid ${focus.bucket === 'overdue' ? '#fecaca' : '#bfdbfe'};border-left:4px solid ${focus.bucket === 'overdue' ? '#dc2626' : '#1565C0'};border-radius:12px;padding:14px 16px;background:${focus.bucket === 'overdue' ? '#fff7f7' : '#f8fbff'};">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${focus.bucket === 'overdue' ? '#b91c1c' : '#1565C0'};margin-bottom:4px;">Your morning priority</div>
         <div style="font-size:16px;font-weight:700;color:#0f172a;line-height:1.35;">${
           appUrl
             ? `<a href="${appUrl}/tasks/${focus.id}" style="color:#0f172a;text-decoration:none;">${escapeHtml(focus.title)}</a>`
@@ -648,75 +579,107 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
       </div>`
     : '';
 
-  // One home: Today.
-  let openBtn = '';
-  if (appUrl) {
-    openBtn = `<a href="${appUrl}/" style="display:inline-block;background:#1565C0;color:#fff;font-weight:700;font-size:13px;text-decoration:none;padding:10px 16px;border-radius:10px;">Open Today</a>`;
-  }
+  const openBtn = appUrl
+    ? `<a href="${appUrl}/my-day" style="display:inline-block;background:#1565C0;color:#fff;font-weight:700;font-size:14px;text-decoration:none;padding:10px 18px;border-radius:10px;">Open My Day</a>`
+    : '';
 
   const manage = appUrl
-    ? `<a href="${appUrl}/settings#daily-email" style="color:#64748b;text-decoration:underline;">daily-email settings</a>`
-    : 'daily-email settings';
+    ? `<a href="${appUrl}/settings#daily-email" style="color:#64748b;text-decoration:underline;">your daily-email settings</a>`
+    : 'your daily-email settings';
 
-  // Lead/admin: team first, then YOU. IC: YOU first (no leadership block).
-  const bodyCore =
-    isLead || isAdmin
-      ? `${leadershipHtml}${focusHtml}${sectionsHtml}`
-      : `${focusHtml}${sectionsHtml}${leadershipHtml}`;
+  // ── Opening line — ONE plain sentence under the greeting, not a stack of
+  // boxes saying overlapping things. Folds in the role framing, the day's
+  // shape, a directive, and yesterday's momentum. The "all clear" phrasing
+  // is load-bearing for the empty-state test below — keep the literal words.
+  // Minimal opening: the day's shape stated as fact, plus a one-word directive
+  // pointing at where to start. No momentum recap, no pep — the work is the
+  // message. (winsYesterday is intentionally unused in the body now.)
+  const dayShape = counts.join(' · ');
+  const directive = sections.overdue.length
+    ? 'Overdue first.'
+    : sections.today.length
+      ? 'Start at the top.'
+      : sections.soon.length
+        ? 'Nothing due today. Get ahead.'
+        : 'All clear.';
+  const openingHtml = `<p style="margin:0 0 20px;font-size:13.5px;color:#475569;line-height:1.65;">${
+    dayShape
+      ? `<strong style="color:#0f172a;">${escapeHtml(dayShape.charAt(0).toUpperCase() + dayShape.slice(1))}.</strong> ${escapeHtml(directive)}`
+      : escapeHtml(directive)
+  }</p>`;
+  void winsYesterday;
+
+  // ── Foresight ─────────────────────────────────────────────────────────
+  // The forward-looking counterpart to the task list: a single quiet line
+  // (not a competing card) computed from the recipient's own delivery
+  // history (lib/ai/deliveryForesight). The "Foresight:" prefix is stripped
+  // since the label already provides it.
+  const foresightHtml = foresightLine
+    ? `<p style="margin:0 0 20px;font-size:13px;color:#475569;line-height:1.55;"><strong style="color:#6d28d9;">Foresight —</strong> ${escapeHtml(foresightLine.replace(/^Foresight:\s*/i, ''))}</p>`
+    : '';
 
   const html = `<!doctype html><html><body style="margin:0;background:#f1f5f9;padding:24px 12px;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
     <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;overflow:hidden;">
-      <tr><td style="padding:18px 24px;background:#0f172a;">
-        <div style="color:#fff;font-size:17px;font-weight:800;letter-spacing:.02em;">Pragati</div>
+      <tr><td style="padding:22px 26px;background:#0f172a;">
+        <div style="color:#fff;font-size:18px;font-weight:800;letter-spacing:.02em;">Pragati</div>
         <div style="color:#94a3b8;font-size:12px;margin-top:2px;">${escapeHtml(dateLabel)}${test ? ' · test message' : ''}</div>
       </td></tr>
-      <tr><td style="padding:22px 24px;">
-        <div style="font-size:15px;color:#0f172a;font-weight:700;margin:0 0 14px;">${escapeHtml(first)}</div>
+      <tr><td style="padding:26px;">
+        <div style="font-size:16px;color:#0f172a;font-weight:700;margin:0 0 14px;">Good morning, ${escapeHtml(first)}</div>
         ${openingHtml}
-        ${bodyCore}
-        ${openBtn ? `<div style="margin-top:8px;">${openBtn}</div>` : ''}
+        ${focusHtml}
+        ${foresightHtml}
+        ${sectionsHtml}
+        ${leadershipHtml}
+        ${openBtn ? `<div style="margin-top:4px;">${openBtn}</div>` : ''}
+        ${
+          insight
+            ? `<div style="margin-top:22px;padding-top:14px;border-top:1px solid #f1f5f9;font-size:12.5px;color:#64748b;line-height:1.55;"><strong style="color:#1565C0;">${escapeHtml(
+                insight.tag,
+              )} —</strong> <strong style="color:#0f172a;">${escapeHtml(insight.title)}.</strong> ${escapeHtml(insight.body)}</div>`
+            : ''
+        }
       </td></tr>
-      <tr><td style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;">
-        <div style="font-size:11px;color:#94a3b8;line-height:1.5;">
-          Daily brief is on. Change or unsubscribe in ${manage}.
+      <tr><td style="padding:16px 26px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+        <div style="font-size:12px;color:#94a3b8;line-height:1.5;">
+          You're receiving this because the daily task email is on for your account.
+          Change the time, or unsubscribe, in ${manage}.
         </div>
       </td></tr>
     </table>
   </td></tr></table>
 </body></html>`;
 
-  const lines: string[] = [`Pragati — ${dateLabel}${test ? ' (test)' : ''}`, '', `${first}`, ''];
+  // Plain-text fallback.
+  const lines: string[] = [
+    `Pragati — ${dateLabel}${test ? ' (test)' : ''}`,
+    '',
+    `Good morning, ${first}.`,
+    '',
+  ];
   if (leadershipBrief?.team) {
-    const teamOverdue = leadershipBrief.team.overdueByMember.reduce((sum, m) => sum + m.count, 0);
     lines.push(
-      'TEAM',
+      'TEAM PULSE',
       leadershipBrief.headline,
-      `Blocked: ${leadershipBrief.team.blocked.length} · Sign-offs: ${leadershipBrief.team.signoffsPending} · Team overdue: ${teamOverdue}`,
+      `Blocked: ${leadershipBrief.team.blocked.length} · Sign-offs: ${leadershipBrief.team.signoffsPending} · Team overdue: ${leadershipBrief.team.overdueByMember.reduce((sum, member) => sum + member.count, 0)}`,
       '',
     );
   } else if (leadershipBrief?.workspace) {
-    const w = leadershipBrief.workspace;
     lines.push(
-      'WORKSPACE',
+      'WORKSPACE PULSE',
       leadershipBrief.headline,
-      `Overdue: ${w.overdueTotal}${w.risky.length ? ` · Watch: ${w.risky.map((p) => p.name).join(', ')}` : ''}`,
+      `Closed yesterday: ${leadershipBrief.workspace.doneYesterday} · Overdue: ${leadershipBrief.workspace.overdueTotal} · Active projects: ${leadershipBrief.workspace.activeProjects}`,
       '',
     );
   }
   if (focus) {
     const pn = projLabel(focus.projectId);
-    const head =
-      focus.bucket === 'overdue'
-        ? 'YOU — CLEAR THIS FIRST'
-        : focus.bucket === 'today'
-          ? 'YOU — DO THIS TODAY'
-          : 'YOU — DO THIS NEXT';
-    lines.push(head, `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
-  } else {
-    lines.push('YOU — ALL CLEAR', '  Nothing overdue or due today.', '');
+    lines.push('YOUR MORNING PRIORITY', `  → [${focus.label}] ${focus.title}${pn ? ` (${pn})` : ''}`, '');
   }
-
+  if (foresightLine) {
+    lines.push('FORESIGHT', `  ${foresightLine.replace(/^Foresight:\s*/i, '')}`, '');
+  }
   const textSection = (heading: string, items: DigestTask[]) => {
     if (!items.length) return;
     lines.push(heading.toUpperCase());
@@ -729,10 +692,13 @@ export function renderDigestEmail(input: RenderInput): { subject: string; html: 
   textSection('Also overdue', rest.overdue);
   textSection('Due today', rest.today);
   textSection('Coming up', rest.soon);
-  if (!digestHasContent(sections) && !leadershipBrief) lines.push('All clear — nothing due today.');
-  if (appUrl) {
-    lines.push('', `Open Today: ${appUrl}/`);
+  if (sections.projectUpdates.length) {
+    lines.push('MOVED YESTERDAY');
+    for (const p of sections.projectUpdates) lines.push(`  • ${p.name} — ${p.count} done`);
+    lines.push('');
   }
+  if (!digestHasContent(sections)) lines.push('All clear — nothing due today.');
+  if (appUrl) lines.push('', `Open My Day: ${appUrl}/my-day`);
 
   return { subject, html, text: lines.join('\n') };
 }
@@ -937,6 +903,67 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
   // rows so the digest matches whatever the member changed it to in the app.
   const projRef = new Map<string, string>(projDocs.map((p: any) => [String(p._id), projectRef(p)]));
 
+  // One curated, industry-tuned insight per day, shared across the workspace
+  // (a common "thought for the day"). Single-tenant reads PRAGATI_INDUSTRY;
+  // the multi-tenant path will resolve the tenant's stored niche here.
+  const dailyInsight = pickInsight(resolveIndustry(), 0, now);
+
+  // ── Delivery Foresight ──────────────────────────────────────────────────
+  // One forward-looking, computed line per recipient (lib/ai/
+  // deliveryForesight) — the predictive counterpart to the task list. Fully
+  // self-contained and best-effort: two batched queries for the whole run
+  // (each recipient's recent completed history + their open plate), the shared
+  // cached prior, then the pure deterministic engine. A failure here — or
+  // simply too little history to forecast — must never block the brief.
+  const foresightByUser = new Map<string, string>();
+  try {
+    const { computeForesight, getWorkspacePrior, seedFromId } = await import('@/lib/ai/deliveryForesight');
+    const prior = await getWorkspacePrior(now);
+    const histSince = new Date(now.getTime() - 180 * DAY_MS);
+    const [historyRows, foreOpenRows] = await Promise.all([
+      Task.find({ assigneeId: { $in: ids }, status: 'done', completedAt: { $gte: histSince } })
+        .select('assigneeId createdAt completedAt dueDate ccTcd')
+        .limit(15000)
+        .lean(),
+      Task.find({ assigneeId: { $in: ids }, status: { $ne: 'done' } })
+        .select('assigneeId title status priority dueDate ccTcd')
+        .limit(8000)
+        .lean(),
+    ]);
+    const histByUser = new Map<string, any[]>();
+    for (const t of historyRows as any[]) {
+      const k = String(t.assigneeId);
+      (histByUser.get(k) || histByUser.set(k, []).get(k)!).push(t);
+    }
+    const openByUser = new Map<string, any[]>();
+    for (const t of foreOpenRows as any[]) {
+      const k = String(t.assigneeId);
+      (openByUser.get(k) || openByUser.set(k, []).get(k)!).push(t);
+    }
+    for (const r of recipients) {
+      const uid = String(r.user._id);
+      const f = computeForesight({
+        completed: histByUser.get(uid) || [],
+        open: (openByUser.get(uid) || []).map((t) => ({
+          id: String(t._id),
+          title: t.title,
+          status: t.status,
+          priority: t.priority,
+          dueDate: t.dueDate,
+          ccTcd: t.ccTcd,
+        })),
+        prior: prior.cycle,
+        gapPrior: prior.gap,
+        now,
+        trials: 1200,
+        seed: seedFromId(uid),
+      });
+      if (f.digestLine) foresightByUser.set(uid, f.digestLine);
+    }
+  } catch {
+    // best-effort — the brief still sends without the foresight line.
+  }
+
   for (const r of recipients) {
     const uid = String(r.user._id);
     const raw = tasksByUser.get(uid) || [];
@@ -951,6 +978,11 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       })),
     };
 
+    // The brief goes out EVERY day — even with nothing due. An empty plate is
+    // itself signal ("you're clear — here's the leverage move"), and it still
+    // carries the momentum line, the foresight read, the leadership pulse and
+    // the day's insight, so the higher-level view always lands. (No empty-skip.)
+
     const role = normalizeRole((r.user as any).role);
     let leadershipBrief: RenderInput['leadershipBrief'] = null;
     if (role === 'lead' || role === 'admin' || role === 'master_admin') {
@@ -958,18 +990,8 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
         const { buildDailyBrief } = await import('@/lib/brief');
         leadershipBrief = await buildDailyBrief(uid, role, now);
       } catch {
-        // Leadership roll-up optional; personal exceptions still send.
+        // The personal brief still sends if a leadership roll-up is unavailable.
       }
-    }
-
-    // Exception-only: no mail when nothing is overdue/due today and no
-    // leadership fire. All-clear silence is free and honest. Test/welcome
-    // still send so delivery can be verified.
-    const hasFire =
-      digestHasContent(sections) || leadershipHasExceptions(leadershipBrief as any);
-    if (!hasFire && !opts.test && !opts.welcome) {
-      summary.skippedNoTasks += 1;
-      continue;
     }
 
     const { subject, html, text } = renderDigestEmail({
@@ -983,7 +1005,9 @@ export async function buildAndSendDailyDigests(opts: RunOptions = {}): Promise<R
       test: opts.test,
       dateLabel,
       winsYesterday: winsByUser.get(uid) || 0,
+      insight: dailyInsight,
       leadershipBrief,
+      foresightLine: foresightByUser.get(uid) || null,
     });
 
     const res = await sendEmail({ to: r.email, toName: (r.user as any).name, subject, html, text });

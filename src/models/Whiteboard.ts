@@ -32,8 +32,6 @@ const WhiteboardSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
     strokes: { type: [StrokeSchema], default: [] },
-    /** One-line problem the board is for — sticky intent above the canvas. */
-    prompt: { type: String, default: '', maxlength: 280 },
   },
   { timestamps: true },
 );

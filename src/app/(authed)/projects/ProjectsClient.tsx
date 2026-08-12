@@ -90,7 +90,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
         <div>
           <h1 className="page-title">Projects</h1>
           <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
-            Every project on the board — owners, dates, exceptions.
+            All quality projects across teams &amp; lifecycles.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -229,29 +229,31 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
       {loaded && (
         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
           {projects.map((p) => {
+            const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
             const overdueRatio = p.taskCount ? (p.tasksOverdue || 0) / p.taskCount : 0;
             const health = overdueRatio > 0.3 ? 'critical' : overdueRatio > 0 ? 'at_risk' : 'good';
             const healthColor = HEALTH_COLORS[health];
             const healthLabel =
               health === 'critical' ? 'Critical' : health === 'at_risk' ? 'At risk' : 'Healthy';
             const statusInfo = STATUS_COLORS[p.status] || { dot: '#94a3b8', label: p.status };
+            // App-theme progress: blue at the start, transitioning to green as it
+            // nears completion — never the dull grey it used to fall back to at
+            // low percentages. The % text reads green only once nearly done.
+            const progressColor = pct >= 90 ? '#22c55e' : '#1769C8';
             const dueIn = p.dueDate
               ? Math.round((new Date(p.dueDate).getTime() - Date.now()) / 86400000)
               : null;
             const dueTone = dueIn === null ? 'slate' : dueIn < 0 ? 'red' : dueIn <= 7 ? 'amber' : 'slate';
+            // Blue → green themed fill so the bar always carries the app accent.
+            const progressGradient = 'linear-gradient(90deg, #1769C8 0%, #22c55e 100%)';
             return (
               <Link
                 href={`/projects/${p.id}`}
                 key={p.id}
                 className="card-hover block group overflow-hidden hover:-translate-y-0.5 transition-transform"
               >
-                {/* Exception accent only — green “healthy” strips are vanity. */}
-                <div
-                  className="h-1"
-                  style={{
-                    background: health === 'good' ? 'transparent' : healthColor,
-                  }}
-                />
+                {/* Top accent — slim strip in the health colour */}
+                <div className="h-1" style={{ background: healthColor }} />
 
                 <div className="p-4 flex flex-col h-full">
                   {/* Header row: code + health + status */}
@@ -260,32 +262,30 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-600 bg-violet-50 dark:bg-violet-500/15 dark:text-violet-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
                         <Lock size={9} /> Private
                       </span>
-                    ) : p.isSystem ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 bg-teal-50 dark:bg-teal-500/15 dark:text-teal-400 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        Recurring
-                      </span>
                     ) : (
                       <span className="text-[10px] font-mono font-bold tracking-widest uppercase text-slate-400 dark:text-white/30 bg-slate-50 dark:bg-white/[0.05] px-2 py-0.5 rounded">
                         {p.ccNo || p.code}
                       </span>
                     )}
-                    {health !== 'good' && (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                      style={{
+                        background:
+                          health === 'good'
+                            ? 'rgba(34,197,94,0.10)'
+                            : health === 'at_risk'
+                              ? 'rgba(245,158,11,0.10)'
+                              : 'rgba(239,68,68,0.10)',
+                        color: healthColor,
+                      }}
+                      title={healthLabel}
+                    >
                       <span
-                        className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                        style={{
-                          background:
-                            health === 'at_risk' ? 'rgba(245,158,11,0.10)' : 'rgba(239,68,68,0.10)',
-                          color: healthColor,
-                        }}
-                        title={healthLabel}
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full"
-                          style={{ background: healthColor }}
-                        />
-                        {healthLabel}
-                      </span>
-                    )}
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: healthColor, boxShadow: `0 0 0 2px ${healthColor}22` }}
+                      />
+                      {healthLabel}
+                    </span>
                     <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-white/40">
                       <span
                         className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -320,21 +320,59 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                     )}
                   </div>
 
-                  {/* Footer — exceptions and open work, not % theater. */}
+                  {/* Progress — slim bar + % on one line; no label block. */}
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="h-1.5 flex-1 rounded-full overflow-hidden bg-slate-100 dark:bg-white/[0.06]">
+                      <div
+                        className="relative h-full rounded-full overflow-hidden transition-all duration-700"
+                        style={{
+                          width: `${Math.max(pct, p.taskCount ? 2 : 0)}%`,
+                          background: progressGradient,
+                        }}
+                      >
+                        {pct > 0 && <span aria-hidden className="progress-bar-sheen" />}
+                      </div>
+                    </div>
+                    <span
+                      className="text-[12px] font-black tabular-nums shrink-0"
+                      style={{ color: progressColor }}
+                    >
+                      {pct}%
+                    </span>
+                  </div>
+
+                  {/* Footer */}
                   <div className="mt-auto pt-2.5 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-[11px] min-w-0">
-                      {p.tasksOverdue > 0 ? (
+                      <span className="font-semibold text-slate-500 dark:text-white/40 shrink-0">
+                        <span className="text-slate-800 dark:text-white/82 font-black">{p.tasksDone}</span>
+                        <span className="text-slate-300 dark:text-white/20">/</span>
+                        <span>{p.taskCount}</span>
+                        <span className="ml-1">done</span>
+                      </span>
+                      {p.tasksOverdue > 0 && (
                         <span className="text-[10.5px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-full shrink-0">
                           {p.tasksOverdue} overdue
                         </span>
-                      ) : (
-                        <span className="font-semibold text-slate-500 dark:text-white/40 shrink-0">
-                          <span className="text-slate-800 dark:text-white/82 font-black">
-                            {(p.taskCount || 0) - (p.tasksDone || 0)}
-                          </span>
-                          <span className="ml-1">open</span>
-                        </span>
                       )}
+                      {/* Throughput trend — output this week vs. last. A single
+                          count is an inventory; the delta is the truth. */}
+                      {(() => {
+                        const w = p.done7d ?? 0;
+                        const prev = p.donePrev7d ?? 0;
+                        if (w === 0 && prev === 0) return null;
+                        const up = w >= prev;
+                        return (
+                          <span
+                            className="inline-flex items-center gap-0.5 text-[10.5px] font-bold shrink-0 tabular-nums"
+                            style={{ color: up ? '#16a34a' : '#d97706' }}
+                            title={`${w} done this week · ${prev} the week before`}
+                          >
+                            {up ? '▲' : '▼'} {w}
+                            <span className="font-normal opacity-60">/wk</span>
+                          </span>
+                        );
+                      })()}
                     </div>
                     {p.dueDate && (
                       <span
@@ -376,10 +414,12 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
             )}
           </div>
           <div className="text-sm font-bold text-slate-700 dark:text-white/80 mb-1">
-            {q || team || lc || status ? 'No matches' : 'No projects'}
+            {q || team || lc || status ? 'No matching projects' : 'No projects yet'}
           </div>
           <div className="text-xs text-slate-400 dark:text-white/35 mb-4">
-            {q || team || lc || status ? 'Clear filters to see all.' : 'Create a project to track work.'}
+            {q || team || lc || status
+              ? 'Try a different search or clear the filters below.'
+              : 'Create your first project to get started.'}
           </div>
           {q || team || lc || status ? (
             <button

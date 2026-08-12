@@ -22,18 +22,27 @@ import {
   Download,
 } from 'lucide-react';
 import { api } from '@/lib/client/api';
-import { BOARD_TEMPLATES, templateById, type BoardTemplateId } from '@/lib/whiteboardTemplates';
+// onSaveToNotes removed — whiteboard is a scratch surface; notes are independent
 
 /**
- * Whiteboard — personal thinking surface (marker, not a form).
+ * Whiteboard — a free-form drawing surface for My Day.
  *
- * Text is drawn ON the canvas with a blinking caret. A 1×1 off-screen input
- * only captures the keyboard (mobile soft-keyboard + desktop). There is never
- * a visible text box, Done button, or placeholder card.
+ * Marker on board, nothing precious. Drag to draw, switch tools, rub
+ * things out, start again. Designed for *thinking out loud* — the kind of
+ * scrappy sketch a team would draw on a real whiteboard when defending an
+ * idea, not the polished node-link diagrams a mind-map app produces.
  *
- *   • Text tool + click / double-click → type at that point
- *   • Click existing text → edit in place
- *   • Click away → ink commits; Esc → cancel
+ * Implementation notes:
+ *   - One <canvas> with unified pointer handlers. No SVG, no React-DOM
+ *     redraws on every stroke — we paint directly with the 2D context so
+ *     a busy session stays at 60fps.
+ *   - Strokes are stored as polylines (array of points + color + width)
+ *     so undo/redo is just a list-pointer move. The canvas is repainted
+ *     from the polyline list whenever the pointer changes.
+ *   - Autosaves the polyline list as JSON (`PUT /api/scratch/whiteboard`)
+ *     ~1.5s after the last stroke. Owner-private — same posture as the
+ *     mind-map endpoint it replaced.
+ *   - Canvas backing-store is sized to DPR for crisp lines on retina.
  */
 
 type Tool = 'pen' | 'highlighter' | 'eraser' | 'text' | 'rect' | 'ellipse' | 'arrow';
@@ -42,35 +51,15 @@ interface Stroke {
   color: string;
   size: number;
   points: { x: number; y: number }[];
+  // For text strokes only — the canvas owns rendering; we store the typed
+  // label and one anchor point.
   text?: string;
 }
 type Doc = { strokes: Stroke[] };
 
-/** Discrete text sizes — what users pick in the toolbar. */
-const TEXT_SIZES: { id: 's' | 'm' | 'l'; label: string; size: number; px: number }[] = [
-  { id: 's', label: 'S', size: 2.0, px: 16 },
-  { id: 'm', label: 'M', size: 2.8, px: 22 },
-  { id: 'l', label: 'L', size: 4.2, px: 30 },
-];
-
-/** Map stored stroke.size → on-screen font px (handles old templates too). */
-function textFontPx(size: number): number {
-  if (size <= 1.9) return 15;
-  if (size <= 2.3) return 17;
-  if (size <= 2.6) return 20;
-  if (size <= 3.2) return 22;
-  if (size <= 4) return 26;
-  if (size <= 5) return 30;
-  return 36;
-}
-
-function textLineHeight(size: number): number {
-  return Math.round(textFontPx(size) * 1.35);
-}
-
 const COLORS: { value: string; label: string }[] = [
   { value: '#0f172a', label: 'Ink' },
-  { value: '#fafafa', label: 'White' },
+  { value: '#1565C0', label: 'Blue' },
   { value: '#22C55E', label: 'Green' },
   { value: '#F59E0B', label: 'Amber' },
   { value: '#EF4444', label: 'Red' },
@@ -79,49 +68,32 @@ const COLORS: { value: string; label: string }[] = [
 
 const PEN_SIZES = [1.5, 2.5, 4, 6];
 
-interface TextEdit {
-  x: number;
-  y: number;
-  value: string;
-  color: string;
-  size: number;
-  /** Visible-list index when editing an existing stroke. */
-  replaceIndex?: number;
-}
-
 export function Whiteboard() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  /** Off-screen keyboard sink — never visible. */
-  const keySinkRef = useRef<HTMLTextAreaElement>(null);
   const [size, setSize] = useState({ w: 800, h: 480 });
   const [tool, setTool] = useState<Tool>('pen');
   const [color, setColor] = useState(COLORS[0].value);
   const [penSize, setPenSize] = useState(2.5);
-  const [textSize, setTextSize] = useState<(typeof TEXT_SIZES)[number]>(TEXT_SIZES[1]);
   const [doc, setDoc] = useState<Doc>({ strokes: [] });
+  // Undo/redo by pointer rather than rebuilding the whole history on every
+  // commit — cheap and intuitive for a single-user scratch pad.
   const [pointer, setPointer] = useState(0);
   const drawing = useRef(false);
   const activePointerId = useRef<number | null>(null);
   const currentStroke = useRef<Stroke | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [busy, setBusy] = useState(false);
-  const [editingText, setEditingText] = useState<TextEdit | null>(null);
-  const editingRef = useRef<TextEdit | null>(null);
-  editingRef.current = editingText;
-  const [caretOn, setCaretOn] = useState(true);
-  const [prompt, setPrompt] = useState('');
-  const [loaded, setLoaded] = useState(false);
+  const [editingText, setEditingText] = useState<{ x: number; y: number; value: string } | null>(null);
   const dirty = useRef(false);
-  const promptRef = useRef(prompt);
-  promptRef.current = prompt;
-  const visibleStrokes = doc.strokes.slice(0, pointer);
-  // While editing, hide the stroke being replaced so it doesn't double under the caret.
-  const paintStrokes =
-    editingText && typeof editingText.replaceIndex === 'number'
-      ? visibleStrokes.filter((_, i) => i !== editingText.replaceIndex)
-      : visibleStrokes;
+  // Ref so commitText always reads the latest typed value even when called
+  // from onBlur (which fires before the React re-render that would update state).
+  const pendingTextValue = useRef('');
 
+  /** Visible (un-redone) prefix of the stroke list. */
+  const visibleStrokes = doc.strokes.slice(0, pointer);
+
+  // Track container size — canvas grows with the column.
   useLayoutEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver((entries) => {
@@ -132,86 +104,48 @@ export function Whiteboard() {
     return () => ro.disconnect();
   }, []);
 
+  // Initial load from the server.
   useEffect(() => {
-    api<{ strokes: Stroke[]; prompt?: string; updatedAt?: string }>('/scratch/whiteboard')
+    api<{ strokes: Stroke[]; updatedAt?: string }>('/scratch/whiteboard')
       .then((d) => {
         const strokes = Array.isArray(d?.strokes) ? d.strokes : [];
         setDoc({ strokes });
         setPointer(strokes.length);
-        setPrompt(typeof d?.prompt === 'string' ? d.prompt : '');
         if (d?.updatedAt) setSavedAt(new Date(d.updatedAt));
       })
-      .catch(() => {})
-      .finally(() => setLoaded(true));
+      .catch(() => {
+        /* empty board */
+      });
   }, []);
 
+  // Debounced autosave — fires 1.5s after the last change.
   useEffect(() => {
     if (!dirty.current) return;
     const t = setTimeout(() => {
       void save();
     }, 1500);
     return () => clearTimeout(t);
-  }, [doc, pointer, prompt]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Focus the off-screen keyboard sink whenever text edit starts / moves.
-  useEffect(() => {
-    if (!editingText) return;
-    const el = keySinkRef.current;
-    if (!el) return;
-    el.value = editingText.value;
-    el.focus({ preventScroll: true });
-    const len = el.value.length;
-    try {
-      el.setSelectionRange(len, len);
-    } catch {
-      /* some mobile browsers */
-    }
-  }, [editingText?.x, editingText?.y, editingText?.replaceIndex]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Blinking caret while typing on the canvas.
-  useEffect(() => {
-    if (!editingText) return;
-    setCaretOn(true);
-    const id = window.setInterval(() => setCaretOn((v) => !v), 530);
-    return () => window.clearInterval(id);
-  }, [editingText?.x, editingText?.y, editingText?.value]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [doc, pointer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save() {
     setBusy(true);
     try {
       const strokes = doc.strokes.slice(0, pointer);
-      await api('/scratch/whiteboard', {
-        method: 'PUT',
-        body: { strokes, prompt: promptRef.current.slice(0, 280) },
-      });
+      await api('/scratch/whiteboard', { method: 'PUT', body: { strokes } });
       setSavedAt(new Date());
       dirty.current = false;
     } catch {
-      /* keep dirty */
+      /* keep dirty so the next change retries */
     } finally {
       setBusy(false);
     }
   }
 
-  function applyTemplate(id: BoardTemplateId) {
-    const tpl = templateById(id);
-    if (visibleStrokes.length > 0) {
-      if (
-        !window.confirm(
-          'Replace the current board with this template? Current strokes will be wiped after save.',
-        )
-      ) {
-        return;
-      }
-    }
-    const strokes = tpl.build() as Stroke[];
-    setDoc({ strokes });
-    setPointer(strokes.length);
-    if (tpl.prompt) setPrompt(tpl.prompt);
-    setEditingText(null);
-    dirty.current = true;
-  }
-
+  // ── Canvas rendering ─────────────────────────────────────────────────
+  // Repaint from the polyline list whenever stroke state or canvas size
+  // changes. The current in-progress stroke is painted on top of the
+  // committed list during a drag, so we don't push half-finished state
+  // into the React tree.
   useEffect(() => {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -224,100 +158,32 @@ export function Whiteboard() {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     repaint(ctx);
-    // editingText: hide stroke under caret while editing
-  }, [size, doc, pointer, editingText]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const measureTextWidth = useCallback((ctx: CanvasRenderingContext2D, s: Stroke): number => {
-    if (!s.text) return 0;
-    const px = textFontPx(s.size);
-    ctx.font = `600 ${px}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-    return Math.max(...s.text.split('\n').map((ln) => ctx.measureText(ln || ' ').width), 24);
-  }, []);
-
-  const hitTextIndex = useCallback(
-    (p: { x: number; y: number }, strokes: Stroke[]): number | null => {
-      const cv = canvasRef.current;
-      if (!cv) return null;
-      const ctx = cv.getContext('2d');
-      if (!ctx) return null;
-      for (let i = strokes.length - 1; i >= 0; i--) {
-        const s = strokes[i];
-        if (s.tool !== 'text' || !s.text || !s.points[0]) continue;
-        const ax = s.points[0].x;
-        const ay = s.points[0].y;
-        const lh = textLineHeight(s.size);
-        const lines = s.text.split('\n');
-        const w = measureTextWidth(ctx, s);
-        const h = lines.length * lh;
-        const pad = 10;
-        if (p.x >= ax - pad && p.x <= ax + w + pad && p.y >= ay - pad && p.y <= ay + h + pad) {
-          return i;
-        }
-      }
-      return null;
-    },
-    [measureTextWidth],
-  );
-
-  function paintTextRun(
-    ctx: CanvasRenderingContext2D,
-    text: string,
-    x: number,
-    y: number,
-    strokeSize: number,
-    strokeColor: string,
-    withCaret: boolean,
-  ) {
-    const px = textFontPx(strokeSize);
-    const lh = textLineHeight(strokeSize);
-    ctx.fillStyle = strokeColor;
-    ctx.font = `600 ${px}px ui-sans-serif, system-ui, -apple-system, sans-serif`;
-    ctx.textBaseline = 'top';
-    const lines = (text || '').split('\n');
-    const drawLines = lines.length ? lines : [''];
-    drawLines.forEach((ln, i) => {
-      if (ln) ctx.fillText(ln, x, y + i * lh);
-    });
-    if (withCaret && caretOn) {
-      const last = drawLines[drawLines.length - 1] || '';
-      const tw = ctx.measureText(last).width;
-      const cx = x + tw + 1;
-      const cy = y + (drawLines.length - 1) * lh;
-      ctx.fillStyle = strokeColor;
-      ctx.fillRect(cx, cy, 2, px);
-    }
-  }
+  }, [size, doc, pointer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const repaint = useCallback(
     (ctx: CanvasRenderingContext2D) => {
       ctx.clearRect(0, 0, size.w, size.h);
+      // Faint dot grid — gives the surface "whiteboard" texture without
+      // dominating the marks the user makes on it.
       ctx.fillStyle = '#cbd5e1';
       for (let x = 24; x < size.w; x += 24) {
         for (let y = 24; y < size.h; y += 24) {
           ctx.fillRect(x - 0.6, y - 0.6, 1.2, 1.2);
         }
       }
-      for (const s of paintStrokes) paintStroke(ctx, s);
-      // Live typing — ink + caret on the canvas (no DOM box).
-      if (editingText) {
-        paintTextRun(
-          ctx,
-          editingText.value,
-          editingText.x,
-          editingText.y,
-          editingText.size,
-          editingText.color,
-          true,
-        );
-      }
+      for (const s of visibleStrokes) paintStroke(ctx, s);
     },
-    // caretOn must repaint the blink
-    [size.w, size.h, paintStrokes, editingText, caretOn], // eslint-disable-line react-hooks/exhaustive-deps
+    [size.w, size.h, visibleStrokes],
   );
 
   function paintStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
     if (s.tool === 'text' && s.text) {
-      paintTextRun(ctx, s.text, s.points[0].x, s.points[0].y, s.size, s.color, false);
+      ctx.fillStyle = s.color;
+      ctx.font = `${Math.round(s.size * 6)}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.textBaseline = 'top';
+      const lines = s.text.split('\n');
+      const p = s.points[0];
+      lines.forEach((ln, i) => ctx.fillText(ln, p.x, p.y + i * Math.round(s.size * 7)));
       return;
     }
     if (s.points.length < 2) return;
@@ -382,94 +248,29 @@ export function Whiteboard() {
     ctx.moveTo(s.points[0].x, s.points[0].y);
     for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i].x, s.points[i].y);
     ctx.stroke();
+    // Reset state — eraser sets composite, highlighter sets alpha.
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  function pointFromEvent(e: { clientX: number; clientY: number }) {
+  function pointFromPointer(e: ReactPointerEvent<HTMLCanvasElement>) {
     const cv = canvasRef.current;
     if (!cv) return null;
     const r = cv.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   }
 
-  function openTextEditor(at: {
-    x: number;
-    y: number;
-    value?: string;
-    replaceIndex?: number;
-    color?: string;
-    size?: number;
-  }) {
-    const edit: TextEdit = {
-      x: Math.max(4, Math.min(at.x, size.w - 40)),
-      y: Math.max(4, Math.min(at.y, size.h - 28)),
-      value: at.value ?? '',
-      color: at.color ?? color,
-      size: at.size ?? textSize.size,
-      replaceIndex: at.replaceIndex,
-    };
-    setEditingText(edit);
-    setTool('text');
-    setCaretOn(true);
-  }
-
   const SHAPE_TOOLS: Tool[] = ['rect', 'ellipse', 'arrow'];
 
   function startStroke(e: ReactPointerEvent<HTMLCanvasElement>) {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    const p = pointFromEvent(e);
+    const p = pointFromPointer(e);
     if (!p) return;
-
-    // Click while typing → place current ink first.
-    if (editingRef.current) {
-      e.preventDefault();
-      commitText();
-      if (tool === 'text') {
-        // Place next note at this click (after React applies the commit).
-        const hit = hitTextIndex(p, visibleStrokes);
-        const next =
-          hit !== null
-            ? {
-                x: visibleStrokes[hit].points[0].x,
-                y: visibleStrokes[hit].points[0].y,
-                value: visibleStrokes[hit].text || '',
-                replaceIndex: hit,
-                color: visibleStrokes[hit].color,
-                size: visibleStrokes[hit].size,
-              }
-            : { x: p.x, y: p.y };
-        window.setTimeout(() => openTextEditor(next), 0);
-        return;
-      }
-      // Pen / shapes: end typing only; user draws on the next stroke.
-      return;
-    }
-
-    // Click existing text → edit (any tool except eraser).
-    if (tool !== 'eraser') {
-      const hit = hitTextIndex(p, visibleStrokes);
-      if (hit !== null) {
-        e.preventDefault();
-        const s = visibleStrokes[hit];
-        openTextEditor({
-          x: s.points[0].x,
-          y: s.points[0].y,
-          value: s.text || '',
-          replaceIndex: hit,
-          color: s.color,
-          size: s.size,
-        });
-        return;
-      }
-    }
-
     e.preventDefault();
     if (tool === 'text') {
-      openTextEditor({ x: p.x, y: p.y });
+      setEditingText({ x: p.x, y: p.y, value: '' });
       return;
     }
-
     drawing.current = true;
     activePointerId.current = e.pointerId;
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -480,12 +281,15 @@ export function Whiteboard() {
   function continueStroke(e: ReactPointerEvent<HTMLCanvasElement>) {
     if (!drawing.current || !currentStroke.current) return;
     if (activePointerId.current !== null && e.pointerId !== activePointerId.current) return;
-    const p = pointFromEvent(e);
+    const p = pointFromPointer(e);
     if (!p) return;
     e.preventDefault();
     if (SHAPE_TOOLS.includes(currentStroke.current.tool)) {
+      // For shapes keep only start + current end — avoids storing every mousemove
       currentStroke.current.points = [currentStroke.current.points[0], p];
     } else {
+      // Skip points that are basically a duplicate — keeps the stroke list
+      // light and the canvas crisp on touch devices.
       const last = currentStroke.current.points[currentStroke.current.points.length - 1];
       if (Math.hypot(p.x - last.x, p.y - last.y) < 1.2) return;
       currentStroke.current.points.push(p);
@@ -501,33 +305,15 @@ export function Whiteboard() {
     activePointerId.current = null;
     const s = currentStroke.current;
     currentStroke.current = null;
-    if (s.points.length < 2 && s.tool !== 'text') return;
+    if (s.points.length < 2 && s.tool !== 'text') return; // ignore stray taps
+    // Truncate any "redo" tail (we're starting a new branch).
     setDoc((d) => ({ strokes: [...d.strokes.slice(0, pointer), s] }));
     setPointer((n) => n + 1);
     dirty.current = true;
   }
 
-  function onDoubleClick(e: React.MouseEvent<HTMLCanvasElement>) {
-    if (editingText) return;
-    const p = pointFromEvent(e);
-    if (!p) return;
-    e.preventDefault();
-    const hit = hitTextIndex(p, visibleStrokes);
-    if (hit !== null) {
-      const s = visibleStrokes[hit];
-      openTextEditor({
-        x: s.points[0].x,
-        y: s.points[0].y,
-        value: s.text || '',
-        replaceIndex: hit,
-        color: s.color,
-        size: s.size,
-      });
-      return;
-    }
-    openTextEditor({ x: p.x, y: p.y });
-  }
-
+  /** Paint the current in-progress stroke over the committed strokes
+   *  without touching React state. */
   function paintLive() {
     const cv = canvasRef.current;
     if (!cv) return;
@@ -540,52 +326,24 @@ export function Whiteboard() {
   }
 
   function commitText() {
-    const cur = editingRef.current;
-    if (!cur) return;
-    const value = cur.value.replace(/\s+$/, '');
-    if (!value.trim()) {
+    if (!editingText) return;
+    const value = (pendingTextValue.current || editingText.value).trim();
+    pendingTextValue.current = '';
+    if (!value) {
       setEditingText(null);
-      if (keySinkRef.current) keySinkRef.current.value = '';
       return;
     }
     const s: Stroke = {
       tool: 'text',
-      color: cur.color,
-      size: cur.size,
-      points: [{ x: cur.x, y: cur.y }],
+      color,
+      size: penSize,
+      points: [{ x: editingText.x, y: editingText.y }],
       text: value,
     };
-
-    if (typeof cur.replaceIndex === 'number') {
-      const base = doc.strokes.slice(0, pointer);
-      const next = base.map((st, i) => (i === cur.replaceIndex ? s : st));
-      setDoc({ strokes: next });
-      setPointer(next.length);
-    } else {
-      setDoc((d) => ({ strokes: [...d.strokes.slice(0, pointer), s] }));
-      setPointer((n) => n + 1);
-    }
+    setDoc((d) => ({ strokes: [...d.strokes.slice(0, pointer), s] }));
+    setPointer((n) => n + 1);
     setEditingText(null);
-    if (keySinkRef.current) keySinkRef.current.value = '';
     dirty.current = true;
-  }
-
-  function cancelText() {
-    setEditingText(null);
-    if (keySinkRef.current) keySinkRef.current.value = '';
-  }
-
-  function onKeySinkChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    const v = e.target.value;
-    setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
-    setCaretOn(true);
-  }
-
-  function onKeySinkKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      cancelText();
-    }
   }
 
   function undo() {
@@ -612,35 +370,21 @@ export function Whiteboard() {
   }
 
   function clearAll() {
-    if (!confirm('Wipe the board? Strokes and the problem line clear after the next save.')) return;
+    if (!confirm("Erase the whole board? This can't be undone after the next save.")) return;
     setDoc({ strokes: [] });
     setPointer(0);
-    setPrompt('');
-    setEditingText(null);
     dirty.current = true;
   }
 
-  // Shortcuts: tools + undo (skip when typing in the text editor / prompt).
+  // Keyboard shortcuts — Cmd/Ctrl+Z to undo, Shift+Cmd/Ctrl+Z to redo.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) redo();
         else undo();
-        return;
       }
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const k = e.key.toLowerCase();
-      if (k === 'v' || k === 'p') setTool('pen');
-      else if (k === 'h') setTool('highlighter');
-      else if (k === 'e') setTool('eraser');
-      else if (k === 't') setTool('text');
-      else if (k === 'r') setTool('rect');
-      else if (k === 'o') setTool('ellipse');
-      else if (k === 'a') setTool('arrow');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -649,89 +393,58 @@ export function Whiteboard() {
 
   return (
     <div
-      className="h-full bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-[#2f3336] overflow-hidden flex flex-col"
+      className="h-full bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden flex flex-col"
       style={{ minHeight: 460 }}
     >
-      <div className="shrink-0 px-3 pt-2.5 pb-1.5 border-b border-slate-100 dark:border-[#2f3336]">
-        <label className="block text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-white/30 mb-1">
-          The problem (one sentence)
-        </label>
-        <input
-          type="text"
-          value={prompt}
-          maxLength={280}
-          onChange={(e) => {
-            setPrompt(e.target.value);
-            dirty.current = true;
-          }}
-          placeholder="What must be true? Write it. Then draw the path."
-          className="w-full bg-transparent text-[15px] font-bold text-slate-900 dark:text-white/90 placeholder:text-slate-300 dark:placeholder:text-white/20 outline-none border-0 p-0"
-        />
-      </div>
-
-      <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-slate-100 dark:border-[#2f3336] overflow-x-auto">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/25 shrink-0 mr-0.5">
-          Scaffold
-        </span>
-        {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
-          <button
-            key={tpl.id}
-            type="button"
-            title={tpl.blurb}
-            onClick={() => applyTemplate(tpl.id)}
-            className="shrink-0 rounded-full border border-slate-200 dark:border-[#2f3336] bg-slate-50 dark:bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:text-white/60 hover:border-blue-300 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-          >
-            {tpl.label}
-          </button>
-        ))}
-        <button
-          type="button"
-          title="Empty board"
-          onClick={() => applyTemplate('blank')}
-          className="shrink-0 rounded-full border border-transparent px-2 py-1 text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white/60"
-        >
-          Blank
-        </button>
-      </div>
-
-      <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 dark:border-[#2f3336] flex-wrap">
+      <div className="shrink-0 flex items-center justify-between gap-3 px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] flex-wrap">
+        {/* Tool group */}
         <div className="flex items-center gap-1">
-          <ToolBtn active={tool === 'pen'} label="Pen (V)" icon={<Pen size={14} />} onClick={() => setTool('pen')} />
+          <ToolBtn
+            active={tool === 'pen'}
+            label="Pen"
+            icon={<Pen size={14} />}
+            onClick={() => setTool('pen')}
+          />
           <ToolBtn
             active={tool === 'highlighter'}
-            label="Highlighter (H)"
+            label="Highlighter"
             icon={<Highlighter size={14} />}
             onClick={() => setTool('highlighter')}
           />
           <ToolBtn
             active={tool === 'eraser'}
-            label="Eraser (E)"
+            label="Eraser"
             icon={<Eraser size={14} />}
             onClick={() => setTool('eraser')}
           />
           <ToolBtn
             active={tool === 'text'}
-            label="Text (T) — click the board and write"
+            label="Text"
             icon={<TypeIcon size={14} />}
             onClick={() => setTool('text')}
-            emphasize
           />
           <span className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-0.5" />
-          <ToolBtn active={tool === 'rect'} label="Box (R)" icon={<Square size={14} />} onClick={() => setTool('rect')} />
+          <ToolBtn
+            active={tool === 'rect'}
+            label="Rectangle"
+            icon={<Square size={14} />}
+            onClick={() => setTool('rect')}
+          />
           <ToolBtn
             active={tool === 'ellipse'}
-            label="Circle (O)"
+            label="Ellipse"
             icon={<Circle size={14} />}
             onClick={() => setTool('ellipse')}
           />
           <ToolBtn
             active={tool === 'arrow'}
-            label="Arrow (A)"
+            label="Arrow"
             icon={<ArrowIcon size={14} />}
             onClick={() => setTool('arrow')}
           />
         </div>
 
+        {/* Colour swatches */}
         {tool !== 'eraser' && (
           <div className="flex items-center gap-1">
             {COLORS.map((c) => (
@@ -739,15 +452,8 @@ export function Whiteboard() {
                 key={c.value}
                 type="button"
                 title={c.label}
-                onClick={() => {
-                  setColor(c.value);
-                  if (editingText) setEditingText({ ...editingText, color: c.value });
-                }}
-                className={`w-5 h-5 rounded-full transition-transform ${
-                  (editingText ? editingText.color : color) === c.value
-                    ? 'ring-2 ring-offset-2 ring-slate-400 scale-110'
-                    : 'hover:scale-110'
-                }`}
+                onClick={() => setColor(c.value)}
+                className={`w-5 h-5 rounded-full transition-transform ${color === c.value ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'hover:scale-110'}`}
                 style={{ background: c.value }}
                 aria-label={`Use ${c.label}`}
               />
@@ -755,55 +461,26 @@ export function Whiteboard() {
           </div>
         )}
 
-        {/* Size: pen dots OR text S/M/L */}
-        {tool === 'text' || editingText ? (
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] font-bold text-slate-400 mr-0.5">Aa</span>
-            {TEXT_SIZES.map((ts) => (
-              <button
-                key={ts.id}
-                type="button"
-                title={`Text ${ts.label}`}
-                onClick={() => {
-                  setTextSize(ts);
-                  if (editingText) setEditingText({ ...editingText, size: ts.size });
-                }}
-                className={`min-w-[28px] h-7 px-1.5 rounded-md text-[11px] font-bold transition-colors ${
-                  (editingText ? editingText.size : textSize.size) === ts.size
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
-                }`}
-              >
-                {ts.label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="flex items-center gap-1">
-            {PEN_SIZES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                title={`Size ${s}`}
-                onClick={() => setPenSize(s)}
-                className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
-                  penSize === s ? 'bg-slate-100 dark:bg-white/[0.08]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'
-                }`}
-                aria-label={`Pen size ${s}`}
-              >
-                <span
-                  className="block rounded-full"
-                  style={{
-                    width: s * 2.5,
-                    height: s * 2.5,
-                    background: tool === 'eraser' ? '#94a3b8' : color,
-                  }}
-                />
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Pen size */}
+        <div className="flex items-center gap-1">
+          {PEN_SIZES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              title={`Size ${s}`}
+              onClick={() => setPenSize(s)}
+              className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${penSize === s ? 'bg-slate-100 dark:bg-white/[0.08]' : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}
+              aria-label={`Pen size ${s}`}
+            >
+              <span
+                className="block rounded-full"
+                style={{ width: s * 2.5, height: s * 2.5, background: tool === 'eraser' ? '#94a3b8' : color }}
+              />
+            </button>
+          ))}
+        </div>
 
+        {/* Undo / redo / export / save / clear */}
         <div className="flex items-center gap-1">
           {savedAt && (
             <span className="text-[10px] text-slate-400 dark:text-white/30 hidden sm:inline mr-1">
@@ -820,22 +497,20 @@ export function Whiteboard() {
             disabled={pointer >= doc.strokes.length}
           />
           <ToolBtn
-            label="Export PNG"
+            label="Export as PNG"
             icon={<Download size={14} />}
             onClick={exportPng}
             disabled={visibleStrokes.length === 0}
           />
-          <ToolBtn label="Save" icon={<Save size={14} />} onClick={() => void save()} disabled={busy} />
-          <ToolBtn label="Wipe board" icon={<RotateCcw size={14} />} onClick={clearAll} dangerous />
+          <ToolBtn label="Save now" icon={<Save size={14} />} onClick={() => void save()} disabled={busy} />
+          <ToolBtn label="Clear board" icon={<RotateCcw size={14} />} onClick={clearAll} dangerous />
         </div>
       </div>
 
       <div
         ref={containerRef}
-        className="flex-1 relative min-h-0"
-        style={{
-          cursor: tool === 'text' ? 'text' : tool === 'eraser' ? 'cell' : 'crosshair',
-        }}
+        className="flex-1 relative"
+        style={{ cursor: tool === 'text' ? 'text' : tool === 'eraser' ? 'cell' : 'crosshair' }}
       >
         <canvas
           ref={canvasRef}
@@ -843,76 +518,53 @@ export function Whiteboard() {
           onPointerMove={continueStroke}
           onPointerUp={endStroke}
           onPointerCancel={endStroke}
-          onDoubleClick={onDoubleClick}
           style={{ display: 'block', touchAction: 'none' }}
         />
 
-        {/* Keyboard sink only — never painted. Text is drawn on the canvas. */}
-        <textarea
-          ref={keySinkRef}
-          aria-label="Type on the whiteboard"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          tabIndex={editingText ? 0 : -1}
-          value={editingText?.value ?? ''}
-          onChange={onKeySinkChange}
-          onKeyDown={onKeySinkKeyDown}
-          onBlur={() => {
-            if (!editingRef.current) return;
-            // Delay so a canvas click can commit + open a new note without racing.
-            window.setTimeout(() => {
-              if (editingRef.current) commitText();
-            }, 0);
-          }}
-          style={{
-            position: 'fixed',
-            left: 0,
-            top: 0,
-            width: 1,
-            height: 1,
-            opacity: 0,
-            pointerEvents: 'none',
-            border: 0,
-            padding: 0,
-            margin: 0,
-            overflow: 'hidden',
-            zIndex: -1,
-          }}
-        />
+        {/* Inline text editor */}
+        {editingText && (
+          <textarea
+            autoFocus
+            value={editingText.value}
+            onChange={(e) => {
+              const v = e.target.value;
+              pendingTextValue.current = v;
+              setEditingText((prev) => (prev ? { ...prev, value: v } : prev));
+            }}
+            onBlur={commitText}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                pendingTextValue.current = '';
+                setEditingText(null);
+              }
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                commitText();
+              }
+            }}
+            className="absolute outline-none border-2 border-dashed border-blue-400 bg-white/95 rounded-md p-2 shadow-md"
+            style={{
+              left: editingText.x,
+              top: editingText.y - 2,
+              minWidth: 140,
+              minHeight: 32,
+              color,
+              font: `${Math.round(penSize * 6)}px ui-sans-serif, system-ui, sans-serif`,
+              zIndex: 10,
+            }}
+            placeholder="Type · Enter to place"
+          />
+        )}
 
-        {loaded && visibleStrokes.length === 0 && !editingText && (
-          <div className="absolute inset-0 flex items-center justify-center p-4">
-            <div className="text-center max-w-lg w-full">
-              <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white shadow-md">
-                <Pen size={20} />
+        {visibleStrokes.length === 0 && !editingText && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="text-center max-w-sm">
+              <Pen size={26} className="mx-auto mb-2 text-slate-300" />
+              <div className="text-sm font-bold text-slate-500">Start drawing</div>
+              <div className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Drag to draw. Switch to highlighter, eraser, or text. Undo with Cmd/Ctrl + Z. Nothing precious
+                — start over any time.
               </div>
-              <div className="text-[15px] font-black text-slate-800 dark:text-white/90 tracking-tight">
-                First principles. Then the path.
-              </div>
-              <p className="text-[12.5px] text-slate-500 dark:text-white/40 mt-1.5 leading-relaxed max-w-sm mx-auto">
-                Jensen rule: if you can’t put it on a whiteboard, you don’t understand it yet.
-                Name what’s true, kill fluff, own the next move. Private — wipe clean when done.
-              </p>
-              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-left pointer-events-auto">
-                {BOARD_TEMPLATES.filter((t) => t.id !== 'blank').map((tpl) => (
-                  <button
-                    key={tpl.id}
-                    type="button"
-                    onClick={() => applyTemplate(tpl.id)}
-                    className="rounded-xl border border-slate-200 dark:border-[#2f3336] bg-white dark:bg-white/[0.03] px-3 py-2.5 hover:border-blue-400 hover:shadow-sm dark:hover:border-blue-400/40 transition-all text-left"
-                  >
-                    <div className="text-[12px] font-bold text-slate-800 dark:text-white/85">{tpl.label}</div>
-                    <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 leading-snug">
-                      {tpl.blurb}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-3 text-[10px] text-slate-300 dark:text-white/20">
-                T text · V pen · E eraser · ⌘Z undo · private to you
-              </p>
             </div>
           </div>
         )}
@@ -928,7 +580,6 @@ function ToolBtn({
   onClick,
   disabled,
   dangerous,
-  emphasize,
 }: {
   active?: boolean;
   label: string;
@@ -936,7 +587,6 @@ function ToolBtn({
   onClick: () => void;
   disabled?: boolean;
   dangerous?: boolean;
-  emphasize?: boolean;
 }) {
   return (
     <button
@@ -952,9 +602,7 @@ function ToolBtn({
             ? 'bg-blue-600 text-white'
             : dangerous
               ? 'text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10'
-              : emphasize
-                ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10'
-                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
+              : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
       }`}
     >
       {icon}

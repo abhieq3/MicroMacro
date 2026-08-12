@@ -89,29 +89,10 @@ describe('bucketTasks', () => {
 // ── digestHasContent ──────────────────────────────────────────────────────────
 
 describe('digestHasContent', () => {
-  it('is false when exceptions and due work are empty (velocity alone is not content)', () => {
+  it('is false only when every section is empty', () => {
     assert.equal(digestHasContent({ overdue: [], today: [], soon: [], projectUpdates: [] }), false);
     assert.equal(
       digestHasContent({ overdue: [], today: [], soon: [], projectUpdates: [{ name: 'P', count: 1 }] }),
-      false,
-    );
-    assert.equal(
-      digestHasContent({
-        overdue: [],
-        today: [
-          {
-            id: 't',
-            title: 'x',
-            priority: 'medium',
-            projectId: 'p',
-            bucket: 'today',
-            label: 'Today',
-            effDue: new Date(),
-          },
-        ],
-        soon: [],
-        projectUpdates: [],
-      }),
       true,
     );
   });
@@ -153,15 +134,14 @@ describe('renderDigestEmail', () => {
       dateLabel: 'Monday, 8 June',
     });
     assert.match(out.subject, /1 due today/);
-    assert.match(out.html, />Priya</);
+    assert.match(out.html, /Good morning, Priya/);
     assert.match(out.html, /Fix &lt;A&gt; &amp; B/); // escaped in HTML
     assert.match(out.text, /Fix <A> & B/); // raw in plain text
     assert.match(out.html, /https:\/\/x\.test\/tasks\/t1/);
-    assert.match(out.html, /You — do this today/);
-    assert.match(out.text, /YOU — DO THIS TODAY/);
-    // No motivational fluff
-    assert.ok(!out.html.includes('Momentum'));
-    assert.ok(!out.html.includes('Ship something'));
+    // The single-focus block speaks the same language as the dashboard
+    // spotlight — this is the morning brief, so "Your morning priority".
+    assert.match(out.html, /Your morning priority/);
+    assert.match(out.text, /YOUR MORNING PRIORITY/);
   });
 
   it('shows an all-clear message when nothing is due', () => {
@@ -172,11 +152,11 @@ describe('renderDigestEmail', () => {
       appUrl: '',
       dateLabel: 'Monday, 8 June',
     });
-    assert.match(out.subject, /[Aa]ll clear/);
+    assert.match(out.subject, /all clear/);
     assert.match(out.html, /all clear/i);
   });
 
-  it('renders team card for a lead — team before personal, non-zero metrics only', () => {
+  it('renders the team-pulse card for a lead with a leadershipBrief (regression: was computed but never inserted into the HTML)', () => {
     const out = renderDigestEmail({
       name: 'Priya',
       role: 'lead',
@@ -185,29 +165,20 @@ describe('renderDigestEmail', () => {
       appUrl: 'https://x.test',
       dateLabel: 'Monday, 8 June',
       leadershipBrief: {
-        headline: '1 blocked on your team — unblock it before they slip.',
+        headline: 'Two tasks trending to slip across the team.',
         team: {
           blocked: [{ id: 'b1', title: 'Vendor sign-off', projectName: 'Alpha', days: 3 }],
-          signoffsPending: 0,
+          signoffsPending: 2,
           overdueByMember: [{ name: 'Dhruv', count: 1 }],
         },
       },
     });
-    assert.match(out.html, />Team</);
-    assert.match(out.html, /1 blocked on your team/);
+    assert.match(out.html, /Team pulse/);
+    assert.match(out.html, /Two tasks trending to slip across the team\./);
     assert.match(out.html, /Vendor sign-off/);
-    assert.match(out.html, /Open Today/);
-    assert.match(out.subject, /Team:/);
-    assert.match(out.subject, /1 blocked/);
-    // Zero sign-offs must not appear as a big tile
-    assert.ok(!out.html.includes('Sign-offs'));
-    // Team block should appear before personal focus in the HTML
-    const teamIdx = out.html.indexOf('>Team<');
-    const youIdx = out.html.indexOf('You — do this today');
-    assert.ok(teamIdx >= 0 && youIdx > teamIdx, 'team before personal');
   });
 
-  it('renders the workspace card for an admin with a leadershipBrief', () => {
+  it('renders the workspace-pulse card for an admin with a leadershipBrief', () => {
     const out = renderDigestEmail({
       name: 'Admin',
       role: 'admin',
@@ -216,14 +187,12 @@ describe('renderDigestEmail', () => {
       appUrl: '',
       dateLabel: 'Monday, 8 June',
       leadershipBrief: {
-        headline: 'Workspace: 5 tasks closed yesterday, 2 overdue across shared projects.',
+        headline: 'Workspace is broadly on track.',
         workspace: { doneYesterday: 5, overdueTotal: 2, activeProjects: 4, risky: [] },
       },
     });
-    assert.match(out.html, />Workspace</);
-    assert.match(out.html, /Workspace: 5 tasks closed yesterday/);
-    // Subject is exceptions-first (overdue), not closed-count vanity.
-    assert.match(out.subject, /Workspace: 2 overdue/);
+    assert.match(out.html, /Workspace pulse/);
+    assert.match(out.html, /Workspace is broadly on track\./);
   });
 
   it('keeps the subject short — does not splice the full leadership headline into it', () => {
@@ -239,64 +208,23 @@ describe('renderDigestEmail', () => {
         team: { blocked: [], signoffsPending: 0, overdueByMember: [] },
       },
     });
-    assert.match(out.subject, /You:/);
+    assert.match(out.subject, /1 due today/);
     assert.ok(!out.subject.includes('ugly, truncated'));
   });
 
-  it('renders exceptions without predictive pace theater', () => {
-    const calm = renderDigestEmail({
+  it('renders the foresight line as plain text, not a competing card', () => {
+    const out = renderDigestEmail({
       name: 'Sam',
       sections: { overdue: [], today: [], soon: [], projectUpdates: [] },
       projectName: () => null,
       appUrl: '',
       dateLabel: 'Monday, 8 June',
+      foresightLine: 'Foresight: on pace to clear your plate by ~Jun 20.',
     });
-    assert.ok(!calm.html.includes('on pace to clear'));
-    assert.ok(!calm.html.includes('Pace —'));
-    assert.ok(!calm.html.includes('Foresight'));
-
-    const pressured = renderDigestEmail({
-      name: 'Sam',
-      sections: {
-        overdue: [
-          {
-            id: 'o1',
-            title: 'Late thing',
-            priority: 'high',
-            projectId: 'p1',
-            bucket: 'overdue',
-            label: 'Overdue 2d',
-            effDue: new Date('2026-06-06T05:00:00Z'),
-          },
-        ],
-        today: [],
-        soon: [],
-        projectUpdates: [],
-      },
-      projectName: () => 'Alpha',
-      appUrl: '',
-      dateLabel: 'Monday, 8 June',
-    });
-    assert.ok(pressured.html.includes('Late thing'));
-    assert.ok(!pressured.html.includes('Pace —'));
-    assert.ok(!pressured.html.includes('Foresight'));
-  });
-
-  it('never renders insight / momentum fluff', () => {
-    const out = renderDigestEmail({
-      name: 'Sam',
-      sections: { overdue: [], today: [today], soon: [], projectUpdates: [] },
-      projectName: () => null,
-      appUrl: '',
-      dateLabel: 'Monday, 8 June',
-      insight: {
-        tag: 'Momentum',
-        title: 'Ship something small before noon',
-        body: 'One finished thing early creates the momentum.',
-      },
-    });
-    assert.ok(!out.html.includes('Ship something small'));
-    assert.ok(!out.html.includes('Momentum'));
+    assert.match(out.html, /Foresight —/);
+    assert.match(out.html, /on pace to clear your plate by ~Jun 20\./);
+    // The old rendering wrapped this in its own bordered/filled card.
+    assert.ok(!out.html.includes('#faf5ff'));
   });
 });
 

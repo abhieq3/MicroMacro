@@ -256,47 +256,17 @@ const ChecklistInput = z
   .max(50)
   .default([]);
 
-export const ScheduleKindEnum = z.enum(['interval', 'monthly_weekday']);
-/** 0=Sun … 6=Sat */
-export const WeekdayEnum = z.number().int().min(0).max(6);
-/** 1–4 = first…fourth; -1 = last of that weekday in the month */
-export const WeekdayOrdinalEnum = z.union([
-  z.literal(1),
-  z.literal(2),
-  z.literal(3),
-  z.literal(4),
-  z.literal(-1),
-]);
-
-export const RecurringActivityCreateSchema = z
-  .object({
-    title: z.string().min(1).max(300),
-    description: z.string().max(5000).optional(),
-    checklist: ChecklistInput,
-    assigneeId: optionalObjectId,
-    priority: PriorityEnum.optional(),
-    scheduleKind: ScheduleKindEnum.default('interval'),
-    intervalUnit: RecurrenceUnitEnum.default('month'),
-    intervalCount: z.number().int().min(1).max(365).default(1),
-    weekday: WeekdayEnum.optional(),
-    weekdayOrdinal: WeekdayOrdinalEnum.optional(),
-    startDate: dateString,
-    leadTimeDays: z.number().int().min(0).max(365).optional(),
-  })
-  .superRefine((v, ctx) => {
-    if (v.scheduleKind === 'monthly_weekday') {
-      if (v.weekday === undefined) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Pick a weekday', path: ['weekday'] });
-      }
-      if (v.weekdayOrdinal === undefined) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Pick which occurrence (1st / 2nd / last…)',
-          path: ['weekdayOrdinal'],
-        });
-      }
-    }
-  });
+export const RecurringActivityCreateSchema = z.object({
+  title: z.string().min(1).max(300),
+  description: z.string().max(5000).optional(),
+  checklist: ChecklistInput,
+  assigneeId: optionalObjectId,
+  priority: PriorityEnum.optional(),
+  intervalUnit: RecurrenceUnitEnum.default('month'),
+  intervalCount: z.number().int().min(1).max(365).default(1),
+  startDate: dateString,
+  leadTimeDays: z.number().int().min(0).max(365).optional(),
+});
 export type RecurringActivityCreateInput = z.infer<typeof RecurringActivityCreateSchema>;
 
 export const RecurringActivityUpdateSchema = z.object({
@@ -305,11 +275,8 @@ export const RecurringActivityUpdateSchema = z.object({
   checklist: z.array(z.object({ title: z.string().min(1).max(300) })).max(50).optional(),
   assigneeId: nullableObjectId,
   priority: PriorityEnum.optional(),
-  scheduleKind: ScheduleKindEnum.optional(),
   intervalUnit: RecurrenceUnitEnum.optional(),
   intervalCount: z.number().int().min(1).max(365).optional(),
-  weekday: WeekdayEnum.nullable().optional(),
-  weekdayOrdinal: WeekdayOrdinalEnum.nullable().optional(),
   // Repointing the anchor also resets the next-due cursor (handled in route).
   startDate: dateString.optional(),
   leadTimeDays: z.number().int().min(0).max(365).optional(),
@@ -378,9 +345,6 @@ export const TaskUpdateSchema = z.object({
   deployStage: DeployStageEnum.optional(),
   remarks: z.string().max(5000).optional(),
   pendingWith: z.string().max(120).optional(),
-  onCriticalPath: z.boolean().optional(),
-  /** Predecessor task id (same project), or null to clear. */
-  blockedByTaskId: nullableObjectId,
 });
 export type TaskUpdateInput = z.infer<typeof TaskUpdateSchema>;
 
@@ -486,3 +450,11 @@ export const TicketUpdateSchema = z.object({
 export type TicketCreateInput = z.infer<typeof TicketCreateSchema>;
 export type TicketUpdateInput = z.infer<typeof TicketUpdateSchema>;
 
+/* ── Top 5 Things (T5T) ───────────────────────────────────────────────────────
+   Input contract for PUT /api/top5 — the weekly "top five things on my mind"
+   list (see lib/top5 for the practice and the week-key rules). Short lines
+   only: a T5T is a snapshot of thinking, not a report. */
+export const Top5UpsertSchema = z.object({
+  items: z.array(z.string().trim().min(1).max(240)).min(1).max(5),
+});
+export type Top5UpsertInput = z.infer<typeof Top5UpsertSchema>;

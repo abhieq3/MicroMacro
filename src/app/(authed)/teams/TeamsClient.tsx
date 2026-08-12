@@ -99,7 +99,7 @@ export default function TeamsClient({
   // Realtime: refresh team rollups on focus / interval / app-wide changes.
   useLiveRefresh(load); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canManage = me?.role === 'lead' || me?.role === 'admin' || me?.role === 'master_admin';
+  const canManage = me?.role === 'lead' || me?.role === 'admin';
   const uMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const filtered = teams;
 
@@ -126,7 +126,7 @@ export default function TeamsClient({
           <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center mb-4">
             <UsersIcon size={22} className="text-blue-400" />
           </div>
-          <div className="text-sm font-bold text-slate-700 dark:text-white/80 mb-1">No teams</div>
+          <div className="text-sm font-bold text-slate-700 dark:text-white/80 mb-1">No teams yet</div>
           <div className="text-xs text-slate-400 dark:text-white/35 mb-4">
             {canManage
               ? 'Group people around a shared mission — then attach projects to it.'
@@ -619,20 +619,20 @@ function TeamFormModal({
                 {modulesOpen && (
                   <div className="space-y-2">
                     <ModuleToggle
-                      label="Trackers"
-                      hint="Optional grid for multi-step records — define your own columns."
+                      label="Quality (QMS) tracking"
+                      hint="A configurable tracker — define your own columns to follow records through any process."
                       checked={qmsEnabled}
                       onChange={setQmsEnabled}
                     />
                     <ModuleToggle
                       label="Support tickets"
-                      hint="Lightweight request queue for this team."
+                      hint="A lightweight request queue for this team."
                       checked={ticketsEnabled}
                       onChange={setTicketsEnabled}
                     />
                     <ModuleToggle
-                      label="Recurring schedule"
-                      hint="Repeating work that lands as tasks each cycle."
+                      label="Recurring activities"
+                      hint="Scheduled chores that repeat (e.g. monthly downtime) with a checklist that resets each cycle."
                       checked={recurringEnabled}
                       onChange={setRecurringEnabled}
                     />

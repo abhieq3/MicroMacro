@@ -59,7 +59,7 @@ export async function sendDailyBriefPushes(
     if (!brief.hasContent) continue;
     users += 1;
     delivered += await sendPushToUser(String(uid), {
-      title: 'Pragati — exceptions',
+      title: 'Pragati — morning brief',
       body: brief.headline,
       url: '/',
     });

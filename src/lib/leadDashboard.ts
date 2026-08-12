@@ -9,7 +9,13 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { computeFlowStrip, type FlowSignalPayload } from '@/lib/flow/computeStrip';
 import { getFlowConfig, isUiEnabled, isPilotTeamVisible } from '@/lib/flow/config';
 import { cached, cacheBust } from '@/lib/cache';
-import { scoreWorkCandidate, classifyWorkCandidate, taskToCandidate } from '@/lib/workMixer';
+import {
+  buildWorkMixerFromDashboardData,
+  scoreWorkCandidate,
+  classifyWorkCandidate,
+  taskToCandidate,
+  type WorkMixerResult,
+} from '@/lib/workMixer';
 import { normalizeRole } from '@/lib/auth';
 import { buildDeliveryProfiles, buildOpenLoad, scoreSlipRisk } from '@/lib/ai/slipRisk';
 
@@ -46,11 +52,18 @@ export interface LeadDashboardData {
   /** Bounded fact-based "Needs attention" strip payload — server-computed so
    *  the browser never sees raw signals. Null when nothing surfaces. */
   flowSignal?: FlowSignalPayload | null;
+  /** Optional internal Work Mixer output (shadow mode). Present ONLY when
+   *  WORK_MIXER_ENABLED=true; absent (undefined) by default, so existing
+   *  consumers are unaffected. Never used to render UI in Phase 1. */
+  workMixer?: WorkMixerResult | null;
 }
 
 /**
  * Public entry point — used by both the API route and the server-rendered
- * dashboard page. Read-through cached per viewer (see DASHBOARD_TTL_SECONDS).
+ * dashboard page. Read-through cached per viewer (see DASHBOARD_TTL_SECONDS):
+ * a hit returns the rollup without touching MongoDB; a miss (or a disabled /
+ * unreachable cache) computes fresh via the pure fetcher below. Fully
+ * transparent — when Upstash isn't configured this is just a direct call.
  */
 export async function getLeadDashboardData(jwtUser: {
   sub: string;
@@ -58,9 +71,27 @@ export async function getLeadDashboardData(jwtUser: {
   email: string;
   role: string;
 }): Promise<LeadDashboardData> {
-  return cached(dashboardCacheKey(jwtUser.sub, jwtUser.role), DASHBOARD_TTL_SECONDS, () =>
+  const data = await cached(dashboardCacheKey(jwtUser.sub, jwtUser.role), DASHBOARD_TTL_SECONDS, () =>
     computeLeadDashboardData(jwtUser),
   );
+
+  // ── Work Mixer (shadow mode, default OFF) ─────────────────────────────────
+  // When WORK_MIXER_ENABLED=true, derive a bounded, deterministically-ranked
+  // prioritisation view from the data ALREADY in memory — no new queries, no
+  // DB, no Redis. It is attached as an optional, non-breaking field and is not
+  // rendered anywhere in Phase 1. Computed AFTER the cache so the cached payload
+  // (and every existing consumer) is byte-identical when the flag is off, and
+  // wrapped so a bug in the mixer can never break the real dashboard.
+  if (process.env.WORK_MIXER_ENABLED === 'true') {
+    try {
+      const workMixer = buildWorkMixerFromDashboardData(data, { now: new Date() });
+      return { ...data, workMixer };
+    } catch {
+      return data;
+    }
+  }
+
+  return data;
 }
 
 // Pure data fetcher — the actual MongoDB work. Centralising it lets the App
@@ -215,10 +246,11 @@ async function computeLeadDashboardData(jwtUser: {
   const ownerName = new Map(owners.map((u) => [String(u._id), u.name]));
   const projStats = new Map(projectTaskAgg.map((s: any) => [String(s._id), s]));
 
-  // Recurring Activities boards (isSystem) are infrastructure for Teams →
-  // Recurring — not first-class work projects. Keep their *tasks* in Due / My
-  // Tasks (real chores), but never list the holder as a dashboard project card.
   const projectList = projects
+    // Recurring-activity holder projects are system-managed — their task
+    // occurrences still flow into the due/assigned task views (we keep them in
+    // `projects` above so their tasks load), but they must never appear as a
+    // project card on the dashboard.
     .filter((p) => !(p as any).isSystem)
     .map((p) => {
     const s: any = projStats.get(String(p._id)) ?? { total: 0, done: 0, overdue: 0, lastCompletedAt: null };
@@ -335,10 +367,15 @@ async function computeLeadDashboardData(jwtUser: {
     // WHY, instead of a naive status sort.
     const candidate = taskToCandidate(t);
     const lev = scoreWorkCandidate(candidate, now);
-    // `pressing` = due now (overdue / due within 3 days) or blocked.
-    // Stalled + waiting alone must NOT hijack the morning for work weeks out.
+    // `pressing` = is there a genuine near-term CAUSE to act, not just a high
+    // static score? A task can score well purely on attributes (critical /
+    // business-critical / needs-QA-sign-off) while its date is weeks out — that
+    // has no business hijacking someone's morning. So the morning spotlight
+    // only spawns when the work is actually overdue, due this week, blocked,
+    // waiting, or stalled. Same engine, same instant — just the time/flow
+    // signals, not the always-on flags.
     const ws = classifyWorkCandidate(candidate, now);
-    const pressing = ws.overdue || ws.dueWithin3 || ws.blocked;
+    const pressing = ws.overdue || ws.dueSoon || ws.blocked || ws.waiting || ws.stalled;
     return {
       id: String(t._id),
       title: t.title,

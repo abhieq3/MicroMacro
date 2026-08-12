@@ -54,31 +54,24 @@ const PRIORITY_DOT: Record<string, string> = {
 };
 
 export const LIFECYCLE_LABELS: Record<string, string> = {
-  // Universal
-  generic: 'Blank',
+  // Generic templates
   agile_sprint: 'Sprint',
   software_release: 'Release',
   product_launch: 'Launch',
   research: 'Research',
-  software_change: 'Change',
-  incident_management: 'Incident',
-  // Specialized (optional structure — not the product identity)
-  csv: 'System validation',
-  sop: 'Procedure',
-  deviation: 'Issue',
-  capa: 'Corrective action',
-  deviation_capa: 'Issue + fix',
-  change_control: 'Controlled change',
+  // Life Sciences templates
+  csv: 'CSV',
+  sop: 'SOP',
+  deviation: 'Deviation',
+  capa: 'CAPA',
+  deviation_capa: 'Issue/CAPA',
+  change_control: 'Change Control',
+  software_change: 'SW Change',
   audit: 'Audit',
   validation: 'Validation',
-  data_integrity: 'Data integrity',
-  pharmacovigilance: 'Safety reporting',
-  regulatory_submission: 'Submission',
-  product_recall: 'Recall',
-  training_program: 'Training',
-  vendor_qualification: 'Vendor',
-  computer_system_retirement: 'Retire system',
-  discrepancy_qi: 'Discrepancy',
+  data_integrity: 'Data Integrity',
+  pharmacovigilance: 'Safety Reporting',
+  generic: 'Generic',
 };
 
 export const LIFECYCLE_COLORS: Record<string, string> = {

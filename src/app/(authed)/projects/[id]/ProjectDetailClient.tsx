@@ -21,15 +21,18 @@ import {
 import { DatePicker } from '@/components/DatePicker';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
+import { useIsDark } from '@/lib/client/useIsDark';
 import { weightedProgress } from '@/lib/progress';
-import { orderCriticalPathOpen } from '@/lib/criticalPath';
 import {
+  GripVertical,
   CheckCircle2,
   Plus,
   Trash2,
   AlertTriangle,
   Archive,
   X,
+  ChevronLeft,
+  ChevronRight,
   Lock,
   Pencil,
   ShieldCheck,
@@ -37,36 +40,31 @@ import {
   Eye,
   Sparkles,
   ChevronDown,
-  RefreshCw,
-  ArrowRight,
-  Route,
 } from 'lucide-react';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
-import { BIRDS_EYE_ENABLED } from '@/lib/features';
-import { useBlockerPrompt } from '@/components/BlockerPrompt';
-
-import { chimeIfEnabled, playFanfare, playVictory } from '@/lib/sound';
-import { Celebration, type CelebrationLevel } from '@/components/Celebration';
+import { ForecastChip } from '@/components/ForecastChip';
+import { chimeIfEnabled, playDropTick } from '@/lib/sound';
+import { Celebration } from '@/components/Celebration';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import { ExportMenu } from '@/components/ExportMenu';
 import { printProjectReport, downloadProjectReport, downloadProjectCsv } from './report';
 import dynamic from 'next/dynamic';
-import { STATUS_META, STATUSES } from './ProjectKanban';
 // Heavy interactive SVG canvas — only load it when a viewer actually opens it.
 const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) => m.BirdsEyeView), {
   ssr: false,
   loading: () => null,
 });
-// Kanban is large — load only when user opens the board tab.
-const KanbanBoard = dynamic(() => import('./ProjectKanban').then((m) => m.KanbanBoard), {
-  ssr: false,
-  loading: () => <div className="h-80 rounded-xl skeleton" />,
-});
-const KanbanBoardMobile = dynamic(() => import('./ProjectKanban').then((m) => m.KanbanBoardMobile), {
-  ssr: false,
-  loading: () => <div className="h-64 rounded-xl skeleton" />,
-});
+
+const STATUSES = ['todo', 'in_progress', 'review', 'blocked', 'done'] as const;
+
+const STATUS_META: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  todo: { label: 'To Do', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' },
+  in_progress: { label: 'In Progress', color: '#1565C0', bg: '#eff6ff', border: '#bfdbfe' },
+  review: { label: 'Review', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+  blocked: { label: 'Blocked', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  done: { label: 'Done', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
+};
 
 function ProjectStatusHover({
   value,
@@ -140,6 +138,594 @@ function ProjectStatusHover({
   );
 }
 
+/* ── Kanban board ─────────────────────────────────────────────────────────── */
+const COLUMN_WIDTH = 230;
+const COLUMN_GAP = 12;
+
+function KanbanBoard({
+  tasks,
+  onDropReorder,
+  isLead,
+  canDelete,
+  onDelete,
+}: {
+  tasks: any[];
+  onDropReorder: (taskId: string, toStatus: string, orderedIds: string[]) => void;
+  isLead: boolean;
+  /** Deleting is owner-only — stricter than the manage (isLead) gate. */
+  canDelete: boolean;
+  onDelete: (taskId: string) => void;
+}) {
+  const dark = useIsDark();
+  const currentUser = useCurrentUser();
+  const soundEnabled = currentUser?.soundDropEnabled !== false;
+  const [localTasks, setLocalTasks] = useState<any[]>(tasks);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  // Where the dragged card would land: a column + the insertion index within it.
+  const [dragOver, setDragOver] = useState<{ col: string; index: number } | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Tasks of one column, in persisted order.
+  const colSorted = (col: string) =>
+    localTasks.filter((t) => t.status === col).sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  useEffect(() => {
+    setLocalTasks(tasks);
+  }, [tasks]);
+
+  // Track whether the scroller can be scrolled in either direction so we
+  // can show/hide the arrow buttons.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const sync = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      setCanLeft(el.scrollLeft > 4);
+      setCanRight(el.scrollLeft < max - 4);
+    };
+    sync();
+    el.addEventListener('scroll', sync, { passive: true });
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', sync);
+      ro.disconnect();
+    };
+  }, [localTasks.length]);
+
+  function scrollByCols(dir: -1 | 1) {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * (COLUMN_WIDTH + COLUMN_GAP) * 2, behavior: 'smooth' });
+  }
+
+  function handleDragStart(e: React.DragEvent, taskId: string) {
+    setDraggingId(taskId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', taskId);
+  }
+  function handleDragEnd() {
+    setDraggingId(null);
+    setDragOver(null);
+  }
+
+  // Hovering a specific card: insert before it or after it depending on which
+  // half of the card the pointer is over. stopPropagation so the column-level
+  // handler doesn't override this precise index.
+  function handleCardDragOver(e: React.DragEvent, col: string, index: number) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const after = e.clientY > rect.top + rect.height / 2;
+    setDragOver({ col, index: after ? index + 1 : index });
+  }
+  // Hovering the column but not a card → drop at the end.
+  function handleColDragOver(e: React.DragEvent, col: string) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOver({ col, index: colSorted(col).length });
+  }
+
+  function handleDrop(e: React.DragEvent, col: string) {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain') || draggingId;
+    const dragged = taskId ? localTasks.find((t) => t.id === taskId) : null;
+    if (!taskId || !dragged) {
+      setDraggingId(null);
+      setDragOver(null);
+      return;
+    }
+
+    const insertIndex = dragOver && dragOver.col === col ? dragOver.index : colSorted(col).length;
+    const list = colSorted(col).filter((t) => t.id !== taskId);
+    const clamped = Math.max(0, Math.min(insertIndex, list.length));
+    list.splice(clamped, 0, dragged);
+    const orderedIds = list.map((t) => t.id);
+
+    // No-op guard: same column, same position.
+    const before = colSorted(col).map((t) => t.id);
+    if (dragged.status === col && before.join() === orderedIds.join()) {
+      setDraggingId(null);
+      setDragOver(null);
+      return;
+    }
+
+    // Optimistic: apply the new status + positions immediately.
+    setLocalTasks((prev) =>
+      prev.map((t) => {
+        const i = orderedIds.indexOf(t.id);
+        if (t.id === taskId) return { ...t, status: col, position: i >= 0 ? i : t.position };
+        return i >= 0 ? { ...t, position: i } : t;
+      }),
+    );
+    setDraggingId(null);
+    setDragOver(null);
+    // Audible cue confirming the move — only fires when the drop actually
+    // changed something (the no-op guard above already returned).
+    playDropTick(soundEnabled);
+    onDropReorder(taskId, col, orderedIds);
+  }
+
+  // ── Top scrollbar — mirrors the bottom one so a Kanban with many
+  // columns can be panned from either end of the board.
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const syncingRef = useRef<'top' | 'bottom' | null>(null);
+  useEffect(() => {
+    const top = topScrollRef.current;
+    const bottom = scrollRef.current;
+    if (!top || !bottom) return;
+    const sync = (from: 'top' | 'bottom') => () => {
+      if (syncingRef.current && syncingRef.current !== from) return;
+      syncingRef.current = from;
+      if (from === 'top') bottom.scrollLeft = top.scrollLeft;
+      else top.scrollLeft = bottom.scrollLeft;
+      // Let the next event re-arm
+      requestAnimationFrame(() => {
+        syncingRef.current = null;
+      });
+    };
+    const onTop = sync('top');
+    const onBottom = sync('bottom');
+    top.addEventListener('scroll', onTop, { passive: true });
+    bottom.addEventListener('scroll', onBottom, { passive: true });
+    return () => {
+      top.removeEventListener('scroll', onTop);
+      bottom.removeEventListener('scroll', onBottom);
+    };
+  }, []);
+  const totalWidth = COLUMN_WIDTH * STATUSES.length + 12 * (STATUSES.length - 1);
+
+  return (
+    <div className="relative">
+      {/* Top scrollbar — proxies its scrollLeft to the bottom scroller below */}
+      <div
+        ref={topScrollRef}
+        className="overflow-x-auto kanban-scroll mb-1"
+        style={{ height: 12 }}
+        aria-hidden="true"
+      >
+        <div style={{ width: totalWidth, height: 1 }} />
+      </div>
+
+      {/* Left arrow — shown on all viewports (mobile needs it too) */}
+      <button
+        type="button"
+        aria-label="Scroll left"
+        onClick={() => scrollByCols(-1)}
+        className={`flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 shadow-md transition-all ${
+          canLeft ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <ChevronLeft size={16} />
+      </button>
+
+      {/* Right arrow — shown on all viewports */}
+      <button
+        type="button"
+        aria-label="Scroll right"
+        onClick={() => scrollByCols(1)}
+        className={`flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 z-20 w-9 h-9 items-center justify-center rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 shadow-md transition-all ${
+          canRight ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <ChevronRight size={16} />
+      </button>
+
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto pb-3 kanban-scroll scroll-smooth"
+        style={{ minHeight: 480, scrollSnapType: 'x mandatory' }}
+      >
+        {STATUSES.map((col) => {
+          const meta = STATUS_META[col];
+          const colTasks = colSorted(col);
+          const isOver = dragOver?.col === col;
+          const isDragging = !!draggingId;
+          return (
+            <div
+              key={col}
+              className="kanban-col shrink-0 flex flex-col rounded-xl transition-all duration-150"
+              style={{
+                width: COLUMN_WIDTH,
+                scrollSnapAlign: 'start',
+                background: isOver
+                  ? dark
+                    ? 'rgba(255,255,255,0.04)'
+                    : meta.bg
+                  : dark
+                    ? 'rgba(255,255,255,0.02)'
+                    : '#f8fafc',
+                border: `2px solid ${isOver ? meta.border : dark ? 'rgba(255,255,255,0.08)' : '#e9eef5'}`,
+                boxShadow: isOver ? `0 0 0 3px ${meta.border}` : undefined,
+              }}
+              onDragOver={(e) => handleColDragOver(e, col)}
+              onDrop={(e) => handleDrop(e, col)}
+            >
+              <div className="px-3 pt-3 pb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: meta.color }} />
+                  <span className="text-xs font-bold uppercase tracking-wide" style={{ color: meta.color }}>
+                    {meta.label}
+                  </span>
+                </div>
+                <span
+                  className="text-xs font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ background: meta.border, color: meta.color }}
+                >
+                  {colTasks.length}
+                </span>
+              </div>
+              <div className="flex-1 px-2 pb-2 space-y-2 min-h-[80px]">
+                {colTasks.map((t, index) => {
+                  const isDraggingThis = draggingId === t.id;
+                  const showLineBefore =
+                    isDragging && !isDraggingThis && dragOver?.col === col && dragOver.index === index;
+                  return (
+                    <div key={t.id}>
+                      {showLineBefore && (
+                        <div className="h-0.5 rounded-full mb-2" style={{ background: meta.color }} />
+                      )}
+                      <div
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, t.id)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => handleCardDragOver(e, col, index)}
+                        className="group relative rounded-lg border transition-all duration-150 cursor-grab active:cursor-grabbing"
+                        style={{
+                          background: dark ? '#1e293b' : '#ffffff',
+                          borderColor: isDraggingThis
+                            ? meta.color
+                            : dark
+                              ? 'rgba(255,255,255,0.1)'
+                              : '#e2e8f0',
+                          boxShadow: isDraggingThis
+                            ? `0 8px 24px rgba(0,0,0,0.15), 0 0 0 2px ${meta.color}`
+                            : '0 1px 3px rgba(0,0,0,0.06)',
+                          opacity: isDraggingThis ? 0.5 : isDragging ? 0.85 : 1,
+                          transform: isDraggingThis ? 'rotate(1.5deg) scale(1.02)' : undefined,
+                        }}
+                      >
+                        <div
+                          className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-40 transition-opacity"
+                          style={{ color: meta.color }}
+                        >
+                          <GripVertical size={12} />
+                        </div>
+                        {canDelete && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              onDelete(t.id);
+                            }}
+                            draggable={false}
+                            aria-label="Delete task"
+                            className="absolute top-1 right-1 z-10 sm:opacity-0 sm:group-hover:opacity-100 p-2 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                        <Link
+                          href={`/tasks/${t.id}`}
+                          className="block p-3 pl-4"
+                          onClick={(e) => isDragging && e.preventDefault()}
+                        >
+                          <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-snug line-clamp-2">
+                            {t.title}
+                          </div>
+                          {(t.requiresQaSignoff || (t.priority && t.priority !== 'low')) && (
+                            <div className="mt-1.5 flex gap-1 flex-wrap">
+                              {t.requiresQaSignoff && !t.qaSignoffAt && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                                  Approval
+                                </span>
+                              )}
+                              {t.requiresQaSignoff && t.qaSignoffAt && (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                  Approved ✓
+                                </span>
+                              )}
+                              {t.priority && t.priority !== 'low' && <PriorityTag priority={t.priority} />}
+                            </div>
+                          )}
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400 truncate">
+                              {t.assigneeName || 'Unassigned'}
+                            </span>
+                            {t.dueDate && (
+                              <span className="text-[10px] text-slate-400 font-mono shrink-0 ml-1">
+                                {formatDate(t.dueDate)}
+                              </span>
+                            )}
+                          </div>
+                          {t.subtaskCount > 0 && (
+                            <div className="mt-2">
+                              <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{
+                                    width: `${Math.round((t.subtasksDone / t.subtaskCount) * 100)}%`,
+                                    background: meta.color,
+                                  }}
+                                />
+                              </div>
+                              <div className="text-[9px] text-slate-400 mt-0.5">
+                                {t.subtasksDone}/{t.subtaskCount} subtasks
+                              </div>
+                            </div>
+                          )}
+                        </Link>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Trailing insertion indicator (drop at end of column) */}
+                {isDragging &&
+                  colTasks.length > 0 &&
+                  dragOver?.col === col &&
+                  dragOver.index >= colTasks.length && (
+                    <div className="h-0.5 rounded-full" style={{ background: meta.color }} />
+                  )}
+                {colTasks.length === 0 && (
+                  <div
+                    className="rounded-lg border-2 border-dashed flex items-center justify-center h-16 transition-all duration-150 text-center px-2"
+                    style={{
+                      borderColor: isOver ? meta.color : dark ? 'rgba(255,255,255,0.12)' : '#e2e8f0',
+                      background: isOver ? (dark ? 'rgba(255,255,255,0.04)' : meta.bg) : 'transparent',
+                    }}
+                  >
+                    <span
+                      className="text-xs leading-tight"
+                      style={{ color: isOver ? meta.color : '#94a3b8' }}
+                    >
+                      {isOver ? 'Drop here' : isDragging ? 'Move card here' : 'No tasks'}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ── Kanban board — MOBILE ────────────────────────────────────────────────────
+   The horizontally-scrolling, drag-and-drop desktop board is unusable on a
+   phone (tiny columns, drag fights the page scroll). On mobile we render a
+   purpose-built view instead: a status tab strip across the top, then the
+   selected status's cards as a full-width vertical list. Moving a card is a
+   tap — a "Move to" sheet — not a drag, which is far more reliable on touch.
+   This component is only mounted below `md`, so the desktop experience is
+   completely untouched. */
+function KanbanBoardMobile({
+  tasks,
+  onMove,
+  isLead,
+  canDelete,
+  onDelete,
+}: {
+  tasks: any[];
+  onMove: (taskId: string, toStatus: string, orderedIds: string[]) => void;
+  isLead: boolean;
+  /** Deleting is owner-only — stricter than the manage (isLead) gate. */
+  canDelete: boolean;
+  onDelete: (taskId: string) => void;
+}) {
+  const [active, setActive] = useState<string>('todo');
+  const [moving, setMoving] = useState<any | null>(null);
+
+  const byStatus = (s: string) =>
+    tasks
+      .filter((t) => t.status === s)
+      .sort((a, b) => {
+        const ad = a.ccTcd
+          ? new Date(a.ccTcd).getTime()
+          : a.dueDate
+            ? new Date(a.dueDate).getTime()
+            : Infinity;
+        const bd = b.ccTcd
+          ? new Date(b.ccTcd).getTime()
+          : b.dueDate
+            ? new Date(b.dueDate).getTime()
+            : Infinity;
+        return ad - bd;
+      });
+
+  const colTasks = byStatus(active);
+
+  function move(toStatus: string) {
+    if (!moving) return;
+    const dest = byStatus(toStatus)
+      .map((t) => t.id)
+      .filter((id) => id !== moving.id);
+    dest.push(moving.id);
+    onMove(moving.id, toStatus, dest);
+    setMoving(null);
+    setActive(toStatus);
+  }
+
+  return (
+    <div>
+      {/* Status tabs — horizontally scrollable chips with live counts. */}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 -mx-1 px-1 kanban-scroll">
+        {STATUSES.map((s) => {
+          const meta = STATUS_META[s];
+          const n = tasks.filter((t) => t.status === s).length;
+          const on = active === s;
+          return (
+            <button
+              key={s}
+              onClick={() => setActive(s)}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
+              style={{
+                background: on ? meta.color : meta.bg,
+                color: on ? '#fff' : meta.color,
+                border: `1.5px solid ${on ? meta.color : meta.border}`,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: on ? '#fff' : meta.color }} />
+              {meta.label}
+              <span className="text-[10px] font-black opacity-90">{n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Cards for the selected status — full-width vertical list. */}
+      <div className="space-y-2 mt-1">
+        {colTasks.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 py-10 text-center text-sm text-slate-400">
+            No tasks in {STATUS_META[active].label}.
+          </div>
+        ) : (
+          colTasks.map((t) => {
+            const meta = STATUS_META[t.status] || STATUS_META.todo;
+            return (
+              <div
+                key={t.id}
+                className="relative rounded-xl border bg-white dark:bg-slate-800 dark:border-white/10"
+                style={{ borderColor: '#e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}
+              >
+                <Link href={`/tasks/${t.id}`} className="block p-3.5">
+                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-100 leading-snug pr-8">
+                    {t.title}
+                  </div>
+                  {(t.requiresQaSignoff || (t.priority && t.priority !== 'low')) && (
+                    <div className="mt-2 flex gap-1.5 flex-wrap">
+                      {t.requiresQaSignoff && !t.qaSignoffAt && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">
+                          Approval
+                        </span>
+                      )}
+                      {t.requiresQaSignoff && t.qaSignoffAt && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          Approved ✓
+                        </span>
+                      )}
+                      {t.priority && t.priority !== 'low' && <PriorityTag priority={t.priority} />}
+                    </div>
+                  )}
+                  <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="truncate">{t.assigneeName || 'Unassigned'}</span>
+                    {(t.ccTcd || t.dueDate) && (
+                      <span className="font-mono shrink-0 ml-2">{formatDate(t.ccTcd || t.dueDate)}</span>
+                    )}
+                  </div>
+                  {t.subtaskCount > 0 && (
+                    <div className="mt-2">
+                      <div className="h-1 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.round((t.subtasksDone / t.subtaskCount) * 100)}%`,
+                            background: meta.color,
+                          }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">
+                        {t.subtasksDone}/{t.subtaskCount} subtasks
+                      </div>
+                    </div>
+                  )}
+                </Link>
+                {/* Card actions: Move (lead) + Delete (owner-only). Big tap targets. */}
+                {isLead && (
+                  <div className="flex items-stretch border-t border-slate-100 dark:border-white/5">
+                    <button
+                      onClick={() => setMoving(t)}
+                      className="flex-1 py-2.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center gap-1.5"
+                    >
+                      <ChevronRight size={13} /> Move
+                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={() => onDelete(t.id)}
+                        className="w-12 py-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-white/5 transition-colors inline-flex items-center justify-center border-l border-slate-100 dark:border-white/5"
+                        aria-label="Delete task"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Move-to bottom sheet */}
+      {moving && (
+        <ModalPortal>
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
+            onClick={() => setMoving(null)}
+          >
+            <div
+              className="w-full max-w-md bg-white dark:bg-[#262624] rounded-t-2xl p-4 pb-6 modal-in"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 rounded-full bg-slate-200 dark:bg-white/15 mx-auto mb-3" />
+              <div className="text-sm font-bold text-slate-800 dark:text-white/90 mb-1 truncate">
+                Move "{moving.title}"
+              </div>
+              <div className="text-xs text-slate-400 mb-3">Choose a new status</div>
+              <div className="space-y-1.5">
+                {STATUSES.filter((s) => s !== moving.status).map((s) => {
+                  const meta = STATUS_META[s];
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => move(s)}
+                      className="w-full flex items-center gap-2.5 px-3 py-3 rounded-xl border text-left hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                      style={{ borderColor: meta.border }}
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: meta.color }} />
+                      <span className="text-sm font-semibold" style={{ color: meta.color }}>
+                        {meta.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setMoving(null)}
+                className="w-full mt-3 py-2.5 rounded-xl text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </ModalPortal>
+      )}
+    </div>
+  );
+}
 
 /* ── Quick-add task ───────────────────────────────────────────────────────── */
 function QuickAddTask({
@@ -618,13 +1204,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // byte. The client still refetches on mount to stay live; SSR is the fast
   // first paint, the client fetch is the freshness pass.
   const [project, setProject] = useState<any>(initialProject);
-  const projectRef = useRef(project);
-  projectRef.current = project;
   const [me, setMe] = useState<any>(initialMe);
   const [view, setView] = useState<'phases' | 'board'>('phases');
-  // Finished phases start collapsed so open work leads the page.
-  const [collapsedPhases, setCollapsedPhases] = useState<Record<string, boolean>>({});
-  const collapsedSeededFor = useRef<string | null>(null);
   // The owner of a personal project may fully manage it even as an IC — that
   // is the whole point of a private workspace. Everywhere we'd gate on isLead
   // for task management, we gate on canManage instead.
@@ -650,7 +1231,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [savingDue, setSavingDue] = useState(false);
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
   const { showToast, ToastEl } = useToast();
-  const { requestBlocker, blockerPromptUI } = useBlockerPrompt();
   const [showBirdEye, setShowBirdEye] = useState(false);
   // Headless bird's-eye export — the Export menu downloads the map (SVG/PNG)
   // directly instead of opening the interactive view.
@@ -668,13 +1248,14 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState('');
   const [savingDesc, setSavingDesc] = useState(false);
-  // Milestone ack — phase sparkle or full project confetti when work is truly done.
-  const [celebration, setCelebration] = useState<{
-    title: string;
-    subtitle?: string;
-    level?: CelebrationLevel;
-  } | null>(null);
-  // Per-task mini-ack (bottom-right). Distinct from phase/project milestone.
+  // Milestone celebration — set when finishing a task closes out its phase or
+  // the whole project. The Celebration overlay fires a fanfare + confetti.
+  const [celebration, setCelebration] = useState<{ title: string; subtitle?: string; emoji?: string } | null>(
+    null,
+  );
+  // Per-task mini-celebration toast (bottom-right). Distinct from `celebration`
+  // (which is the full-screen phase/project milestone) — this pops on every
+  // individual task close and reads its type so the line feels personalised.
   const [taskPop, setTaskPop] = useState<any | null>(null);
 
   async function load() {
@@ -685,10 +1266,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       setProject(p);
       setLoadErr(null);
     } catch (e: any) {
-      // Offline / blip: keep optimistic board paint. Only hard-fail empty.
-      if (!projectRef.current) {
-        setLoadErr(e?.message || 'Could not load this project.');
-      }
+      setLoadErr(e?.message || 'Could not load this project.');
     }
   }
 
@@ -708,22 +1286,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
-
-  // Seed collapsed state once per project: complete phases start closed.
-  useEffect(() => {
-    if (!project?.id) return;
-    if (collapsedSeededFor.current === project.id) return;
-    collapsedSeededFor.current = project.id;
-    const phasesList = project.phases || [];
-    const taskList = project.tasks || [];
-    const next: Record<string, boolean> = {};
-    for (const ph of phasesList) {
-      const pid = ph.id || String(ph._id);
-      const ts = taskList.filter((t: any) => (t.phaseId || null) === pid);
-      if (ts.length > 0 && ts.every((t: any) => t.status === 'done')) next[pid] = true;
-    }
-    setCollapsedPhases(next);
-  }, [project?.id, project?.phases, project?.tasks]);
 
   if (loadErr) {
     return (
@@ -829,7 +1391,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // than a low one. See src/lib/progress.ts.
   const pct = weightedProgress(tasks);
   const waitingCount = tasks.filter((t: any) => t.pendingWith && t.status !== 'done').length;
-  const blockedCount = tasks.filter((t: any) => t.status === 'blocked').length;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const overdue = tasks.filter(
@@ -842,8 +1403,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
       setBlockComplete(true);
       return;
     }
-    // Shared project status is an audited change — re-auth + reason via
-    // sign-off modal. Personal projects patch directly.
+    // A project's status is a controlled GxP record. Changing it on a shared
+    // project requires a re-authenticated e-signature with a reason (21 CFR
+    // Part 11 §11.10 / §11.50) — so we route through a sign-off modal instead
+    // of patching straight away. Personal projects skip this (no audit trail).
     if (!project.isPersonal) {
       setPendingStatus(newStatus);
       return;
@@ -852,11 +1415,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     try {
       await api(`/projects/${id}`, { method: 'PATCH', body: { status: newStatus } });
       if (newStatus === 'completed') {
-        playVictory();
         setCelebration({
-          title: 'Project complete',
-          subtitle: `${project.name} — all work closed.`,
-          level: 'project',
+          title: 'Project complete! 🎉',
+          subtitle: `${project.name} is closed out and in control.`,
+          emoji: '🏆',
         });
       } else {
         showToast('Project status updated');
@@ -878,11 +1440,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     await api(`/projects/${id}`, { method: 'PATCH', body: { status: pendingStatus, password, remarks } });
     setPendingStatus(null);
     if (becameComplete) {
-      playVictory();
       setCelebration({
-        title: 'Project complete',
-        subtitle: `${project.name} — all work closed.`,
-        level: 'project',
+        title: 'Project complete! 🎉',
+        subtitle: `${project.name} is closed out and in control.`,
+        emoji: '🏆',
       });
     } else {
       showToast('Project status updated');
@@ -974,16 +1535,13 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // Returns true when a milestone celebration was triggered (so the caller can
   // skip the routine completion chime and let the fanfare carry the moment).
   function celebrateIfMilestone(taskId: string): boolean {
-    // System recurring boards never "complete" as a project — perpetual cadence.
-    if (project?.isSystem) return false;
     const projected = tasks.map((t: any) => (t.id === taskId ? { ...t, status: 'done' } : t));
     const done = (t: any) => t.status === 'done';
     if (projected.length > 0 && projected.every(done)) {
-      playVictory();
       setCelebration({
-        title: 'Project clear',
-        subtitle: project?.name || 'Every task closed.',
-        level: 'project',
+        title: 'Project complete!',
+        subtitle: `Every task in ${project?.name || 'this project'} is closed and in control. Beautifully done.`,
+        emoji: '🏆',
       });
       return true;
     }
@@ -993,74 +1551,43 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     const phaseTasks = projected.filter((t: any) => (t.phaseId || null) === pid);
     if (phaseTasks.length > 0 && phaseTasks.every(done)) {
       const phaseName = phases.find((p: any) => p.id === pid)?.name;
-      playFanfare();
       setCelebration({
-        title: 'Phase clear',
-        subtitle: phaseName || 'Phase closed.',
-        level: 'phase',
+        title: 'Phase complete!',
+        subtitle: phaseName
+          ? `“${phaseName}” is fully closed out — a real milestone. Onwards.`
+          : 'A phase milestone reached — onwards to the next.',
+        emoji: '✅',
       });
       return true;
     }
     return false;
   }
 
-  /** Critical path: if this slips, the project end slips. */
-  async function toggleCriticalPath(taskId: string, next: boolean) {
-    if (!canManage) return;
-    setProject((p: any) => ({
-      ...p,
-      tasks: (p.tasks || []).map((t: any) => (t.id === taskId ? { ...t, onCriticalPath: next } : t)),
-    }));
-    try {
-      await api(`/tasks/${taskId}`, { method: 'PATCH', body: { onCriticalPath: next } });
-    } catch (e: any) {
-      showToast(e.message || 'Could not update critical path', 'err');
-      load();
-    }
-  }
-
-  const criticalOpen = orderCriticalPathOpen(tasks);
-  const taskTitleById = new Map(tasks.map((t: any) => [t.id, t.title as string]));
-
   // Kanban drop: persist a status change (if any) and the new column order.
   async function dropReorder(taskId: string, toStatus: string, orderedIds: string[]) {
     const cur = tasks.find((t: any) => t.id === taskId);
     const statusChanged = !!cur && cur.status !== toStatus;
     const wasNotDone = cur?.status !== 'done';
-    let pendingWith: string | undefined;
-    if (statusChanged && toStatus === 'blocked') {
-      const who = await requestBlocker(cur?.pendingWith, cur?.title);
-      if (!who) {
-        showToast('Name the blocker before marking blocked.', 'err');
-        load();
-        return;
-      }
-      pendingWith = who;
-    }
     setPendingTaskIds((s) => new Set([...s, taskId]));
     try {
-      let queued = false;
       if (statusChanged) {
-        const body: any = { status: toStatus };
-        if (pendingWith !== undefined) body.pendingWith = pendingWith;
-        const res = await api<any>(`/tasks/${taskId}`, { method: 'PATCH', body });
-        queued = !!res?.queued;
+        await api(`/tasks/${taskId}`, { method: 'PATCH', body: { status: toStatus } });
       }
       // Persisting column order is a lead/admin action; an IC dragging their
       // own card still gets the status change, just not a saved reorder.
-      // Skip reorder while offline — status is the floor-critical write.
-      if (isLead && !queued) {
+      if (isLead) {
         await api(`/projects/${id}/reorder-tasks`, { method: 'POST', body: { orderedIds } });
       }
       if (toStatus === 'done' && wasNotDone) {
+        // The mini-pop replaces the dry toast for individual closes; the full
+        // milestone fanfare supersedes it when a phase/project closes out.
         if (!celebrateIfMilestone(taskId)) {
           chimeIfEnabled();
           if (cur) setTaskPop(cur);
         }
-        // Milestone sound/haptic owned by celebrateIfMilestone + Celebration.
       }
-      // Optimistic state is already applied by KanbanBoard; reconcile when online.
-      if (!queued) load();
+      // Optimistic state is already applied by KanbanBoard; reconcile silently.
+      load();
     } catch (e: any) {
       showToast(e.message || 'Failed to update task', 'err');
       load(); // revert optimistic
@@ -1074,44 +1601,21 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   }
 
   async function moveTaskFromPhase(taskId: string, status: string) {
-    const cur = tasks.find((t: any) => t.id === taskId);
-    const wasNotDone = cur?.status !== 'done';
-    let pendingWith: string | undefined;
-    if (status === 'blocked' && cur?.status !== 'blocked') {
-      const who = await requestBlocker(cur?.pendingWith, cur?.title);
-      if (!who) {
-        showToast('Name the blocker before marking blocked.', 'err');
-        return;
-      }
-      pendingWith = who;
-    }
+    const wasNotDone = tasks.find((t: any) => t.id === taskId)?.status !== 'done';
     // Optimistic local update
     setProject((p: any) => ({
       ...p,
-      tasks: p.tasks.map((t: any) =>
-        t.id === taskId
-          ? { ...t, status, ...(pendingWith !== undefined ? { pendingWith } : {}) }
-          : t,
-      ),
+      tasks: p.tasks.map((t: any) => (t.id === taskId ? { ...t, status } : t)),
     }));
     setPendingTaskIds((s) => new Set([...s, taskId]));
     try {
-      const body: any = { status };
-      if (pendingWith !== undefined) body.pendingWith = pendingWith;
-      const res = await api<any>(`/tasks/${taskId}`, { method: 'PATCH', body });
+      await api(`/tasks/${taskId}`, { method: 'PATCH', body: { status } });
       if (status === 'done' && wasNotDone) {
         if (!celebrateIfMilestone(taskId)) {
           chimeIfEnabled();
+          const cur = tasks.find((t: any) => t.id === taskId);
           if (cur) setTaskPop(cur);
         }
-      }
-      if (res?.queued) {
-        setPendingTaskIds((s) => {
-          const n = new Set(s);
-          n.delete(taskId);
-          return n;
-        });
-        return;
       }
     } catch (e: any) {
       showToast(e.message || 'Failed to update task', 'err');
@@ -1166,7 +1670,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
 
   // Horowitz's wartime test: a project in trouble must LOOK like it, or the
   // tool is lying by omission. "War footing" = a meaningful share of the open
-  // work has already slipped (and there's enough of it to matter).
+  // work has already slipped (and there's enough of it to matter). One honest
+  // banner, nothing else changes — peacetime projects never see it.
   const warFooting =
     !project.isPersonal &&
     project.status !== 'completed' &&
@@ -1174,171 +1679,30 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     openTaskCount >= 3 &&
     overdue / openTaskCount >= 0.34;
 
-  // Jensen: exceptions first. Overdue open tasks, sorted by how late they are.
-  const overdueTasks = (() => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    return tasks
-      .filter((t: any) => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < start)
-      .slice()
-      .sort(
-        (a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
-      );
-  })();
-
-  const blockedTasks = tasks
-    .filter((t: any) => t.status === 'blocked')
-    .slice()
-    .sort((a: any, b: any) => {
-      const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-      const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-      return da - db;
-    });
-
-  // Single next action on this project — soonest overdue, else blocked, else next due.
-  const doThisFirst = (() => {
-    if (overdueTasks[0]) return { task: overdueTasks[0], why: 'overdue' as const };
-    if (blockedTasks[0]) return { task: blockedTasks[0], why: 'blocked' as const };
-    const open = tasks
-      .filter((t: any) => t.status !== 'done')
-      .slice()
-      .sort((a: any, b: any) => {
-        const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-        const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-        return da - db;
-      });
-    if (open[0]) return { task: open[0], why: 'next' as const };
-    return null;
-  })();
-
-  // Open work before done within a phase; among open, overdue first.
-  function sortTasksForPhase(ts: any[]) {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const late = (t: any) =>
-      t.status !== 'done' && t.dueDate && new Date(t.dueDate) < start ? 0 : 1;
-    const done = (t: any) => (t.status === 'done' ? 1 : 0);
-    return ts
-      .slice()
-      .sort((a, b) => {
-        if (done(a) !== done(b)) return done(a) - done(b);
-        if (late(a) !== late(b)) return late(a) - late(b);
-        return (a.position ?? 0) - (b.position ?? 0);
-      });
-  }
-
   return (
-    <div className="space-y-4 page-enter">
+    <div className="space-y-5 page-enter">
       {ToastEl}
-      {blockerPromptUI}
       {warFooting && (
         <div
           className="rounded-xl border border-red-200 dark:border-red-500/25 bg-red-50 dark:bg-red-500/10 px-4 py-3 flex items-start gap-3"
           role="alert"
         >
           <AlertTriangle size={18} className="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             <div className="text-[13px] font-bold text-red-800 dark:text-red-300">
-              {overdue} of {openTaskCount} open tasks are overdue
+              This project is behind — {overdue} of {openTaskCount} open tasks are overdue.
             </div>
             <div className="text-[12px] text-red-700/80 dark:text-red-300/70 mt-0.5">
-              Clear the overdue first. Everything else waits.
+              Not a normal day. Clear the overdue first; everything else waits.
             </div>
           </div>
-          {overdueTasks.length > 0 && (
-            <a
-              href="#project-overdue"
-              className="shrink-0 text-[11px] font-bold text-red-700 dark:text-red-300 underline underline-offset-2 hover:text-red-900"
-            >
-              Jump to list
-            </a>
-          )}
-        </div>
-      )}
-      {project.isSystem && (
-        <div className="rounded-xl border border-teal-200/80 dark:border-teal-500/25 bg-teal-50/80 dark:bg-teal-500/[0.08] px-4 py-3 flex items-start gap-3">
-          <RefreshCw size={16} className="text-teal-700 dark:text-teal-400 shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-bold text-teal-900 dark:text-teal-200">
-              Recurring activities board
-            </div>
-            <div className="text-[12px] text-teal-800/80 dark:text-teal-300/70 mt-0.5 leading-relaxed">
-              Occurrences land here as tasks. Manage the schedule on the team’s Recurring tab —
-              close a task when the work is done.
-            </div>
-          </div>
-          {project.teamId && (
-            <Link
-              href={`/teams/${project.teamId}?view=recurring`}
-              className="shrink-0 text-[11px] font-bold text-teal-800 dark:text-teal-300 underline underline-offset-2"
-            >
-              Open schedule
-            </Link>
-          )}
-        </div>
-      )}
-      {/* Critical path — the ordered constraints that define ship. */}
-      {!project.isSystem && criticalOpen.length > 0 && (
-        <div className="rounded-xl border border-violet-200/90 dark:border-violet-500/30 bg-violet-50/70 dark:bg-violet-500/[0.08] px-4 py-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Route size={15} className="text-violet-700 dark:text-violet-300 shrink-0" />
-            <div className="text-[12px] font-bold uppercase tracking-wider text-violet-800 dark:text-violet-300">
-              Critical path
-            </div>
-            <span className="text-[11px] font-bold tabular-nums text-violet-600/80 dark:text-violet-300/70">
-              {criticalOpen.length} open
-            </span>
-          </div>
-          <ol className="space-y-1.5">
-            {criticalOpen.map((t: any, i: number) => {
-              const late =
-                t.dueDate &&
-                t.status !== 'done' &&
-                new Date(t.dueDate) < new Date(new Date().setHours(0, 0, 0, 0));
-              const waitsOn = t.blockedByTaskId ? taskTitleById.get(t.blockedByTaskId) : null;
-              return (
-                <li key={t.id} className="flex items-center gap-2 min-w-0 text-[13px]">
-                  <span className="text-[10px] font-black tabular-nums text-violet-500/80 w-4 shrink-0">
-                    {i + 1}
-                  </span>
-                  <TaskLink
-                    task={t}
-                    className="font-semibold text-slate-800 dark:text-white/85 hover:text-violet-700 dark:hover:text-violet-300 truncate min-w-0"
-                  />
-                  {waitsOn && (
-                    <span
-                      className="text-[10px] text-violet-600/80 dark:text-violet-300/70 truncate max-w-[8rem] shrink-0"
-                      title={`After: ${waitsOn}`}
-                    >
-                      ← {waitsOn}
-                    </span>
-                  )}
-                  {t.status === 'blocked' && (
-                    <span className="text-[10px] font-bold text-red-600 shrink-0">blocked</span>
-                  )}
-                  {late && <span className="text-[10px] font-bold text-red-600 shrink-0">overdue</span>}
-                  {t.assigneeName && (
-                    <span className="text-[11px] text-slate-400 dark:text-white/35 truncate shrink-0 max-w-[7rem]">
-                      {t.assigneeName}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      )}
-      {!project.isSystem && canManage && criticalOpen.length === 0 && openTaskCount > 0 && (
-        <div className="rounded-xl border border-dashed border-slate-200 dark:border-white/10 px-4 py-2.5 text-[12px] text-slate-500 dark:text-white/40">
-          <span className="font-semibold text-slate-600 dark:text-white/55">No critical path yet.</span>{' '}
-          Mark tasks that gate ship — use the path icon on a task row, or toggle on task detail.
         </div>
       )}
       {celebration && (
         <Celebration
           title={celebration.title}
           subtitle={celebration.subtitle}
-          level={celebration.level || 'phase'}
+          emoji={celebration.emoji}
           onDone={() => setCelebration(null)}
         />
       )}
@@ -1355,10 +1719,18 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           {project.isPersonal && (
             <div className="text-[11px] text-slate-400 font-mono break-all">Personal</div>
           )}
+          {/* Personal projects are a private space — say so, warmly, and meet
+              the owner where they are in the journey. Rule-based, one line. */}
           {project.isPersonal && (
             <p className="text-[11.5px] text-violet-500/90 dark:text-violet-300/70 mt-0.5">
               <Lock size={10} className="inline -mt-0.5 mr-1" />
-              Private{pct > 0 ? ` · ${pct}%` : ''}
+              {pct === 0
+                ? 'Only you can see this. Every big thing starts at 0% — pick one small task.'
+                : pct < 50
+                  ? `Only you can see this. ${pct}% in — momentum loves consistency.`
+                  : pct < 100
+                    ? `Only you can see this. ${pct}% done — the finish line is in sight.`
+                    : 'Complete. Take a moment — you did this for you.'}
             </p>
           )}
           {/* Reference number — a single identity line. The system assigns one
@@ -1502,11 +1874,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                 <Lock size={11} /> Private
               </span>
             )}
-            {project.isSystem && (
-              <span className="tag border border-teal-200 bg-teal-50 text-teal-800 font-semibold inline-flex items-center gap-1.5 dark:border-teal-500/30 dark:bg-teal-500/10 dark:text-teal-300">
-                <RefreshCw size={11} /> Recurring
-              </span>
-            )}
             {project.archived && (
               <span
                 className="tag border border-amber-200 bg-amber-50 text-amber-800 font-semibold inline-flex items-center gap-1.5"
@@ -1515,9 +1882,9 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                 <Archive size={11} /> Archived
               </span>
             )}
-            {!project.isPersonal && !project.isSystem && <LifecycleTag lifecycle={project.lifecycle} />}
-            {!project.isSystem && <PriorityTag priority={project.priority} />}
-
+            {!project.isPersonal && <LifecycleTag lifecycle={project.lifecycle} />}
+            <PriorityTag priority={project.priority} />
+            {!project.isPersonal && !project.archived && <ForecastChip projectId={project.id} />}
           </div>
           {/* Description — owner can hover to reveal edit affordance, click to edit inline */}
           {editingDesc ? (
@@ -1553,7 +1920,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
             >
               {project.description ? (
                 <div className="flex items-start gap-1.5">
-                  <p className="text-sm text-slate-600 max-w-3xl line-clamp-2">{project.description}</p>
+                  <p className="text-sm text-slate-600 max-w-3xl">{project.description}</p>
                   {isOwner && (
                     <Pencil
                       size={12}
@@ -1651,9 +2018,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
           {/* Actions — Export (PDF/CSV/HTML) for everyone; Archive + Delete
               admin-only. */}
           <div className="flex flex-wrap items-center md:justify-end gap-2">
-            {BIRDS_EYE_ENABLED && (
-              <BirdEyeButton scopeKey={`project:${id}`} onClick={() => setShowBirdEye(true)} />
-            )}
+            <BirdEyeButton scopeKey={`project:${id}`} onClick={() => setShowBirdEye(true)} />
             <ExportMenu
               onExcel={
                 project.isPersonal
@@ -1664,8 +2029,8 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
               }
               onPdf={() => printProjectReport(project, phases, me?.name || me?.email || '')}
               onCsv={() => downloadProjectCsv(project, phases, me?.name || me?.email || '')}
-              onBirdEyeSvg={BIRDS_EYE_ENABLED ? () => setBirdEyeExport('svg') : undefined}
-              onBirdEyePng={BIRDS_EYE_ENABLED ? () => setBirdEyeExport('png') : undefined}
+              onBirdEyeSvg={() => setBirdEyeExport('svg')}
+              onBirdEyePng={() => setBirdEyeExport('png')}
             />
             {isAdmin && !project.isPersonal && (
               <Link
@@ -1718,296 +2083,113 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         </div>
       </div>
 
-      {/* Pulse strip — open always; exceptions and progress when they matter. */}
-      {tasks.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-slate-100 dark:bg-white/[0.06] text-[12px] font-semibold text-slate-600 dark:text-white/55">
-            <span className="font-black tabular-nums text-slate-800 dark:text-white/85">{openTaskCount}</span>
-            open
-          </span>
-          {overdue > 0 && (
-            <a
-              href="#project-overdue"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-red-50 dark:bg-red-500/10 text-[12px] font-semibold text-red-700 dark:text-red-400 hover:brightness-95"
-            >
-              <span className="font-black tabular-nums">{overdue}</span>
-              overdue
-            </a>
-          )}
-          {blockedCount > 0 && (
-            <a
-              href="#project-blocked"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-[12px] font-semibold text-amber-800 dark:text-amber-400 hover:brightness-95"
-            >
-              <span className="font-black tabular-nums">{blockedCount}</span>
-              blocked
-            </a>
-          )}
-          {waitingCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-violet-50 dark:bg-violet-500/10 text-[12px] font-semibold text-violet-700 dark:text-violet-400">
-              <span className="font-black tabular-nums">{waitingCount}</span>
-              waiting
-            </span>
-          )}
-          {tasks.length >= 2 && (
-            <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-[12px] font-semibold text-blue-700 dark:text-blue-400">
-              <span className="font-black tabular-nums">{pct}%</span>
-              done
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* One next action — judgment over a wall of phases. */}
-      {doThisFirst && (
-        <Link
-          href={`/tasks/${doThisFirst.task.id}`}
-          className="flex items-start gap-3 rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#262624] px-4 py-3.5 hover:border-blue-300/80 dark:hover:border-blue-500/30 transition-colors"
-          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-        >
-          <div className="min-w-0 flex-1">
+      {/* Stat cards — 2-up on mobile, 4-up on md+. The previous `md:grid-cols-5`
+          left an awkward fifth column unused after the QA sign-off card was
+          removed; matched the 4-card content count. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          {
+            label: 'Progress',
+            value: `${pct}%`,
+            sub: `${tasks.filter((t: any) => t.status === 'done').length}/${tasks.length} tasks`,
+            bar: pct,
+          },
+          { label: 'Phases', value: phases.length, sub: 'lifecycle stages' },
+          {
+            label: 'Waiting on',
+            value: waitingCount,
+            sub: waitingCount > 0 ? 'pending on someone' : 'nothing stuck',
+            warn: waitingCount > 0,
+          },
+          {
+            label: 'Overdue',
+            value: overdue,
+            sub: overdue > 0 ? 'past deadline' : 'none — on track',
+            danger: overdue > 0,
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-1"
+            style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+          >
+            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{stat.label}</div>
             <div
-              className={`text-[10px] font-bold uppercase tracking-[0.12em] mb-1 ${
-                doThisFirst.why === 'overdue'
-                  ? 'text-red-600 dark:text-red-400'
-                  : doThisFirst.why === 'blocked'
-                    ? 'text-amber-700 dark:text-amber-400'
-                    : 'text-blue-600 dark:text-blue-400'
-              }`}
+              className={`text-2xl font-black ${stat.danger ? 'text-red-600' : stat.warn ? 'text-amber-600' : 'text-slate-800'}`}
             >
-              {doThisFirst.why === 'overdue'
-                ? 'Clear first'
-                : doThisFirst.why === 'blocked'
-                  ? 'Unblock first'
-                  : 'Do this first'}
+              {stat.value}
             </div>
-            <div className="text-sm font-bold text-slate-800 dark:text-white/85 leading-snug truncate">
-              {doThisFirst.task.title}
-            </div>
-            <div className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5 truncate">
-              {doThisFirst.task.assigneeName || 'Unassigned'}
-              {doThisFirst.task.dueDate && ` · ${formatDate(doThisFirst.task.dueDate)}`}
-            </div>
+            <div className="text-xs text-slate-400">{stat.sub}</div>
           </div>
-          <ArrowRight size={16} className="text-slate-300 dark:text-white/25 shrink-0 mt-1" />
-        </Link>
-      )}
-
-      {/* Clear-first strip — exceptions before the full tree. */}
-      {overdueTasks.length > 0 && (
-        <section
-          id="project-overdue"
-          className="scroll-mt-4 rounded-2xl border border-red-200 dark:border-red-500/25 bg-white dark:bg-[#262624] overflow-hidden"
-          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-        >
-          <div className="px-4 py-2.5 border-b border-red-100 dark:border-red-500/15 flex items-center justify-between bg-red-50/60 dark:bg-red-500/[0.06]">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={14} className="text-red-600 dark:text-red-400" />
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-red-800 dark:text-red-300">
-                Clear first
-              </h3>
-              <span className="text-[11px] font-bold text-red-600/80 dark:text-red-400/80">
-                {overdueTasks.length} overdue
-              </span>
-            </div>
-          </div>
-          <ul className="divide-y divide-red-50 dark:divide-red-500/10">
-            {overdueTasks.map((t: any) => {
-              const dueIn = Math.floor(
-                (Date.now() - new Date(t.dueDate).getTime()) / 86_400_000,
-              );
-              return (
-                <li key={t.id}>
-                  <Link
-                    href={`/tasks/${t.id}`}
-                    prefetch
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-red-50/50 dark:hover:bg-red-500/[0.05] transition-colors group fluid-press"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[13px] font-semibold text-slate-800 dark:text-white/85 truncate group-hover:text-red-700 dark:group-hover:text-red-300">
-                        {t.title}
-                      </div>
-                      <div className="text-[11px] text-slate-400 dark:text-white/30 truncate mt-0.5">
-                        {t.assigneeName || 'Unassigned'}
-                        {t.phaseId &&
-                          phases.find((p: any) => p.id === t.phaseId)?.name &&
-                          ` · ${phases.find((p: any) => p.id === t.phaseId)?.name}`}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-[11px] font-bold px-2 py-0.5 rounded-md bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300">
-                      {dueIn}d late
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* Blocked strip — second only to overdue. */}
-      {blockedTasks.length > 0 && (
-        <section
-          id="project-blocked"
-          className="scroll-mt-4 rounded-2xl border border-amber-200 dark:border-amber-500/25 bg-white dark:bg-[#262624] overflow-hidden"
-          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-        >
-          <div className="px-4 py-2.5 border-b border-amber-100 dark:border-amber-500/15 flex items-center gap-2 bg-amber-50/60 dark:bg-amber-500/[0.06]">
-            <AlertTriangle size={14} className="text-amber-700 dark:text-amber-400" />
-            <h3 className="text-[12px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
-              Blocked
-            </h3>
-            <span className="text-[11px] font-bold text-amber-700/80 dark:text-amber-400/80">
-              {blockedTasks.length}
-            </span>
-          </div>
-          <ul className="divide-y divide-amber-50 dark:divide-amber-500/10">
-            {blockedTasks.slice(0, 8).map((t: any) => (
-              <li key={t.id}>
-                <Link
-                  href={`/tasks/${t.id}`}
-                  prefetch
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50/50 dark:hover:bg-amber-500/[0.05] transition-colors group"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="text-[13px] font-semibold text-slate-800 dark:text-white/85 truncate group-hover:text-amber-800 dark:group-hover:text-amber-300">
-                      {t.title}
-                    </div>
-                    <div className="text-[11px] text-slate-400 dark:text-white/30 truncate mt-0.5">
-                      {t.assigneeName || 'Unassigned'}
-                      {t.pendingWith ? ` · waiting on ${t.pendingWith}` : ''}
-                    </div>
-                  </div>
-                  <ArrowRight size={14} className="text-slate-300 dark:text-white/20 shrink-0" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+        ))}
+      </div>
 
       {/* View toggle */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div
-          className="flex items-center gap-1 bg-white dark:bg-[#262624] border border-slate-200/80 dark:border-white/[0.08] rounded-xl p-1 w-fit"
-          style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
-        >
-          {[
-            ['phases', 'By phase'],
-            ['board', 'Kanban'],
-          ].map(([k, l]) => (
-            <button
-              key={k}
-              onClick={() => setView(k as any)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                view === k
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50 dark:hover:bg-white/[0.05]'
-              }`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-        {tasks.length === 0 && canManage && (
-          <p className="text-[12px] text-slate-400 dark:text-white/35">Add a task below.</p>
-        )}
+      <div
+        className="flex items-center gap-1 bg-white border border-slate-200/80 rounded-xl p-1 w-fit"
+        style={{ boxShadow: '0 1px 2px rgba(15,23,42,0.04)' }}
+      >
+        {[
+          ['phases', 'By phase'],
+          ['board', 'Kanban'],
+        ].map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => setView(k as any)}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              view === k
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            {l}
+          </button>
+        ))}
       </div>
 
       {/* Phases view */}
       {view === 'phases' && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {phases.length === 0 && (
             <Card>
-              <div className="py-6 px-2 text-center max-w-md mx-auto">
-                <div className="text-sm font-bold text-slate-700 dark:text-white/70 mb-1">
-                  {project.isSystem ? 'No open occurrences' : 'No phases'}
-                </div>
-                <p className="text-xs text-slate-400 dark:text-white/35 leading-relaxed">
-                  {project.isSystem
-                    ? 'Occurrences appear when due. Manage schedule on Teams → Recurring.'
-                    : canManage
-                      ? 'Use Unphased below or Kanban to add tasks.'
-                      : 'No structure yet.'}
-                </p>
-                {project.isSystem && project.teamId && (
-                  <Link
-                    href={`/teams/${project.teamId}?view=recurring`}
-                    className="btn-primary text-xs inline-flex mt-4"
-                  >
-                    Open schedule <ArrowRight size={13} />
-                  </Link>
-                )}
-              </div>
+              <p className="text-slate-500 text-sm">No phases yet.</p>
             </Card>
           )}
           {phases.map((ph: any, i: number) => {
-            const tsRaw = tasks.filter((t: any) => t.phaseId === ph.id);
-            const ts = sortTasksForPhase(tsRaw);
+            const ts = tasks.filter((t: any) => t.phaseId === ph.id);
             const done = ts.filter((t: any) => t.status === 'done').length;
             const pctP = weightedProgress(ts);
-            const allDone = ts.length > 0 && done === ts.length;
-            const collapsed = !!collapsedPhases[ph.id];
             return (
               <Card key={ph.id}>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setCollapsedPhases((c) => ({ ...c, [ph.id]: !c[ph.id] }))
-                  }
-                  className="w-full flex items-center justify-between mb-1 text-left gap-2"
-                >
-                  <h3
-                    className={`font-semibold ${allDone ? 'text-slate-400' : 'text-slate-800 dark:text-white/85'}`}
-                  >
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-semibold text-slate-800">
                     <span className="text-slate-400 font-mono mr-2 text-sm">
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     {ph.name}
-                    {allDone && (
-                      <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-emerald-600">
-                        Complete
-                      </span>
-                    )}
                   </h3>
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex items-center gap-3">
                     <span className="text-xs text-slate-400">
                       {done}/{ts.length}
                     </span>
                     <span
-                      className={`text-xs font-bold px-1.5 py-0.5 rounded ${pctP === 100 ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-white/50'}`}
+                      className={`text-xs font-bold px-1.5 py-0.5 rounded ${pctP === 100 ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'}`}
                     >
                       {pctP}%
                     </span>
-                    <ChevronDown
-                      size={14}
-                      className={`text-slate-400 transition-transform ${collapsed ? '' : 'rotate-180'}`}
-                    />
                     {canDelete && (
-                      <span
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deletePhase(ph.id, ph.name);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.stopPropagation();
-                            deletePhase(ph.id, ph.name);
-                          }
-                        }}
+                      <button
+                        onClick={() => deletePhase(ph.id, ph.name)}
                         aria-label={`Delete phase ${ph.name}`}
                         title="Delete this phase (owner only) — its tasks move to Unphased"
                         className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded transition-all"
                       >
                         <Trash2 size={13} />
-                      </span>
+                      </button>
                     )}
                   </div>
-                </button>
-                {!collapsed && (
-                <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
+                </div>
+                <div className="divide-y divide-slate-100">
                   {ts.map((t: any, ti: number) => {
                     const canEdit = canManage || (me && t.assigneeId === me.id);
                     return (
@@ -2066,11 +2248,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                                 </span>
                               ) : null;
                             })()}
-                          {t.onCriticalPath && (
-                            <span className="tag bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25">
-                              Path
-                            </span>
-                          )}
                           {t.requiresQaSignoff &&
                             (t.qaSignoffAt ? (
                               <span className="tag bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -2084,21 +2261,6 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                           <PriorityTag priority={t.priority} />
                           {t.dueDate && (
                             <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>
-                          )}
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={() => toggleCriticalPath(t.id, !t.onCriticalPath)}
-                              aria-label={t.onCriticalPath ? 'Remove from critical path' : 'Add to critical path'}
-                              title={t.onCriticalPath ? 'On critical path' : 'Mark critical path'}
-                              className={`p-1 rounded transition-all shrink-0 ${
-                                t.onCriticalPath
-                                  ? 'text-violet-600 bg-violet-50 dark:bg-violet-500/15'
-                                  : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10'
-                              }`}
-                            >
-                              <Route size={13} />
-                            </button>
                           )}
                           {canDelete && (
                             <button
@@ -2114,8 +2276,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                     );
                   })}
                 </div>
-                )}
-                {!collapsed && canManage && (
+                {canManage && (
                   <QuickAddTask
                     projectId={project.id}
                     phaseId={ph.id}
@@ -2129,8 +2290,10 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
 
           {/* Unphased tasks */}
           <Card title="Unphased tasks">
-            <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
-              {sortTasksForPhase(tasks.filter((t: any) => !t.phaseId)).map((t: any) => {
+            <div className="divide-y divide-slate-100">
+              {tasks
+                .filter((t: any) => !t.phaseId)
+                .map((t: any) => {
                   const canEdit = canManage || (me && t.assigneeId === me.id);
                   return (
                     <div
@@ -2186,42 +2349,22 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                               </span>
                             ) : null;
                           })()}
-                        {t.onCriticalPath && (
-                          <span className="tag bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25">
-                            Path
-                          </span>
-                        )}
                         {t.gxpCritical && (
                           <span className="tag bg-red-50 text-red-700 border border-red-200">Critical</span>
                         )}
                         {t.requiresQaSignoff &&
                           (t.qaSignoffAt ? (
                             <span className="tag bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Approved
+                              QA ✓
                             </span>
                           ) : (
                             <span className="tag bg-purple-50 text-purple-700 border border-purple-200">
-                              Needs approval
+                              Sign-off
                             </span>
                           ))}
                         <PriorityTag priority={t.priority} />
                         {t.dueDate && (
                           <span className="text-xs text-slate-400 font-mono">{formatDate(t.dueDate)}</span>
-                        )}
-                        {canManage && (
-                          <button
-                            type="button"
-                            onClick={() => toggleCriticalPath(t.id, !t.onCriticalPath)}
-                            aria-label={t.onCriticalPath ? 'Remove from critical path' : 'Add to critical path'}
-                            title={t.onCriticalPath ? 'On critical path' : 'Mark critical path'}
-                            className={`p-1 rounded transition-all shrink-0 ${
-                              t.onCriticalPath
-                                ? 'text-violet-600 bg-violet-50 dark:bg-violet-500/15'
-                                : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-500/10'
-                            }`}
-                          >
-                            <Route size={13} />
-                          </button>
                         )}
                         {canDelete && (
                           <button

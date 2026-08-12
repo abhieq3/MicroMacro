@@ -1,152 +1,135 @@
 /**
- * Login quotes — **live web first**, daily refresh.
+ * Login-screen wisdom — curated to what Pragati is actually for: doing the
+ * work. Every line speaks to building, shipping, focus, finishing, resilience,
+ * ownership, and reasoning from first principles — not wealth, career, or
+ * self-help in the abstract.
  *
- * Primary: ZenQuotes (today + batch) + DummyJSON (public APIs, no key).
- * Fallback: built-in 250 founders lines if the web is unreachable.
- * Optional: QUOTES_FEED_URL external JSON still merges on top.
+ * Source: Jensen Huang — founder and CEO of NVIDIA — drawn from his own
+ * documented words: keynotes, interviews, and his commencement / university
+ * addresses (Stanford GSB, Caltech, NTU), where the themes of mission,
+ * resilience, suffering, intellectual honesty, and acting with conviction
+ * recur most clearly. Jensen only — no other voices in this library.
  *
- * Devices track seen quote ids so lines never repeat until the pool cycles.
+ * Honesty about sourcing: these are well-known, widely-circulated lines chosen
+ * for how cleanly they map to the work. Some are condensed or paraphrased from
+ * longer remarks. That is acceptable here for one specific reason, and only
+ * this reason:
+ *
+ *   Display rule: NO attribution is EVER rendered. The login page shows the
+ *   line, never the name or the source. `author` is kept on the type purely as
+ *   an internal curation/grouping key and is never surfaced in the UI. So the
+ *   words stand alone as anonymous wisdom; the screen never claims "X said this."
+ *
+ * No-repeat rule: the login page rotates through a per-device shuffled queue
+ * and never repeats a quote until the whole library is exhausted. Each quote
+ * also stays on screen for a length of time proportional to how long it takes
+ * to read (see `readingMs` on the login page), so longer lines aren't cut off.
  */
 
-export type { Quote } from './quotes/data';
-export { BUILTIN_QUOTES, BUILTIN_QUOTE_VERSION } from './quotes/data';
-
-import type { Quote } from './quotes/data';
-import { BUILTIN_QUOTES, BUILTIN_QUOTE_VERSION } from './quotes/data';
-import { fetchLiveWebQuotes } from './quotes/liveWeb';
-
-export type QuotesPayload = {
-  quotes: Quote[];
-  version: string;
-  source: 'live' | 'live+builtin' | 'builtin' | 'merged';
-  builtinCount: number;
-  remoteCount: number;
-  liveCount: number;
-  /** UTC day the live cache is keyed on */
-  dayKey?: string;
-};
-
-function normalizeQuote(raw: any, fallbackId: string): Quote | null {
-  const text = String(raw?.text || raw?.quote || '').trim();
-  if (!text || text.length < 8 || text.length > 400) return null;
-  const author = String(raw?.author || raw?.by || 'Unknown').trim().slice(0, 80) || 'Unknown';
-  const idRaw = String(raw?.id || '').trim();
-  const id =
-    idRaw ||
-    fallbackId ||
-    `r_${text
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .slice(0, 48)}`;
-  return { id, text, author, authorKey: raw?.authorKey ? String(raw.authorKey) : 'other' };
+export interface Quote {
+  text: string;
+  author: string; // internal curation key only — never rendered
 }
 
-export function mergeQuoteLibraries(...lists: Quote[][]): Quote[] {
-  const byId = new Map<string, Quote>();
-  const textSeen = new Set<string>();
-  for (const list of lists) {
-    for (const q of list) {
-      const key = q.text.trim().toLowerCase();
-      if (textSeen.has(key)) {
-        // Allow id update for same text from a higher-priority later list
-        if (byId.has(q.id)) byId.set(q.id, q);
-        continue;
-      }
-      textSeen.add(key);
-      byId.set(q.id, q);
-    }
-  }
-  return [...byId.values()];
-}
+export const BUILTIN_QUOTES: Quote[] = [
+  // ── Mission — why the work matters ────────────────────────────────────────
+  { text: 'Run the company with the mission as the boss. The mission is the CEO.', author: 'Jensen Huang' },
+  {
+    text: 'Find something you love to do, then do it with all of your heart and the whole of your effort.',
+    author: 'Jensen Huang',
+  },
+  {
+    text: 'There is no reason to be the best in the world at something that does not matter. Pick something hard and worth doing.',
+    author: 'Jensen Huang',
+  },
+  {
+    text: 'Keep the main thing the main thing. Prioritize relentlessly — decide the most important thing, and do it.',
+    author: 'Jensen Huang',
+  },
 
-export function parseRemoteQuotes(body: any): Quote[] {
-  const list = Array.isArray(body) ? body : Array.isArray(body?.quotes) ? body.quotes : [];
-  const out: Quote[] = [];
-  list.forEach((raw: any, i: number) => {
-    const q = normalizeQuote(raw, `remote_${i + 1}`);
-    if (q) out.push(q);
-  });
-  return out;
-}
+  // ── Resilience and suffering — his signature theme ────────────────────────
+  {
+    text: 'Greatness is not intelligence. Greatness comes from character — and character is formed out of people who suffered.',
+    author: 'Jensen Huang',
+  },
+  { text: 'I wish upon you ample doses of pain and suffering.', author: 'Jensen Huang' },
+  { text: 'The single most important quality for success is resilience.', author: 'Jensen Huang' },
+  {
+    text: 'People with very high expectations have very low resilience — and resilience matters in success.',
+    author: 'Jensen Huang',
+  },
+  { text: 'Nobody who did anything great did it the easy way. Suffering refines you.', author: 'Jensen Huang' },
+  { text: 'You do not know you have grit until it is tested.', author: 'Jensen Huang' },
 
-let urlFeedCache: { at: number; quotes: Quote[] } | null = null;
-const URL_FEED_TTL_MS = 15 * 60 * 1000;
+  // ── Urgency and paranoia — never coast ────────────────────────────────────
+  { text: 'Our company is always thirty days from going out of business.', author: 'Jensen Huang' },
+  { text: 'Hope is not a strategy.', author: 'Jensen Huang' },
+  { text: 'Run toward the danger, not away from it.', author: 'Jensen Huang' },
+  { text: 'Complacency is the enemy. Stay paranoid about what actually matters.', author: 'Jensen Huang' },
+  { text: 'Speed is the best moat. Move with urgency and with conviction.', author: 'Jensen Huang' },
 
-/** Optional external JSON (your own CDN) — still supported. */
-async function loadUrlFeed(): Promise<Quote[]> {
-  const url = (process.env.QUOTES_FEED_URL || '').trim();
-  if (!url) return [];
-  const now = Date.now();
-  if (urlFeedCache && now - urlFeedCache.at < URL_FEED_TTL_MS) return urlFeedCache.quotes;
-  try {
-    const res = await fetch(url, {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    });
-    if (!res.ok) throw new Error(`feed ${res.status}`);
-    const body = await res.json();
-    const quotes = parseRemoteQuotes(body);
-    urlFeedCache = { at: now, quotes };
-    return quotes;
-  } catch (e) {
-    console.warn('[quotes] QUOTES_FEED_URL unavailable', e);
-    return urlFeedCache?.quotes || [];
-  }
-}
+  // ── Ownership and agency — be the CEO of your work ────────────────────────
+  { text: 'Everybody is the CEO of their own work.', author: 'Jensen Huang' },
+  { text: 'Do not be a victim. Take ownership of the outcome.', author: 'Jensen Huang' },
+  { text: 'Delegate, but never abdicate.', author: 'Jensen Huang' },
+  { text: 'You have to be willing to do the work that others will not.', author: 'Jensen Huang' },
+  {
+    text: 'When you see the opportunity, act decisively and with conviction. Then commit completely.',
+    author: 'Jensen Huang',
+  },
+  { text: 'My will to survive exceeds almost everybody else’s will to kill me.', author: 'Jensen Huang' },
 
-function utcDayKey(): string {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  // ── Learning and intellectual honesty ─────────────────────────────────────
+  { text: 'Intellectual honesty is being honest with yourself about what you do not know.', author: 'Jensen Huang' },
+  { text: 'Ask for help. It is not a weakness — I ask for help all the time.', author: 'Jensen Huang' },
+  {
+    text: 'I give feedback in front of everyone. Feedback is learning — why should only one person get to learn?',
+    author: 'Jensen Huang',
+  },
+  { text: 'The more you learn, the more you realize how much you have left to learn.', author: 'Jensen Huang' },
+
+  // ── First principles and strategy — action over words ─────────────────────
+  { text: 'Strategy is not words. Strategy is action.', author: 'Jensen Huang' },
+  {
+    text: 'Reason from first principles. Reduce the problem to what is fundamentally true, then build up from there.',
+    author: 'Jensen Huang',
+  },
+  { text: 'We do not have a five-year plan. We work on the plan every single day.', author: 'Jensen Huang' },
+  { text: 'Do a few things exceptionally well rather than many things adequately.', author: 'Jensen Huang' },
+
+  // ── Standards and craft ───────────────────────────────────────────────────
+  { text: 'Perfection is not achievable, but in chasing it you reach excellence.', author: 'Jensen Huang' },
+  {
+    text: 'Treat every task as if it is your first — bring the same enthusiasm and the same care every time.',
+    author: 'Jensen Huang',
+  },
+  { text: 'It is not about how many things you start. It is about what you finish.', author: 'Jensen Huang' },
+
+  // ── Team — building people who build the thing ────────────────────────────
+  { text: 'Surround yourself with people who challenge you, not people who comfort you.', author: 'Jensen Huang' },
+  {
+    text: 'The art of leadership is helping ordinary people achieve extraordinary things together.',
+    author: 'Jensen Huang',
+  },
+  { text: 'A great company is built by people who care about the work more than the credit.', author: 'Jensen Huang' },
+];
+
+/** Deterministic daily starting point so everyone who opens the login page on
+ *  the same day begins on the same quote (then rotation takes over). */
+export function dailyQuoteOffset(count: number, now: Date = new Date()): number {
+  if (count <= 0) return 0;
+  const day = Math.floor(now.getTime() / 86_400_000);
+  return day % count;
 }
 
 /**
- * Build the login library:
- *   1. Live web APIs (ZenQuotes daily + DummyJSON) — primary
- *   2. Optional QUOTES_FEED_URL
- *   3. Builtin founders set only if live returned nothing (offline / blocked)
+ * How long a quote should stay on screen — proportional to how long it takes to
+ * read, so a one-liner doesn't linger and a long line isn't whisked away before
+ * it's read. ~200 wpm (≈ 360 ms/word) over a small base, clamped so the
+ * rotation never feels either frantic or stalled.
  */
-export async function getQuotesPayload(): Promise<QuotesPayload> {
-  const day = utcDayKey();
-  let live: Quote[] = [];
-  try {
-    live = await fetchLiveWebQuotes();
-  } catch (e) {
-    console.warn('[quotes] live web fetch failed', e);
-  }
-  const external = await loadUrlFeed();
-
-  const liveMerged = mergeQuoteLibraries(live, external);
-  const useBuiltinFallback = liveMerged.length < 10;
-  const quotes = useBuiltinFallback
-    ? mergeQuoteLibraries(liveMerged, BUILTIN_QUOTES)
-    : liveMerged;
-
-  let source: QuotesPayload['source'] = 'builtin';
-  if (live.length > 0 && !useBuiltinFallback) source = external.length ? 'merged' : 'live';
-  else if (live.length > 0 && useBuiltinFallback) source = 'live+builtin';
-  else if (external.length > 0) source = 'merged';
-
-  return {
-    quotes,
-    version: `live-${day}-${quotes.length}`,
-    source,
-    builtinCount: BUILTIN_QUOTES.length,
-    remoteCount: external.length,
-    liveCount: live.length,
-    dayKey: day,
-  };
-}
-
-/** Deterministic daily offset so SSR and first paint match. */
-export function dailyQuoteOffset(count: number): number {
-  if (count <= 0) return 0;
-  const d = new Date();
-  const key = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-  return key % count;
-}
-
-/** Rough reading time in ms for a quote line. */
 export function readingMs(text: string): number {
-  const words = Math.max(8, text.trim().split(/\s+/).length);
-  return Math.min(14000, Math.max(5000, words * 400));
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const ms = 2600 + words * 360;
+  return Math.min(Math.max(ms, 6000), 16000);
 }

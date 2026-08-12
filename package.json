@@ -2,7 +2,7 @@
   "name": "pragati",
   "version": "1.0.0",
   "private": true,
-  "description": "The work board for Earth and Mars — projects, tasks, owners, due dates, blockers. One source of truth.",
+  "description": "Quality Informatics project & task management with pharma lifecycles and AI assistance.",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

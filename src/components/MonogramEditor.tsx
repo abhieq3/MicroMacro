@@ -72,7 +72,7 @@ export function MonogramEditor({ initial, name, onSave, onClose }: Props) {
         onClick={onClose}
       >
         <div
-          className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#262624] border border-slate-200 dark:border-[#2f3336] shadow-2xl overflow-hidden"
+          className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#262624] border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -104,7 +104,7 @@ export function MonogramEditor({ initial, name, onSave, onClose }: Props) {
               }}
               placeholder={defaultLetter}
               aria-label="Monogram letter(s)"
-              className="text-center text-base font-bold tracking-widest w-24 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#2f3336] bg-white dark:bg-white/[0.04] text-slate-800 dark:text-white/90 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
+              className="text-center text-base font-bold tracking-widest w-24 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-800 dark:text-white/90 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
             />
 
             {/* Hero action — Surprise me */}
@@ -112,7 +112,7 @@ export function MonogramEditor({ initial, name, onSave, onClose }: Props) {
               type="button"
               onClick={surpriseMe}
               className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-white shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
-              style={{ background: '#000000' }}
+              style={{ background: 'linear-gradient(120deg, #1565C0 0%, #1976D2 45%, #2E7D32 100%)' }}
             >
               <Sparkles size={15} className="transition-transform duration-500 group-hover:rotate-180" />
               Surprise me
@@ -144,7 +144,7 @@ export function MonogramEditor({ initial, name, onSave, onClose }: Props) {
                     {active && (
                       <span
                         className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
-                        style={{ background: '#000000' }}
+                        style={{ background: '#1565C0' }}
                       />
                     )}
                   </button>

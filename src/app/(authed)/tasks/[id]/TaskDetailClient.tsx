@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { notifyCalendarChange } from '@/components/SidebarCalendar';
@@ -12,7 +12,7 @@ import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
 import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
-import { chimeIfEnabled, playVictory } from '@/lib/sound';
+import { chimeIfEnabled } from '@/lib/sound';
 import {
   ChevronRight,
   Shield,
@@ -27,16 +27,10 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { FlowSignalTaskStrip } from '@/components/FlowSignalTaskStrip';
-import { useBlockerPrompt } from '@/components/BlockerPrompt';
-import { TaskRecurringCard } from './TaskRecurringCard';
 
 // TaskCompletePop is only shown on task completion — off the critical render
 // path so deferring it improves FCP/LCP.
 const TaskCompletePop = dynamic(() => import('@/components/TaskCompletePop').then((m) => m.TaskCompletePop), {
-  ssr: false,
-  loading: () => null,
-});
-const Celebration = dynamic(() => import('@/components/Celebration').then((m) => m.Celebration), {
   ssr: false,
   loading: () => null,
 });
@@ -98,8 +92,6 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   // Seed from the server-rendered payload so real content paints on first
   // byte; the mount-time refetch below keeps it fresh.
   const [task, setTask] = useState<any>(initialTask);
-  const taskRef = useRef(task);
-  taskRef.current = task;
   // Project team scope for the assignee picker. The picker fetches its own
   // (paginated) roster from /api/users?teamId=… — we only need the id here.
   const [teamId, setTeamId] = useState<string | null>(null);
@@ -118,22 +110,18 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const [effortOpen, setEffortOpen] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
-  // Everyday close → small toast + sparkle. Whole project clear → big Celebration.
+  // Mini-celebration shown when the task moves to "done". A small bottom-right
+  // toast — not a confetti overlay — that recognises the *type* of task that
+  // was finished. Stays null until the user actually closes the task.
   const [celebrate, setCelebrate] = useState<any | null>(null);
-  const [projectCeleb, setProjectCeleb] = useState<{ title: string; subtitle?: string } | null>(null);
   const { showToast, ToastEl } = useToast();
-  const { requestBlocker, blockerPromptUI } = useBlockerPrompt();
 
   async function load() {
     try {
       setTask(await api<any>(`/tasks/${id}`));
       setLoadErr(null);
     } catch (e: any) {
-      // Offline / blip after a queued mutation: keep optimistic paint.
-      // Only hard-fail when we have nothing on screen.
-      if (!taskRef.current) {
-        setLoadErr(e?.message || 'Could not load this task.');
-      }
+      setLoadErr(e?.message || 'Could not load this task.');
     }
   }
 
@@ -235,63 +223,34 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   async function update(patch: any, opts?: { optimistic?: any }) {
     if (opts?.optimistic) setTask((t: any) => ({ ...t, ...opts.optimistic }));
     try {
-      const res = await api<any>(`/tasks/${id}`, { method: 'PATCH', body: patch });
+      await api(`/tasks/${id}`, { method: 'PATCH', body: patch });
       // A date change must refresh the sidebar calendar dots at once.
       if ('dueDate' in patch || 'ccTcd' in patch || 'status' in patch) notifyCalendarChange();
-      // Queued offline — keep optimistic state; don't refetch (would blank UI).
-      if (res?.queued) return;
       load();
     } catch (e: any) {
       showToast(e.message || 'Save failed', 'err');
-      load(); // revert when online enough to load
+      load(); // revert
     }
   }
 
   async function updateStatus(newStatus: string) {
     const wasDone = task?.status === 'done';
-    // Physics: blocked requires a named cause (person, team, part, decision).
-    let pendingWith: string | undefined;
-    if (newStatus === 'blocked') {
-      const who = await requestBlocker(task?.pendingWith, task?.title);
-      if (!who) {
-        showToast('Name the blocker before marking blocked.', 'err');
-        return;
-      }
-      pendingWith = who;
-    }
     setSavingStatus(true);
-    setTask((t: any) => ({
-      ...t,
-      status: newStatus,
-      ...(pendingWith !== undefined ? { pendingWith } : {}),
-      ...(newStatus !== 'blocked' && t.status === 'blocked' ? { pendingWith: '' } : {}),
-    }));
+    setTask((t: any) => ({ ...t, status: newStatus }));
     try {
-      const body: any = { status: newStatus };
-      if (pendingWith !== undefined) body.pendingWith = pendingWith;
-      const updated = await api<any>(`/tasks/${id}`, { method: 'PATCH', body });
+      await api(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus } });
       if (newStatus === 'done' && !wasDone) {
-        // Offline queue has no projectClear — still celebrate the personal close.
-        if (updated?.projectClear) {
-          playVictory();
-          setProjectCeleb({
-            title: 'Project clear',
-            subtitle: updated?.projectName || task.projectName || 'Every task closed.',
-          });
-        } else {
-          chimeIfEnabled();
-          setCelebrate({
-            id: task.id,
-            title: task.title,
-            taskType: task.taskType,
-            gxpCritical: task.gxpCritical,
-            priority: task.priority,
-            projectClear: false,
-            projectName: null,
-          });
-        }
+        chimeIfEnabled();
+        // The mini-pop replaces the dry "Task marked done ✓" toast — it reads
+        // the task's type and priority so the message feels personal.
+        setCelebrate({
+          id: task.id,
+          title: task.title,
+          taskType: task.taskType,
+          gxpCritical: task.gxpCritical,
+          priority: task.priority,
+        });
       }
-      if (updated?.queued) return;
       load();
     } catch (e: any) {
       showToast(e.message || 'Failed to update status', 'err');
@@ -389,27 +348,23 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const hasReferenceData =
     task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
-  // Assignees can drive status (do the work), description, and due date.
-  // Reassignment, priority, and compliance fields stay lead-owned.
+  // IC edit contract: a contributor may edit ONLY the description and due date,
+  // and ONLY on a task assigned to them. Everything else — status, assignee,
+  // priority, reference/compliance fields — is lead-owned. A task assigned to
+  // someone else (or unassigned) is fully read-only for an IC, and the inputs
+  // are disabled so no save is even attempted. Leads/admins keep full control.
   const isAssignee = !!(me && task.assigneeId && String(task.assigneeId) === String(me.id));
+  // Description + due date: editable by leads or the assignee.
   const canEditBasics = isLead || isAssignee;
+  // Reference/tracking fields, status, assignee, priority, etc.: leads only.
   const canEditAll = isLead;
   const canComment = isLead || isAssignee;
-  const canEditStatus = isLead || isAssignee;
+  const canEditStatus = isLead;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
       {ToastEl}
-      {blockerPromptUI}
       <TaskCompletePop task={celebrate} onDone={() => setCelebrate(null)} />
-      {projectCeleb && (
-        <Celebration
-          title={projectCeleb.title}
-          subtitle={projectCeleb.subtitle}
-          level="project"
-          onDone={() => setProjectCeleb(null)}
-        />
-      )}
 
       {/* ── Left: main content ─────────────────────────────────────────── */}
       <div className="lg:col-span-2 space-y-4">
@@ -450,11 +405,6 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 {TASK_TYPE_LABELS[task.taskType] ?? task.taskType.replace(/_/g, ' ')}
               </span>
             )}
-            {task.recurringActivityId && (
-              <span className="text-xs font-medium text-violet-700 bg-violet-50 border border-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:border-violet-500/25 px-2 py-0.5 rounded">
-                Recurring{task.recurring?.cadence ? ` · ${task.recurring.cadence}` : ''}
-              </span>
-            )}
           </div>
 
           {/* Quiet "Waiting on …" strip — only renders when the assignee or
@@ -479,14 +429,14 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             disabled={!canEditBasics}
             onChange={(e) => setTask({ ...task, description: e.target.value })}
             onBlur={(e) => canEditBasics && update({ description: e.target.value })}
-            placeholder="Description, references, evidence…"
+            placeholder="Describe what's expected, references, evidence required…"
           />
         </Card>
         {!isLead && (
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500">
             {canEditBasics
-              ? 'You can edit status, waiting-on, description, and due date.'
-              : 'Read-only. Assignee or lead can edit.'}
+              ? 'You can edit the description and due date of this task. Status, assignee and other fields are lead-owned.'
+              : 'Read-only: only the assignee and team leads can edit this task.'}
           </div>
         )}
 
@@ -725,7 +675,9 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               </button>
             </div>
           ) : (
-            <div className="text-xs text-slate-400 italic">Assignee or lead can comment.</div>
+            <div className="text-xs text-slate-400 italic">
+              Only the assignee and team leads can comment on this task.
+            </div>
           )}
         </Card>
       </div>
@@ -734,8 +686,10 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
       <div className="space-y-4">
         <Card title="Properties">
           <div className="space-y-3 text-sm">
-            {/* Status — full list on desktop; mobile uses sticky bar below. */}
-            <div className="hidden sm:block">
+            {/* Status — visual button flow. Contributors who are not the
+                assignee see a read-only status badge instead of the
+                clickable flow (the API would 403 them anyway). */}
+            <div>
               <label className="label">Status</label>
               {!canEditStatus ? (
                 <div className="mt-1">
@@ -799,22 +753,6 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 </div>
               )}
             </div>
-            {/* Mobile: compact status chip (full control is sticky bar). */}
-            <div className="sm:hidden">
-              <label className="label">Status</label>
-              <div className="mt-1">
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ background: STATUS_META[task.status]?.dot || '#94a3b8' }}
-                  />
-                  {STATUS_META[task.status]?.label || String(task.status || '').replace(/_/g, ' ')}
-                  {savingStatus && (
-                    <span className="w-3 h-3 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-                  )}
-                </span>
-              </div>
-            </div>
             <div>
               <label className="label">Assignee</label>
               <UserPicker
@@ -827,25 +765,24 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 onChange={(v: string) => isLead && update({ assigneeId: v || null })}
               />
             </div>
-            {/* Waiting on — required when blocked. Assignees name the bottleneck. */}
+            {/* Waiting on — who the task is stuck/pending with (QA, a person,
+               a department). Editable by the assignee or a lead. */}
             <div>
               <label className="label flex items-center gap-1">
-                <Clock size={11} /> Waiting on
-                {task.status === 'blocked' && (
-                  <span className="text-[10px] font-bold text-red-600 uppercase tracking-wide">Required</span>
-                )}
+                <Clock size={11} /> Waiting on{' '}
+                <span className="text-slate-300 font-normal normal-case">(if stuck)</span>
               </label>
               <input
                 className="input text-sm"
-                placeholder="Person, team, part, decision…"
+                placeholder="e.g. QA/HOD · Specific department · Person's name"
                 value={task.pendingWith || ''}
-                disabled={!canEditBasics}
+                disabled={!canEditAll}
                 onChange={(e) => setTask({ ...task, pendingWith: e.target.value })}
-                onBlur={(e) => canEditBasics && update({ pendingWith: e.target.value })}
+                onBlur={(e) => canEditAll && update({ pendingWith: e.target.value })}
               />
               {task.pendingWith && (
                 <div className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1">
-                  <Clock size={11} /> Waiting on {task.pendingWith}
+                  <Clock size={11} /> Pending with {task.pendingWith}
                 </div>
               )}
             </div>
@@ -903,75 +840,8 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                 </div>
               </div>
             </div>
-            {isLead && (
-              <div className="mt-3 space-y-2">
-                <label className="flex items-start gap-2.5 cursor-pointer rounded-xl border border-slate-200 dark:border-white/10 px-3 py-2.5 hover:bg-slate-50/80 dark:hover:bg-white/[0.03]">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={!!task.onCriticalPath}
-                    onChange={(e) =>
-                      update(
-                        { onCriticalPath: e.target.checked },
-                        { optimistic: { onCriticalPath: e.target.checked } },
-                      )
-                    }
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-[12px] font-bold text-slate-800 dark:text-white/85">
-                      Critical path
-                    </span>
-                    <span className="block text-[11px] text-slate-500 dark:text-white/40 leading-snug">
-                      If this slips, the project end slips. Surfaces first on the board.
-                    </span>
-                  </span>
-                </label>
-                {task.onCriticalPath && (
-                  <div>
-                    <label className="label">After (predecessor)</label>
-                    <Select
-                      value={task.blockedByTaskId || ''}
-                      ariaLabel="Predecessor on critical path"
-                      onChange={(v) =>
-                        update(
-                          { blockedByTaskId: v || null },
-                          { optimistic: { blockedByTaskId: v || null } },
-                        )
-                      }
-                      options={[
-                        { value: '', label: '— None —' },
-                        ...((task.siblingTasks || []) as { id: string; title: string }[])
-                          .filter((s) => s.id !== task.id)
-                          .map((s) => ({ value: s.id, label: s.title })),
-                      ]}
-                    />
-                    <div className="text-[10px] text-slate-400 mt-1">
-                      This task starts after the predecessor finishes.
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {task.onCriticalPath && !isLead && (
-              <div className="mt-2 text-[11px] font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/25 rounded-md px-2 py-1.5">
-                On the critical path
-                {task.blockedByTitle ? ` · after ${task.blockedByTitle}` : ''}
-              </div>
-            )}
           </div>
         </Card>
-
-        {/* Recurring series schedule — only on occurrence tasks. Leads can
-            change cadence (incl. last Sunday of month) without leaving detail. */}
-        {task.recurringActivityId && (
-          <TaskRecurringCard
-            initial={task.recurring || null}
-            teamId={teamId || task.projectTeamId || null}
-            canEdit={isLead || isAdmin}
-            onToast={(msg, kind) => showToast(msg, kind === 'err' ? 'err' : 'ok')}
-            onUpdated={(r) => setTask((t: any) => (t ? { ...t, recurring: r } : t))}
-          />
-        )}
 
         {/* ── Effort ─────────────────────────────────────────────────────
            Estimate vs. logged time. The estimate is lead-set; logged time
@@ -1011,11 +881,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                   <div>
                     <div className="text-xs font-semibold text-slate-700 dark:text-white/75">
                       {effortMins > 0
-                        ? `${fmtMins(effortMins)} logged`
-                        : 'No time logged'}
+                        ? `${fmtMins(effortMins)} invested in this task`
+                        : 'No effort logged yet'}
                     </div>
                     <div className="mt-0.5 text-[11px] text-slate-400">
-                      Log hours to track estimate vs actual.
+                      Add time after a focused work block so estimates improve without interrupting the work.
                     </div>
                   </div>
                   <ChevronRight size={15} className="shrink-0 text-slate-400" />
@@ -1212,51 +1082,16 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         )}
 
         {canSignoff && (
-          <Card title="Sign-off">
+          <Card title="Formal Sign-off">
+            <p className="text-xs text-slate-500 mb-3">
+              This task requires a formal sign-off. Review the evidence and approve below.
+            </p>
             <button className="btn-primary w-full justify-center text-sm" onClick={signoff}>
-              Approve
+              Approve & Sign off
             </button>
           </Card>
         )}
       </div>
-
-      {/* Mobile: sticky status control — finish work without scrolling the sidebar. */}
-      {canEditStatus && (
-        <div className="sm:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-white/10 bg-white/95 dark:bg-[#1a1a18]/95 backdrop-blur-md px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(15,23,42,0.08)]">
-          <div className="flex gap-1 overflow-x-auto max-w-6xl mx-auto">
-            {STATUSES.map((s) => {
-              const meta = STATUS_META[s];
-              const active = task.status === s;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  disabled={savingStatus}
-                  onClick={() => updateStatus(s)}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold border transition-colors ${
-                    active
-                      ? 'border-transparent text-slate-900 dark:text-white'
-                      : 'border-transparent text-slate-500 bg-slate-50 dark:bg-white/[0.04]'
-                  }`}
-                  style={
-                    active
-                      ? {
-                          background: `${meta.ring}88`,
-                          border: `1px solid ${meta.ring}`,
-                        }
-                      : undefined
-                  }
-                >
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.dot }} />
-                  {meta.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {/* Spacer so sticky bar never covers last content on mobile. */}
-      {canEditStatus && <div className="sm:hidden h-16" aria-hidden />}
     </div>
   );
 }

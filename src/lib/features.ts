@@ -1,16 +1,24 @@
 /**
- * Feature flags.
+ * Launch / focus feature flags.
  *
- * Mission: the work board for everyone — projects, tasks, owners, dates, blockers.
- * Core always on: Today · Projects · Teams · Capture · admin.
+ * First principle: the product mission is the morning decision — open Pragati
+ * and act on the highest-leverage work. Secondary workbench tools are real and
+ * valuable, but they dilute first paint and first impression when everything is
+ * on by default.
  *
- * Secondary chrome is opt-in. Defaults ship the machine, not the museum.
+ * Flags are NEXT_PUBLIC_ so client components (nav, panels) and server code
+ * share the same answer. Defaults preserve today's behaviour unless FOCUS MODE
+ * is turned on.
  *
- *   NEXT_PUBLIC_FOCUS_MODE=1           — force core-only
- *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0   — hide Capture board FAB
- *   NEXT_PUBLIC_WORKBENCH_MODULES=1    — team trackers / tickets
- *   NEXT_PUBLIC_SCRATCHPAD_ENABLED=1   — notes FAB
- *   NEXT_PUBLIC_BIRDS_EYE_ENABLED=1    — bird's-eye power map
+ *   NEXT_PUBLIC_FOCUS_MODE=1
+ *     Hides secondary personal/workbench surfaces so the mission loop stays
+ *     sharp: Dashboard · Projects · Teams · My Day · (admin) People/Audit.
+ *
+ * Per-surface overrides (only consulted when focus mode is off, except
+ * scratchpad which stays opt-in):
+ *   NEXT_PUBLIC_WHITEBOARD_ENABLED=0     hide whiteboard
+ *   NEXT_PUBLIC_WORKBENCH_MODULES=0      hide tickets / CSV-QMS entry points
+ *   NEXT_PUBLIC_SCRATCHPAD_ENABLED=1     enable scratchpad (off by default)
  */
 
 function envOn(name: string): boolean {
@@ -23,27 +31,24 @@ function envOff(name: string): boolean {
   return v === '0' || v === 'false' || v === 'no';
 }
 
-/** Mission-first mode — strip secondary surfaces. */
+/** Mission-first mode — strip secondary surfaces from nav and team panels. */
 export const FOCUS_MODE = envOn('NEXT_PUBLIC_FOCUS_MODE');
 
 /**
- * Private whiteboard FAB on Capture. On by default (thinking tool, not nav).
- * Opt out with NEXT_PUBLIC_WHITEBOARD_ENABLED=0.
+ * Full-page whiteboard (personal thinking canvas). On by default; off in
+ * focus mode or when explicitly disabled.
  */
-export const WHITEBOARD_ENABLED = !FOCUS_MODE && !envOff('NEXT_PUBLIC_WHITEBOARD_ENABLED');
+export const WHITEBOARD_ENABLED =
+  !FOCUS_MODE && !envOff('NEXT_PUBLIC_WHITEBOARD_ENABLED');
 
 /**
- * Team workbench modules (tickets, tracker sheets). Off by default.
+ * Team workbench modules (tickets, CSV activity / QMS sheets). On by default;
+ * off in focus mode. Individual teams still gate via `team.modules.*.enabled`.
  */
 export const WORKBENCH_MODULES_ENABLED =
-  !FOCUS_MODE && envOn('NEXT_PUBLIC_WORKBENCH_MODULES');
+  !FOCUS_MODE && !envOff('NEXT_PUBLIC_WORKBENCH_MODULES');
 
 /**
- * Scratchpad / sticky notes — opt-in only.
+ * Scratchpad / sticky notes workbench — opt-in only (launch default off).
  */
-export const SCRATCHPAD_ENABLED = !FOCUS_MODE && envOn('NEXT_PUBLIC_SCRATCHPAD_ENABLED');
-
-/**
- * Bird's-eye power map — opt-in. Not the morning path.
- */
-export const BIRDS_EYE_ENABLED = !FOCUS_MODE && envOn('NEXT_PUBLIC_BIRDS_EYE_ENABLED');
+export const SCRATCHPAD_ENABLED = envOn('NEXT_PUBLIC_SCRATCHPAD_ENABLED');

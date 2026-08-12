@@ -70,9 +70,10 @@ These aren't features so much as defaults:
 - **Think at a whiteboard, not in a deck.** A full-page drawing surface, in
   the main nav for every role, private to its owner — which is exactly what
   makes people willing to think honestly on it.
-- **Install it like an app.** Pragati is a Progressive Web App — pin it to
-  your home screen or dock, open it in its own window, and keep the morning
-  brief push notifications without keeping a browser tab around.
+- **Top 5 Things.** Everyone writes five lines a week — what they're working
+  on, watching, worried about. The feed is open to the whole team, with no
+  layer between an observation and whoever needs to hear it. Deliberately
+  un-audited: thoughts stop being honest the moment they become paperwork.
 - **The forecast shows its slack.** Alongside the statistical finish dates,
   every project gets a *speed-of-light* date — the fastest it could possibly
   finish if nothing ever waited in a queue. The gap between that and the
@@ -87,8 +88,8 @@ test`, `find`, `git log` — not from a pitch:
 
 | | |
 | --- | --- |
-| **~62,000** lines of TypeScript | **92** API route handlers |
-| **18** Mongoose models | **291** unit tests + **5** end-to-end specs, all green |
+| **~62,000** lines of TypeScript | **93** API route handlers |
+| **19** Mongoose models | **294** unit tests + **5** end-to-end specs, all green |
 | **675+** commits of real iteration | Typecheck · lint · test · build gated on every push |
 
 Decisions worth a closer look — each one started by questioning a default:

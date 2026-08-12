@@ -1,5 +1,5 @@
 'use client';
-import { Fragment, useState, useEffect, useRef, Suspense } from 'react';
+import { Fragment, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -10,11 +10,7 @@ import { AvatarRegistryProvider } from './AvatarRegistry';
 import { NotificationBell } from './NotificationBell';
 import { clearActivityGraphCache } from './ActivityGraph';
 import { api } from '@/lib/client/api';
-import { installOnlineFlush, queueLength } from '@/lib/client/offlineQueue';
-import { useToast } from './Toast';
-import { PwaProvider } from './PwaProvider';
-import { NavigationProgress } from './NavigationProgress';
-import { PrefetchOnHover } from './PrefetchOnHover';
+import { WHITEBOARD_ENABLED } from '@/lib/features';
 
 // Heavy shell chrome — lazy so first paint of every authed page does not pay
 // for command palette search + calendar month math until the shell is idle.
@@ -42,12 +38,14 @@ const ForcePasswordModal = dynamic(() => import('./ForcePasswordModal').then((m)
   ssr: false,
   loading: () => null,
 });
-// Quick-PIN setup (login 3+) — lazy so day-one users never download it.
+// Mandatory Quick-PIN setup on first login — lazy so it stays out of the bundle
+// for everyone who already has a PIN.
 const SetPinModal = dynamic(() => import('./SetPinModal').then((m) => m.SetPinModal), {
   ssr: false,
   loading: () => null,
 });
-// One-card first-login welcome — lazy; returning users never pay for it.
+// Guided "spotlight" product tour for first-time users — lazy so its portal,
+// rect-tracking, and step data stay out of the bundle for returning users.
 const FirstTimeTour = dynamic(() => import('./FirstTimeTour').then((m) => m.FirstTimeTour), {
   ssr: false,
   loading: () => null,
@@ -59,6 +57,7 @@ import {
   UsersRound,
   ShieldCheck,
   NotebookPen,
+  Presentation,
   LogOut,
   Menu,
   X,
@@ -103,19 +102,17 @@ export interface CurrentUser {
 }
 
 /* ── Dark-mode hook ─────────────────────────────────────────────────
-   Initial value comes from the `pragati_theme` cookie painted onto
-   <html class="dark"> server-side (root + authed layouts). Must use the
-   same cookie name on write or a refresh always reverts to light. */
+   The initial value is read from the `theme` cookie that's painted onto
+   <html class="dark"> server-side (see (authed)/layout.tsx). That kills
+   the FOUC: previously we mounted with light, then a useEffect flipped
+   to dark, causing a visible flash + a full re-paint of the shell. */
 function useDarkMode(initialDark: boolean): [boolean, () => void] {
   const [dark, setDark] = useState(initialDark);
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
-    // Same name the server reads in layout.tsx — 365 d, SameSite=Lax.
-    // Secure when served over HTTPS so session theme can't leak on plain HTTP.
-    const secure = typeof location !== 'undefined' && location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `pragati_theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax${secure}`;
-    // Clear legacy `theme` cookie if present so it can't confuse anything.
-    document.cookie = `theme=; path=/; max-age=0; SameSite=Lax${secure}`;
+    // Persist via cookie so the next SSR render starts in the right
+    // mode. 365 d, sameSite=lax so it travels with normal navigation.
+    document.cookie = `theme=${dark ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`;
   }, [dark]);
   return [dark, () => setDark((d) => !d)];
 }
@@ -140,20 +137,18 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const toast = useToast();
-  const toastRef = useRef(toast);
-  toastRef.current = toast;
 
   const [open, setOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [idleWarning, setIdleWarning] = useState(false);
   const [dark, toggleDark] = useDarkMode(initialDark);
-  const [offlineQueued, setOfflineQueued] = useState(0);
   const [mustChangePw, setMustChangePw] = useState(!!user.mustChangePassword);
-  // PIN is never day-one. First login is password (if required) + one welcome
-  // action only. Offer Quick PIN from the 3rd successful login so drop-in
-  // users aren't piled with a second modal.
-  const shouldOfferPin = !user.hasPin && (user.loginCount ?? 0) >= 3 && !user.pinPromptDismissedAt;
+  // Show the PIN modal only when ALL of these hold:
+  //  • the user doesn't already have a PIN
+  //  • they've completed at least 2 full logins (first visit is busy with
+  //    password change + onboarding tour)
+  //  • they haven't dismissed the prompt this session with "Maybe later"
+  const shouldOfferPin = !user.hasPin && (user.loginCount ?? 0) >= 2 && !user.pinPromptDismissedAt;
   const [needsPin, setNeedsPin] = useState(shouldOfferPin);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -221,68 +216,6 @@ export default function AppShell({
     setAccountMenuOpen(false);
     setMobileMenuOpen(false);
   }, [pathname]);
-
-  // Offline task-status queue — flush when signal returns.
-  useEffect(() => {
-    setOfflineQueued(queueLength());
-    const onQueued = () => setOfflineQueued(queueLength());
-    const onFlushed = (ev: Event) => {
-      setOfflineQueued(queueLength());
-      const detail = (ev as CustomEvent).detail as
-        | { dropped?: number; error?: string; flushed?: number }
-        | undefined;
-      // Surface permanent drops so the floor knows a change did not land.
-      if (detail?.dropped && detail.dropped > 0) {
-        toastRef.current.warning(
-          `${detail.dropped} offline change${detail.dropped === 1 ? '' : 's'} could not sync`,
-          detail.error || 'Re-apply on the task if needed.',
-        );
-      }
-    };
-    window.addEventListener('pragati:offline-queued', onQueued);
-    window.addEventListener('pragati:offline-flushed', onFlushed);
-    const stop = installOnlineFlush();
-    return () => {
-      stop();
-      window.removeEventListener('pragati:offline-queued', onQueued);
-      window.removeEventListener('pragati:offline-flushed', onFlushed);
-    };
-  }, []);
-
-  // Warm every primary surface ASAP + again on idle so deep links feel instant.
-  useEffect(() => {
-    const routes = [
-      '/',
-      '/projects',
-      '/teams',
-      '/my-day',
-      '/settings',
-      '/people',
-      '/audit',
-      '/admin',
-    ];
-    const warm = () => {
-      for (const href of routes) {
-        try {
-          router.prefetch(href);
-        } catch {
-          /* ignore */
-        }
-      }
-    };
-    // Immediate: don't wait for idle on the first paint cycle.
-    warm();
-    const w = window as Window & {
-      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-    if (typeof w.requestIdleCallback === 'function') {
-      const id = w.requestIdleCallback(warm, { timeout: 1200 });
-      return () => w.cancelIdleCallback?.(id);
-    }
-    const t = window.setTimeout(warm, 200);
-    return () => window.clearTimeout(t);
-  }, [router]);
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => {
@@ -370,7 +303,7 @@ export default function AppShell({
   }, [router]);
 
   // ── Global keyboard shortcuts ───────────────────────────────────────────────
-  // G→D: Today, G→P: Projects, G→T: Teams, G→M: My Day,
+  // G→D: Dashboard, G→P: Projects, G→T: Teams, G→M: My Day, G→W: Whiteboard,
   // ?: shortcuts modal
   // Skipped when focus is on a text input / textarea / contenteditable.
   useEffect(() => {
@@ -419,6 +352,9 @@ export default function AppShell({
           T: '/teams',
           m: '/my-day',
           M: '/my-day',
+          ...(WHITEBOARD_ENABLED
+            ? { w: '/whiteboard', W: '/whiteboard' }
+            : {}),
         };
         if (dest[e.key]) {
           e.preventDefault();
@@ -447,11 +383,21 @@ export default function AppShell({
   // Team-lead nav: run teams, projects and tasks. NOT People — workspace
   // user management (create/reset/unlock/delete/promote accounts) is an
   // admin-only surface, appended via adminExtra below.
-  // My Day is pinned above the footer as the personal surface. Whiteboard
-  // lives as a FAB on My Day (Jensen: think on the board before status).
-  // Today = the only morning surface. Projects/Teams are structure.
+  // My Day and Whiteboard are NOT in the main nav list — they render pinned
+  // just above the user footer as the viewer's *personal* surfaces, kept
+  // together and always reachable without scrolling. Whiteboard sits beside
+  // My Day because they're the same kind of space: yours alone, for thinking
+  // and capturing before work becomes tracked records. (The three record
+  // surfaces — Dashboard/Projects/Teams — are the shared org view above.)
+  const whiteboardItem: NavItem = {
+    href: '/whiteboard',
+    label: 'Whiteboard',
+    icon: Presentation,
+    iconColor: '#0E7490',
+    iconBg: '#E0F7FA',
+  };
   const leadNav: NavItem[] = [
-    { href: '/', label: 'Today', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
@@ -484,18 +430,28 @@ export default function AppShell({
   // The master-admin item is only added when the signed-in user actually holds
   // that role. In the current single-tenant deploy no one does, so the link
   // never appears — the route itself also redirects non-master-admins.
-  const masterAdminExtra: NavItem[] = []; // /master-admin not shipped — no dead link
+  const masterAdminExtra: NavItem[] = isMasterAdmin
+    ? [
+        {
+          href: '/master-admin',
+          label: 'Platform',
+          icon: Globe,
+          iconColor: '#9333EA',
+          iconBg: '#F3E8FF',
+          adminOnly: true,
+        },
+      ]
+    : [];
 
   const contributorNav: NavItem[] = [
-    { href: '/', label: 'Today', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard, iconColor: '#1565C0', iconBg: '#E3F2FD' },
     { href: '/projects', label: 'Projects', icon: FolderKanban, iconColor: '#7B1FA2', iconBg: '#F3E5F5' },
     { href: '/teams', label: 'Teams', icon: Users, iconColor: '#2E7D32', iconBg: '#E8F5E9' },
   ];
 
-  // Capture / whiteboard — secondary to Today. Personal notes live here.
   const myDayItem: NavItem = {
     href: '/my-day',
-    label: 'Capture',
+    label: 'My Day',
     icon: NotebookPen,
     iconColor: '#1565C0',
     iconBg: '#EFF6FF',
@@ -516,13 +472,7 @@ export default function AppShell({
   }
 
   const roleText =
-    user.role === 'master_admin'
-      ? 'Platform owner'
-      : user.role === 'admin'
-        ? 'Admin'
-        : user.role === 'lead'
-          ? 'Team Lead'
-          : 'Individual Contributor';
+    user.role === 'admin' ? 'Admin' : user.role === 'lead' ? 'Team Lead' : 'Individual Contributor';
 
   // Decluttered: a single entry into the profile (which now holds Activity and,
   // behind a disclosure, Security / Quick PIN / admin tools). Notifications and
@@ -767,12 +717,13 @@ export default function AppShell({
             those stay pinned closest to the footer. */}
         {!showCollapsed && <SidebarCalendar dark={dark} />}
 
-        {/* Personal: My Day. Whiteboard opens from a FAB on that page. */}
+        {/* Personal surfaces — My Day (+ Whiteboard when enabled), pinned just
+            above the footer. Both are "yours alone": capture and thinking. */}
         <div
           className="mt-2 pt-2 border-t space-y-0.5"
           style={{ borderColor: dark ? 'rgba(255,255,255,0.06)' : '#eef2f7' }}
         >
-          {[myDayItem].map((n) => {
+          {[myDayItem, ...(WHITEBOARD_ENABLED ? [whiteboardItem] : [])].map((n) => {
             const Icon = n.icon;
             const active = isActive(n.href);
             return (
@@ -929,7 +880,6 @@ export default function AppShell({
   );
 
   return (
-    <PwaProvider>
     <CurrentUserProvider user={user}>
       <AvatarRegistryProvider
         seed={{
@@ -941,34 +891,13 @@ export default function AppShell({
         }}
         initial={initialAvatars}
       >
-        {/* Instant nav feedback + hover prefetch — every page feels pre-warmed. */}
-        <Suspense fallback={null}>
-          <NavigationProgress />
-        </Suspense>
-        <PrefetchOnHover />
-        {offlineQueued > 0 && (
-          <div
-            className="fixed top-0 inset-x-0 z-[9990] h-8 px-3 flex items-center justify-center text-center text-[11px] font-bold tracking-tight bg-amber-500 text-amber-950 shadow-sm"
-            role="status"
-            data-testid="offline-queue-banner"
-          >
-            Offline — {offlineQueued} change{offlineQueued === 1 ? '' : 's'} queued. Syncs when
-            you&rsquo;re back online.
-          </div>
-        )}
         {/* Fixed-height app shell: the shell itself never scrolls (overflow-hidden),
-        so the sidebar stays put — only <main> scrolls. Top padding reserves
-        space for the fixed offline banner so content is never covered. */}
-        <div
-          className="h-screen flex overflow-hidden"
-          style={{
-            background: 'var(--bg-page)',
-            paddingTop: offlineQueued > 0 ? 32 : 0,
-          }}
-        >
+        so the sidebar stays put — only <main> scrolls. This is what keeps the
+        sidebar pinned regardless of how far the page content scrolls. */}
+        <div className="h-screen flex overflow-hidden" style={{ background: 'var(--bg-page)' }}>
           {/* Mobile backdrop */}
           <div
-            className={`lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-150 ${
+            className={`lg:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${
               open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
             }`}
             onClick={() => setOpen(false)}
@@ -981,7 +910,7 @@ export default function AppShell({
           shrink-0 flex flex-col
           fixed inset-y-0 left-0 z-50
           lg:sticky lg:top-0 lg:h-screen
-          transition-[transform,width] duration-150 ease-out
+          transition-[transform,width] duration-300 ease-in-out
           ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${collapsed && !open && sidebarHovered ? 'lg:fixed lg:z-50' : ''}
         `}
@@ -1120,10 +1049,7 @@ export default function AppShell({
                   }}
                 />
               )}
-              <div
-                key={pathname}
-                className="page-enter max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden"
-              >
+              <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden">
                 {children}
               </div>
             </main>
@@ -1255,6 +1181,17 @@ export default function AppShell({
                 >
                   <UserCircle size={18} className="text-slate-400" /> Profile &amp; settings
                 </Link>
+                {/* Whiteboard doesn't fit the 5-tab bottom bar, so the sheet is
+                its mobile entry point — the canvas itself is touch-native. */}
+                {WHITEBOARD_ENABLED && (
+                  <Link
+                    href="/whiteboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${dark ? 'text-white/70 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100'}`}
+                  >
+                    <Presentation size={18} style={{ color: '#0E7490' }} /> Whiteboard
+                  </Link>
+                )}
                 {/* Admin-only links — these never fit in the 4-tab bottom nav, so
                 this is the only mobile entry point for Logs (and Platform for
                 master-admins). */}
@@ -1318,8 +1255,10 @@ export default function AppShell({
             />
           )}
 
-          {/* Quick-PIN — after password (if any), login ≥ 3 only. "Maybe later"
-          sets pinPromptDismissedAt so we stop blocking day-to-day. */}
+          {/* Quick-PIN prompt — only after the password step (if any) is cleared,
+          and from the user's second login onward (see shouldOfferPin above).
+          Dismissable: "Maybe later" records pinPromptDismissedAt so we stop
+          blocking and re-offer gently next session. */}
           {!mustChangePw && needsPin && (
             <SetPinModal
               onDone={() => {
@@ -1337,8 +1276,11 @@ export default function AppShell({
             />
           )}
 
-          {/* One-card welcome — never stacks on force-password. Marks tour-seen
-          on dismiss (server + localStorage) so it never reappears. */}
+          {/* Guided product tour — gated behind the forced-password step so the
+          two full-screen overlays never stack on a brand-new account. The
+          component is itself the source of truth on whether to open: it
+          checks `alreadySeen` (server) and a localStorage fast-path, and
+          POSTs /api/me/tour-seen on dismissal so it never reappears. */}
           {!mustChangePw && <FirstTimeTour alreadySeen={!!user.hasSeenTour} role={user.role} />}
 
           {/* Sign-out confirmation — fixed centered modal, works in both expanded and collapsed sidebar */}
@@ -1417,10 +1359,13 @@ export default function AppShell({
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { keys: ['⌘', 'K'], label: 'Command palette' },
-                    { keys: ['G', 'D'], label: 'Today' },
+                    { keys: ['G', 'D'], label: 'Dashboard' },
                     { keys: ['G', 'P'], label: 'Projects' },
                     { keys: ['G', 'T'], label: 'Teams' },
-                    { keys: ['G', 'M'], label: 'Capture' },
+                    { keys: ['G', 'M'], label: 'My Day' },
+                    ...(WHITEBOARD_ENABLED
+                      ? [{ keys: ['G', 'W'], label: 'Whiteboard' }]
+                      : []),
                     { keys: ['?'], label: 'Shortcuts' },
                     { keys: ['Esc'], label: 'Close dialogs' },
                   ].map(({ keys, label }) => (
@@ -1524,6 +1469,5 @@ export default function AppShell({
         </div>
       </AvatarRegistryProvider>
     </CurrentUserProvider>
-    </PwaProvider>
   );
 }

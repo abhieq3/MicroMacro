@@ -108,44 +108,21 @@
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
-  /* Compatibility: post-Mars code still uses --mars; map to classic brand blue */
-  --mars: #1565c0;
-  --mars-hover: #0d47a1;
-  --mars-soft: rgba(21, 101, 192, 0.12);
-  --mars-glow: rgba(21, 101, 192, 0.22);
-  --x-blue: #1565c0;
-  --x-blue-hover: #0d47a1;
-  --accent: #1565c0;
-  --focus-ring: rgba(21, 101, 192, 0.28);
-  --icon: #475569;
-  --icon-active: #1565c0;
 }
 
 .dark {
   color-scheme: dark;
-  /* Pragati dark — warm-neutral canvas, classic brand blue accent (never terracotta). */
-  --bg-page: #1a1b1e;
-  --bg-card: #222327;
-  --bg-subtle: #28292e;
-  --bg-elevated: #2e2f35;
+  /* Claude-style warm neutral dark — coffee-toned grays, not blue. */
+  --bg-page: #1f1e1d;
+  --bg-card: #262624;
+  --bg-subtle: #2a2927;
+  --bg-elevated: #30302e;
   --border-card: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.12);
-  --text-primary: #f4f5f7;
-  --text-secondary: #b8bcc6;
-  --text-muted: #858a96;
-  --accent: #42a5f5;
-  --mars: #42a5f5;
-  --mars-hover: #64b5f6;
-  --mars-soft: rgba(66, 165, 245, 0.16);
-  --mars-glow: rgba(66, 165, 245, 0.28);
-  --x-blue: #42a5f5;
-  --x-blue-hover: #64b5f6;
-  --focus-ring: rgba(66, 165, 245, 0.35);
-  --icon: #b8bcc6;
-  --icon-active: #64b5f6;
-  --brand: #42a5f5;
-  --brand-dark: #1e88e5;
-  --forest: #66bb6a;
+  --text-primary: #faf9f5;
+  --text-secondary: #c2c0b6;
+  --text-muted: #8a8780;
+  --accent: #c96442;
 }
 
 /* ── Base ─────────────────────────────────────────────────────────────────── */
@@ -169,11 +146,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition:
-    background 0.12s ease,
-    color 0.12s ease;
-  /* Momentum scrolling on iOS; avoid rubber-band fighting fixed chrome */
-  overscroll-behavior-y: none;
-  -webkit-tap-highlight-color: transparent;
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 /* ── Selection ────────────────────────────────────────────────────────────── */
@@ -526,14 +500,14 @@ body {
 /* ── Celebration animations ───────────────────────────────────────────────── */
 @keyframes confetti-fall {
   0% {
-    transform: translateY(0) rotateZ(0deg) scale(1);
+    transform: translateY(0) rotateZ(0deg);
     opacity: 1;
   }
-  70% {
+  80% {
     opacity: 1;
   }
   100% {
-    transform: translateY(110vh) rotateZ(780deg) scale(0.85);
+    transform: translateY(105vh) rotateZ(600deg);
     opacity: 0;
   }
 }
@@ -549,42 +523,6 @@ body {
   100% {
     transform: scale(1) translateY(0);
     opacity: 1;
-  }
-}
-/* Harder project-complete card entrance. */
-@keyframes celebration-pop-hard {
-  0% {
-    transform: scale(0.4) translateY(28px);
-    opacity: 0;
-  }
-  55% {
-    transform: scale(1.1) translateY(-8px);
-    opacity: 1;
-  }
-  78% {
-    transform: scale(0.97) translateY(2px);
-  }
-  100% {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
-}
-/* Micro sparkles from task-complete toast (--spark-dx set inline). */
-@keyframes task-sparkle-up {
-  0% {
-    transform: translate(0, 0) scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(var(--spark-dx, 0px), -68px) scale(0.15);
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .celebration-confetti,
-  .task-sparkle {
-    animation: none !important;
-    opacity: 0 !important;
   }
 }
 
@@ -760,10 +698,12 @@ body {
 /* ── Page transition ─────────────────────────────────────────────────────── */
 @keyframes page-enter {
   from {
-    opacity: 0.92;
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 /* `backwards` (not `both`): keep the entrance slide, but DON'T retain
@@ -771,15 +711,8 @@ body {
    wrapper into the containing block for position:fixed, which made modals
    (e.g. "Can't mark completed") center relative to the scrolled page
    instead of the viewport. */
-/* Near-instant settle — motion must never feel like waiting. */
 .page-enter {
-  animation: page-enter 0.08s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-
-/* Long lists: skip paint for off-screen rows (big win on team boards). */
-.list-row-cv {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 52px;
+  animation: page-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 /* ── Stat-card stagger ───────────────────────────────────────────────────── */
@@ -821,12 +754,20 @@ body {
     background-position: 200% 50%;
   }
 }
-/* Static brand ink — infinite shine was decoration that burned GPU for no leverage. */
 .hero-greeting {
-  color: #0f172a;
+  background: linear-gradient(110deg, #0f172a 0%, #0f172a 35%, #1565c0 50%, #0f172a 65%, #0f172a 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: hero-shine 7s ease-in-out infinite;
 }
 .dark .hero-greeting {
-  color: #faf9f5;
+  background: linear-gradient(110deg, #faf9f5 0%, #faf9f5 35%, #d97757 50%, #faf9f5 65%, #faf9f5 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 /* ── Generic small fade-in (used by inline forms) ────────────────────────── */
@@ -847,9 +788,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .fade-up-stagger,
   .fade-in-late,
-  .page-enter,
-  .fade-in-soft,
-  .skeleton {
+  .hero-greeting {
     animation: none !important;
   }
   .hero-greeting {
@@ -857,30 +796,6 @@ body {
     -webkit-text-fill-color: #0f172a;
     color: #0f172a;
   }
-  .btn-primary:hover:not(:disabled),
-  .btn-secondary:hover,
-  .card-hover:hover {
-    transform: none;
-  }
-}
-
-/* ── Fluid interaction language (Jensen: speed is the product) ───────────── */
-@media (hover: hover) and (pointer: fine) {
-  .fluid-row {
-    transition:
-      background-color 0.1s ease,
-      border-color 0.1s ease;
-  }
-  .fluid-row:hover {
-    background-color: rgba(15, 23, 42, 0.03);
-  }
-  .dark .fluid-row:hover {
-    background-color: rgba(255, 255, 255, 0.04);
-  }
-}
-.fluid-press:active {
-  transform: scale(0.985);
-  transition: transform 0.08s ease;
 }
 
 /* ── Command palette / modal ─────────────────────────────────────────────── */
@@ -928,7 +843,7 @@ body {
 .skeleton {
   background: linear-gradient(90deg, #eef3f8 0%, #f7f9fb 42%, #eef3f8 84%);
   background-size: 220% auto;
-  animation: shimmer 1.05s ease-in-out infinite;
+  animation: shimmer 1.45s ease-in-out infinite;
   border-radius: 6px;
   color: transparent;
 }
@@ -1025,8 +940,8 @@ a {
 .dark .input:focus,
 .dark .select:focus,
 .dark .textarea:focus {
-  border-color: rgba(66, 165, 245, 0.55) !important;
-  box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.2) !important;
+  border-color: rgba(217, 119, 87, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.18) !important;
 }
 .dark .input::placeholder,
 .dark .textarea::placeholder {
@@ -1052,30 +967,21 @@ a {
   color: #faf9f5 !important;
 }
 
-/* Brand blue utilities in dark — stay blue (identity freeze), never terracotta. */
+/* Subtle blue-tinted backgrounds → warm neutral */
 .dark .bg-blue-50 {
-  background-color: rgba(66, 165, 245, 0.12) !important;
+  background-color: rgba(217, 119, 87, 0.1) !important;
 }
 .dark .bg-blue-100 {
-  background-color: rgba(66, 165, 245, 0.18) !important;
+  background-color: rgba(217, 119, 87, 0.16) !important;
 }
-.dark .text-blue-400,
-.dark .text-blue-500 {
-  color: #64b5f6 !important;
-}
-.dark .text-blue-600,
 .dark .text-blue-700,
 .dark .text-blue-800,
 .dark .text-blue-900 {
-  color: #90caf9 !important;
+  color: #e8a98c !important;
 }
 .dark .border-blue-100,
 .dark .border-blue-200 {
-  border-color: rgba(66, 165, 245, 0.28) !important;
-}
-.dark .border-blue-300,
-.dark .border-blue-400 {
-  border-color: rgba(66, 165, 245, 0.4) !important;
+  border-color: rgba(217, 119, 87, 0.22) !important;
 }
 
 /* Kanban horizontal scroller — slim track so the slider doesn't add visual weight. */
@@ -1110,8 +1016,8 @@ a {
 
 /* Selection */
 .dark ::selection {
-  background: rgba(66, 165, 245, 0.35);
-  color: #f4f5f7;
+  background: rgba(217, 119, 87, 0.35);
+  color: #faf9f5;
 }
 
 /* Scrollbar */

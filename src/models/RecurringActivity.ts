@@ -32,22 +32,9 @@ const RecurringActivitySchema = new Schema(
     assigneeId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
 
-    // Cadence kind:
-    //   interval         — every <intervalCount> <intervalUnit>(s) from startDate
-    //   monthly_weekday  — every <intervalCount> month(s) on the Nth weekday
-    //                      (e.g. last Sunday of each month)
-    scheduleKind: {
-      type: String,
-      enum: ['interval', 'monthly_weekday'],
-      default: 'interval',
-    },
     // Cadence: every <intervalCount> <intervalUnit>(s). e.g. 1 month, 6 month.
-    // For monthly_weekday, intervalUnit is always treated as month.
     intervalUnit: { type: String, enum: RECURRENCE_UNITS as unknown as string[], default: 'month' },
     intervalCount: { type: Number, default: 1, min: 1, max: 365 },
-    // monthly_weekday only: 0=Sun … 6=Sat; ordinal 1–4 or -1 (last).
-    weekday: { type: Number, default: null, min: 0, max: 6 },
-    weekdayOrdinal: { type: Number, default: null }, // 1|2|3|4|-1
     // First occurrence's due date — the anchor the cadence steps from.
     startDate: { type: Date, required: true },
     // Due date of the NEXT occurrence to be created. Advances by one interval

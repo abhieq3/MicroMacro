@@ -149,7 +149,7 @@ export function NotificationBell({
 
     const startPolling = () => {
       if (timer) return;
-      timer = setInterval(() => load(true), 45_000);
+      timer = setInterval(() => load(true), 30_000);
     };
     const stopPolling = () => {
       if (timer) {

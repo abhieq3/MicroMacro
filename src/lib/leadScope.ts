@@ -66,28 +66,17 @@ export const NOT_PERSONAL = {
   code: { $not: /^PRSN-/ },
 } as const;
 
-/**
- * Exclude system-managed holders (e.g. per-team Recurring Activities boards).
- * Use on surfaces that list *work projects* (dashboard cards). Do not use on
- * task queries that must still surface recurring occurrences.
- */
-export const NOT_SYSTEM = { isSystem: { $ne: true } } as const;
-
 // Mongo filter that returns true for every project the viewer can see.
 // Pass as the first arg to Project.find / countDocuments / aggregate $match.
 //
 // Personal projects are private to their owner: they're only ever returned
 // when the viewer owns them — never to another lead, and never to the admin
 // (even though the admin otherwise sees everything).
-// Recurring Activities (isSystem) projects remain in this filter so their
-// *tasks* stay queryable; dashboard UIs drop them from project lists separately.
 export function projectsVisibleFilter(scope: LeadScope) {
   const minePersonalOrNotPersonal = {
     $or: [{ ownerId: scope.userOid }, NOT_PERSONAL],
   };
-  if (scope.unrestricted) {
-    return minePersonalOrNotPersonal;
-  }
+  if (scope.unrestricted) return minePersonalOrNotPersonal;
   return {
     $and: [
       minePersonalOrNotPersonal,

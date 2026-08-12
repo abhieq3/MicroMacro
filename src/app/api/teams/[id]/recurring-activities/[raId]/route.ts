@@ -2,39 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { RecurringActivity } from '@/models/RecurringActivity';
 import { requireUser } from '@/lib/auth';
-import { guardTeamMember, guardTeamOwner } from '@/lib/teamAuth';
+import { guardTeamOwner } from '@/lib/teamAuth';
 import { handleError, readBody } from '@/lib/http';
 import { RecurringActivityUpdateSchema } from '@/lib/validations';
-import {
-  catchUpNextDue,
-  parseScheduleDate,
-  resolveFirstDue,
-  serializeRecurringActivity,
-} from '@/lib/recurring';
+import { serializeRecurringActivity } from '@/lib/recurring';
 import { logOperation } from '@/lib/audit';
 
 export const runtime = 'nodejs';
-
-// Read one recurring activity (any team member). Used from task detail so the
-// schedule can be inspected without listing the whole team series.
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string; raId: string } },
-) {
-  try {
-    const { error, user } = await requireUser(req);
-    if (error) return error;
-    await connectDB();
-    const denied = await guardTeamMember(params.id, String(user.sub), user.role);
-    if (denied) return denied;
-
-    const activity = await RecurringActivity.findOne({ _id: params.raId, teamId: params.id }).lean();
-    if (!activity) return NextResponse.json({ error: 'Not found' }, { status: 404 });
-    return NextResponse.json(serializeRecurringActivity(activity));
-  } catch (e) {
-    return handleError(e);
-  }
-}
 
 // Edit a recurring activity (lead/admin). Changes apply to FUTURE occurrences
 // only — occurrences already materialised are independent tasks and are left
@@ -59,53 +33,15 @@ export async function PATCH(
     if (body.checklist !== undefined) activity.checklist = body.checklist as any;
     if (body.assigneeId !== undefined) activity.assigneeId = (body.assigneeId as any) || null;
     if (body.priority !== undefined) activity.priority = body.priority;
-    if (body.scheduleKind !== undefined) {
-      (activity as any).scheduleKind = body.scheduleKind;
-      if (body.scheduleKind === 'monthly_weekday') {
-        activity.intervalUnit = 'month';
-      }
-    }
-    if (body.intervalUnit !== undefined && (activity as any).scheduleKind !== 'monthly_weekday') {
-      activity.intervalUnit = body.intervalUnit;
-    }
+    if (body.intervalUnit !== undefined) activity.intervalUnit = body.intervalUnit;
     if (body.intervalCount !== undefined) activity.intervalCount = body.intervalCount;
-    if (body.weekday !== undefined) (activity as any).weekday = body.weekday;
-    if (body.weekdayOrdinal !== undefined) (activity as any).weekdayOrdinal = body.weekdayOrdinal;
     if (body.leadTimeDays !== undefined) activity.leadTimeDays = body.leadTimeDays;
     if (body.active !== undefined) activity.active = body.active;
-
-    const scheduleSnapshot = {
-      scheduleKind: (activity as any).scheduleKind || 'interval',
-      intervalUnit: activity.intervalUnit,
-      intervalCount: activity.intervalCount,
-      weekday: (activity as any).weekday,
-      weekdayOrdinal: (activity as any).weekdayOrdinal,
-    };
-
-    // Re-anchoring: snap to schedule, then catch up so "next" is never past.
+    // Re-anchoring the start date moves the next occurrence to that date.
     if (body.startDate !== undefined) {
-      const due = resolveFirstDue(scheduleSnapshot, body.startDate, new Date());
-      activity.startDate = due;
-      activity.nextDueDate = due;
-    } else if (
-      body.scheduleKind !== undefined ||
-      body.weekday !== undefined ||
-      body.weekdayOrdinal !== undefined ||
-      body.intervalCount !== undefined ||
-      body.intervalUnit !== undefined
-    ) {
-      // Pattern changed without a new anchor — re-snap / catch up from today.
-      activity.nextDueDate = resolveFirstDue(scheduleSnapshot, new Date(), new Date()) as any;
-    } else {
-      // Soft heal: even a metadata-only save shouldn't leave a stale past cursor.
-      activity.nextDueDate = catchUpNextDue(
-        { ...scheduleSnapshot, nextDueDate: activity.nextDueDate },
-        new Date(),
-      ) as any;
-    }
-    // Ensure we never persist a non-date.
-    if (!(activity.nextDueDate instanceof Date) || isNaN(+activity.nextDueDate)) {
-      activity.nextDueDate = parseScheduleDate(new Date()) as any;
+      const start = new Date(body.startDate);
+      activity.startDate = start;
+      activity.nextDueDate = start;
     }
     await activity.save();
 

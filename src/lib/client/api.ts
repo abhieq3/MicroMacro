@@ -17,14 +17,9 @@
  *   redirect: the caller is trying to authenticate, so a wrong-password
  *   401 should render below the form, not reload the page.
  *
- * - Network failure on a queueable task PATCH while offline → queued and
- *   flushed on reconnect (see offlineQueue.ts).
- *
  * - All other non-OK responses throw an Error with the server's message;
  *   callers display it via setErr() or a toast.
  */
-
-import { enqueueMutation, isQueueableMutation } from './offlineQueue';
 
 const AUTH_ENDPOINTS = [
   '/auth/login',
@@ -46,8 +41,9 @@ const MAX_RETRIES = 2;
 const NETWORK_ERROR = 'Network error — check your connection and try again.';
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-// 0 → 180ms, 1 → 480ms. Aggressive: ride out a blip without feeling stuck.
-const backoff = (attempt: number) => 180 + attempt * 300;
+// 0 → 300ms, 1 → 800ms. Short enough to stay snappy, long enough to ride out a
+// blip (a dropped Wi-Fi packet, a cold serverless function).
+const backoff = (attempt: number) => 300 + attempt * 500;
 
 /**
  * fetch() with a small retry budget for *idempotent* requests only. A GET that
@@ -81,33 +77,19 @@ export async function api<T = any>(
   opts: { method?: string; body?: unknown; headers?: Record<string, string> } = {},
 ): Promise<T> {
   const requestMethod = (opts.method || 'GET').toUpperCase();
-  let res: Response;
-  try {
-    res = await fetchWithRetry(
-      `/api${path}`,
-      {
-        method: requestMethod,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(opts.headers || {}),
-        },
-        body: opts.body ? JSON.stringify(opts.body) : undefined,
+  const res = await fetchWithRetry(
+    `/api${path}`,
+    {
+      method: requestMethod,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(opts.headers || {}),
       },
-      requestMethod === 'GET',
-    );
-  } catch (e: any) {
-    // Offline / network dead — queue safe task mutations so the floor can keep moving.
-    if (
-      typeof window !== 'undefined' &&
-      isQueueableMutation(path, requestMethod) &&
-      (!navigator.onLine || /network/i.test(String(e?.message || '')))
-    ) {
-      enqueueMutation(path, requestMethod, opts.body);
-      return { ok: true, queued: true, id: path.split('/').pop() } as T;
-    }
-    throw e;
-  }
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    },
+    requestMethod === 'GET',
+  );
 
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;

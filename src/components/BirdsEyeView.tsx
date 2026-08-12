@@ -175,7 +175,7 @@ const STATUS_FILL: Record<string, string> = {
 };
 const STATUS_STROKE: Record<string, string> = {
   todo: '#94a3b8',
-  in_progress: '#0f1419',
+  in_progress: '#3b82f6',
   review: '#f59e0b',
   blocked: '#ef4444',
   done: '#22c55e',
@@ -1095,7 +1095,7 @@ export function BirdsEyeView({
       return [];
     }
   });
-  const [brushColor, setBrushColor] = useState('#fafafa');
+  const [brushColor, setBrushColor] = useState('#1565C0');
   const liveStroke = useRef<BrushStroke | null>(null);
   const [, forceLive] = useState(0); // re-render trigger for live stroke painting
   const svgRef = useRef<SVGSVGElement>(null);
@@ -1734,16 +1734,16 @@ export function BirdsEyeView({
       >
         {/* Header — full-width band above the canvas. Title block left, controls
             right; both wrap independently so neither is clipped on a phone. */}
-        <div className="shrink-0 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between px-5 py-3 border-b border-[#eff3f4] dark:border-[#2f3336] bg-white dark:bg-black">
+        <div className="shrink-0 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between px-5 py-3.5 border-b border-slate-200 bg-white">
           <div className="min-w-0">
-            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#536471] dark:text-[#71767b]">
-              Map
+            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
+              Bird&apos;s-eye view
             </div>
-            <div className="text-base sm:text-lg font-bold text-[#0f1419] dark:text-[#e7e9ea] tracking-tight leading-tight break-words">
+            <div className="text-base sm:text-lg font-black text-slate-900 leading-tight break-words">
               {data.rootLabel}
             </div>
             {data.rootSubLabel && (
-              <div className="text-[11px] text-zinc-500 dark:text-white/40 truncate">{data.rootSubLabel}</div>
+              <div className="text-[11px] text-slate-500 truncate">{data.rootSubLabel}</div>
             )}
           </div>
           <div className="flex items-center gap-1 flex-wrap sm:flex-nowrap sm:shrink-0">
@@ -1763,8 +1763,7 @@ export function BirdsEyeView({
                 }}
                 placeholder="Find  ( / )"
                 aria-label="Find a team, project or task on the canvas"
-                className="w-[124px] sm:w-[150px] pl-8 pr-7 py-1.5 text-[12px] border border-zinc-200 dark:border-white/15 bg-zinc-50 dark:bg-white/5 focus:bg-white dark:focus:bg-black focus:border-zinc-400 dark:focus:border-white/40 focus:outline-none transition"
-                style={{ borderRadius: 4 }}
+                className="w-[124px] sm:w-[150px] pl-8 pr-7 py-1.5 text-[12px] rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100 transition"
               />
               {query && (
                 <button
@@ -1792,12 +1791,11 @@ export function BirdsEyeView({
                   ? 'Expand all projects to show individual tasks'
                   : 'Collapse each project to a task-count summary'
               }
-              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 transition-colors ${
+              className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-colors ${
                 collapseTasks
-                  ? 'bg-black text-white dark:bg-white dark:text-black'
-                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/15'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
               }`}
-              style={{ borderRadius: 4 }}
             >
               <Layers size={13} /> {collapseTasks ? 'Expand tasks' : 'Group tasks'}
             </button>
@@ -1845,7 +1843,7 @@ export function BirdsEyeView({
               title={brushOn ? 'Exit brush — back to pan/drag' : 'Brush — draw notes & arrows on the canvas'}
               className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition-colors ${
                 brushOn
-                  ? 'bg-[#0f1419] dark:bg-[#e7e9ea] text-white hover:opacity-90'
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
               }`}
             >
@@ -1854,7 +1852,7 @@ export function BirdsEyeView({
             {brushOn && (
               <>
                 <div className="flex items-center gap-0.5 mx-0.5">
-                  {['#fafafa', '#22c55e', '#eab308', '#ef4444', '#71717a'].map((c) => (
+                  {['#1565C0', '#22c55e', '#f59e0b', '#ef4444', '#0f172a'].map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -1881,10 +1879,10 @@ export function BirdsEyeView({
             {/* Export group — same view, three takeaways: a vector SVG, a crisp
                 2× PNG, or the image straight onto the clipboard to paste into a
                 deck or chat. */}
-            <div className="inline-flex items-center rounded-lg bg-[#0f1419] dark:bg-[#e7e9ea] overflow-hidden shadow-sm">
+            <div className="inline-flex items-center rounded-lg bg-blue-600 overflow-hidden shadow-sm">
               <button
                 onClick={exportSvg}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 text-white hover:opacity-90 transition-colors"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1.5 text-white hover:bg-blue-700 transition-colors"
                 title="Download this view as a vector SVG"
               >
                 <Download size={13} />
@@ -1893,7 +1891,7 @@ export function BirdsEyeView({
               <span className="w-px h-4 bg-white/25" />
               <button
                 onClick={exportPng}
-                className="text-[11px] font-bold px-2.5 py-1.5 text-white hover:opacity-90 transition-colors"
+                className="text-[11px] font-bold px-2.5 py-1.5 text-white hover:bg-blue-700 transition-colors"
                 title="Download this view as a high-resolution PNG"
               >
                 PNG
@@ -1901,7 +1899,7 @@ export function BirdsEyeView({
               <span className="w-px h-4 bg-white/25" />
               <button
                 onClick={copyPng}
-                className="inline-flex items-center px-2 py-1.5 text-white hover:opacity-90 transition-colors"
+                className="inline-flex items-center px-2 py-1.5 text-white hover:bg-blue-700 transition-colors"
                 title="Copy the image to your clipboard"
                 aria-label="Copy image to clipboard"
               >
@@ -1953,9 +1951,9 @@ export function BirdsEyeView({
                     {/* Match the app's 3-stop brand gradient so the workspace
                         root reads as the same identity as the sidebar wordmark. */}
                     <linearGradient id="beRootGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#fafafa" />
+                      <stop offset="0%" stopColor="#1565C0" />
                       <stop offset="50%" stopColor="#1976D2" />
-                      <stop offset="100%" stopColor="#a1a1aa" />
+                      <stop offset="100%" stopColor="#2E7D32" />
                     </linearGradient>
                     {/* Soft drop shadow lifts every card off the dotted canvas
                         so the tree reads with depth instead of as flat stickers. */}
@@ -2105,7 +2103,7 @@ export function BirdsEyeView({
                                 y1={collapseCy}
                                 x2={collapseCx + 4}
                                 y2={collapseCy}
-                                stroke="#fafafa"
+                                stroke="#1565C0"
                                 strokeWidth={1.6}
                                 strokeLinecap="round"
                               />
@@ -2114,7 +2112,7 @@ export function BirdsEyeView({
                                 y1={collapseCy - 4}
                                 x2={collapseCx}
                                 y2={collapseCy + 4}
-                                stroke="#fafafa"
+                                stroke="#1565C0"
                                 strokeWidth={1.6}
                                 strokeLinecap="round"
                               />
@@ -2150,7 +2148,7 @@ export function BirdsEyeView({
                           style={{ cursor: 'pointer' }}
                         >
                           <title>Add a task under this {n.kind}</title>
-                          <circle cx={n.x + n.width - 11} cy={n.y + n.height - 11} r={8.5} fill="#fafafa" />
+                          <circle cx={n.x + n.width - 11} cy={n.y + n.height - 11} r={8.5} fill="#1565C0" />
                           <line
                             x1={n.x + n.width - 15}
                             y1={n.y + n.height - 11}
@@ -2266,7 +2264,7 @@ export function BirdsEyeView({
           const mmW = Math.max(60, Math.round(width * scale));
           const mmH = Math.max(44, Math.round(height * scale));
           const MM_KIND_FILL: Record<string, string> = {
-            root: '#fafafa',
+            root: '#1565C0',
             team: '#a5b4fc',
             phase: '#cbd5e1',
             count: '#e2e8f0',
@@ -2330,7 +2328,7 @@ export function BirdsEyeView({
                   width={viewportBox.cw / zoom}
                   height={viewportBox.ch / zoom}
                   fill="rgba(21,101,192,0.08)"
-                  stroke="#fafafa"
+                  stroke="#1565C0"
                   strokeWidth={Math.max(2, 2 / scale / 2)}
                   rx={8}
                 />
@@ -2345,7 +2343,7 @@ export function BirdsEyeView({
             One glance, one click, total clarity. */}
         <div className="shrink-0 border-t border-slate-200 bg-white dark:bg-slate-950/80">
           {/* Urgency Command Bar – the "greatest on earth" moment */}
-          <div className="flex items-center gap-2 px-4 py-2 text-[11px] border-b border-slate-100 dark:border-[#2f3336]">
+          <div className="flex items-center gap-2 px-4 py-2 text-[11px] border-b border-slate-100 dark:border-white/10">
             <span className="font-bold uppercase tracking-[1.5px] text-slate-400 mr-1">Focus</span>
             {urgencyChips.map((chip) => {
               const active = urgencyFocus === chip.value;
@@ -2690,7 +2688,7 @@ function BirdsEyeTaskEditor({
           <button
             onClick={save}
             disabled={saving}
-            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-[#0f1419] dark:bg-[#e7e9ea] text-white hover:opacity-90 disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             <Check size={12} /> {saving ? 'Saving…' : 'Save'}
           </button>
@@ -2856,7 +2854,7 @@ function BirdsEyeNewTaskEditor({
           <button
             onClick={save}
             disabled={saving || !title.trim()}
-            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-[#0f1419] dark:bg-[#e7e9ea] text-white hover:opacity-90 disabled:opacity-50"
+            className="flex-1 inline-flex items-center justify-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
           >
             <Plus size={12} /> {saving ? 'Adding…' : 'Add task'}
           </button>
