@@ -37,6 +37,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     body: [
       'Removed Insights, Delivery Foresight, project forecast chips, Top 5 Things, and the dashboard Start here / morning spotlight. The board is the product.',
       'Task done: a toast. Phase done: confetti card. Project clear: a surprise — spaghetti rain, launch, or burst. You don’t pick it. The finish does.',
+      'Interaction pass: pages fade in, nav icons lift, cards press, project tiles stagger, Healthy badges gone. The board should feel like a machine, not a brochure.',
     ],
   },
   {

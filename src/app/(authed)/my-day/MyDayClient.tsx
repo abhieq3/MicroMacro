@@ -576,7 +576,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                 </span>
               )}
             </div>
-            <h1 className="text-[1.7rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
+            <h1 className="font-display text-[1.85rem] font-black tracking-tight leading-none text-slate-900 dark:text-white">
               My Day
               {firstName && (
                 <span className="text-blue-700 dark:text-blue-400">

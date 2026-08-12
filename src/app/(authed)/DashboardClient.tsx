@@ -339,9 +339,9 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
       {/* ── Greeting ────────────────────────────────────────────────────── */}
       <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h1 className="text-[1.75rem] sm:text-[1.9rem] font-black tracking-tight leading-tight text-slate-800 dark:text-white/90">
+          <h1 className="font-display text-[1.85rem] sm:text-[2.05rem] font-black tracking-tight leading-none text-slate-900 dark:text-white">
             <span suppressHydrationWarning>
-              {greeting()}, <span className="text-blue-700 dark:text-blue-400">{firstName}.</span>
+              {greeting()}, <span className="text-blue-700 dark:text-blue-400">{firstName}</span>
             </span>
           </h1>
         </div>
@@ -615,7 +615,7 @@ function SummaryChip({
     slate: 'bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-white/55',
     green: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
   }[accent];
-  const className = `inline-flex items-center gap-1.5 h-8 px-3 rounded-lg transition-all hover:brightness-95 hover:shadow-sm ${styles}`;
+  const className = `inline-flex items-center gap-1.5 h-8 px-3 rounded-xl transition-all duration-150 hover:-translate-y-px hover:shadow-md active:translate-y-0 active:scale-[0.97] ${styles}`;
   const content = (
     <>
       <span className="text-[13px] font-black tabular-nums">{value}</span>
@@ -1215,7 +1215,7 @@ function ProjectRow({
 
   return (
     <article
-      className="min-w-0 bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden transition-all"
+      className="min-w-0 bg-white dark:bg-[#262624] rounded-2xl border border-slate-200/80 dark:border-white/[0.07] overflow-hidden transition-all duration-200 hover:border-blue-200/80 dark:hover:border-white/[0.12] hover:shadow-md"
       style={{ boxShadow: '0 1px 3px rgba(15,23,42,0.04)' }}
     >
       {/* Collapsed-state header — two readable rows, never a 5-piece chip strip.

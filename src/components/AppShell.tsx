@@ -669,10 +669,10 @@ export default function AppShell({
                   prefetch
                   title={showCollapsed ? n.label : undefined}
                   data-tour={`nav-${n.label.toLowerCase().replace(/\s+/g, '-')}`}
-                  className={`flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                  className={`group flex items-center gap-2.5 ${showCollapsed ? 'justify-center px-0' : 'px-2.5'} py-2 rounded-xl text-[13px] font-medium transition-all duration-200 ${
                     active
                       ? 'text-brand-700 dark:text-[#faf9f5]'
-                      : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5'
+                      : 'text-slate-600 dark:text-white/55 hover:text-slate-900 dark:hover:text-white/90 hover:bg-slate-50 dark:hover:bg-white/5 hover:translate-x-[1px]'
                   }`}
                   style={
                     active
@@ -689,7 +689,7 @@ export default function AppShell({
                   }
                 >
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-transform duration-200 group-hover:scale-105"
                     style={{
                       background: active
                         ? dark
@@ -1049,7 +1049,10 @@ export default function AppShell({
                   }}
                 />
               )}
-              <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden">
+              <div
+                key={pathname}
+                className="page-fade max-w-7xl mx-auto px-4 sm:px-5 lg:px-7 py-5 lg:py-7 pb-24 lg:pb-7 relative overflow-x-hidden"
+              >
                 {children}
               </div>
             </main>

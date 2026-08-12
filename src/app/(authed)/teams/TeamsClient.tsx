@@ -110,7 +110,7 @@ export default function TeamsClient({
         <div>
           <h1 className="page-title">Teams</h1>
           <p className="text-sm text-slate-500 dark:text-white/40 mt-1">
-            Cross-functional groups — people, projects, and shared accountability.
+            People, projects, one owner.
           </p>
         </div>
         {canManage && (
@@ -140,9 +140,10 @@ export default function TeamsClient({
         </div>
       ) : (
         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-          {filtered.map((t) => (
+          {filtered.map((t, i) => (
             <TeamCard
               key={t.id}
+              index={i}
               team={t}
               lead={t.leadId ? uMap.get(t.leadId) : undefined}
               members={(t.memberIds || []).map((id) => uMap.get(id)).filter(Boolean) as UserItem[]}
@@ -201,6 +202,7 @@ function TeamCard({
   canManage,
   onEdit,
   onDelete,
+  index = 0,
 }: {
   team: TeamItem;
   lead?: UserItem;
@@ -208,13 +210,17 @@ function TeamCard({
   canManage: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  index?: number;
 }) {
   const tone = FUNCTION_TONE[team.function] || FUNCTION_TONE.general;
   const visibleMembers = members.slice(0, 4);
   const extra = Math.max(0, members.length - visibleMembers.length);
 
   return (
-    <div className="card p-5 group hover:shadow-md hover:-translate-y-0.5 transition-[transform,box-shadow] flex flex-col min-h-[180px]">
+    <div
+      className="card-hover stagger-in p-5 group flex flex-col min-h-[180px]"
+      style={{ ['--i' as string]: index }}
+    >
       {/* Top row: avatar + name + function tag + manage actions */}
       <div className="flex items-start gap-4">
         <Avatar name={team.name} size={48} />

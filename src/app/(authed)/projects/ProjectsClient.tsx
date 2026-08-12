@@ -228,7 +228,7 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
       {/* Grid */}
       {loaded && (
         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))' }}>
-          {projects.map((p) => {
+          {projects.map((p, i) => {
             const pct = p.taskCount ? Math.round((p.tasksDone / p.taskCount) * 100) : 0;
             const overdueRatio = p.taskCount ? (p.tasksOverdue || 0) / p.taskCount : 0;
             const health = overdueRatio > 0.3 ? 'critical' : overdueRatio > 0 ? 'at_risk' : 'good';
@@ -250,10 +250,14 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
               <Link
                 href={`/projects/${p.id}`}
                 key={p.id}
-                className="card-hover block group overflow-hidden hover:-translate-y-0.5 transition-transform"
+                className="card-hover stagger-in block group overflow-hidden"
+                style={{ ['--i' as string]: i }}
               >
-                {/* Top accent — slim strip in the health colour */}
-                <div className="h-1" style={{ background: healthColor }} />
+                {/* Exception accent only — green “healthy” strips are vanity. */}
+                <div
+                  className="h-1"
+                  style={{ background: health === 'good' ? 'transparent' : healthColor }}
+                />
 
                 <div className="p-4 flex flex-col h-full">
                   {/* Header row: code + health + status */}
@@ -267,25 +271,23 @@ export default function ProjectsClient({ initialData }: { initialData: InitialDa
                         {p.ccNo || p.code}
                       </span>
                     )}
-                    <span
-                      className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{
-                        background:
-                          health === 'good'
-                            ? 'rgba(34,197,94,0.10)'
-                            : health === 'at_risk'
-                              ? 'rgba(245,158,11,0.10)'
-                              : 'rgba(239,68,68,0.10)',
-                        color: healthColor,
-                      }}
-                      title={healthLabel}
-                    >
+                    {health !== 'good' && (
                       <span
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: healthColor, boxShadow: `0 0 0 2px ${healthColor}22` }}
-                      />
-                      {healthLabel}
-                    </span>
+                        className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{
+                          background:
+                            health === 'at_risk' ? 'rgba(245,158,11,0.10)' : 'rgba(239,68,68,0.10)',
+                          color: healthColor,
+                        }}
+                        title={healthLabel}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: healthColor, boxShadow: `0 0 0 2px ${healthColor}22` }}
+                        />
+                        {healthLabel}
+                      </span>
+                    )}
                     <span className="ml-auto inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 dark:text-white/40">
                       <span
                         className="w-1.5 h-1.5 rounded-full shrink-0"

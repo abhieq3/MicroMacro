@@ -356,13 +356,18 @@ body {
   }
   .card-hover:hover {
     box-shadow:
-      0 2px 8px rgba(0, 0, 0, 0.08),
-      0 8px 24px rgba(0, 0, 0, 0.05);
-    transform: translateY(-1.5px);
-    border-color: rgba(190, 205, 220, 0.9);
+      0 8px 22px rgba(21, 101, 192, 0.1),
+      0 3px 8px rgba(46, 125, 50, 0.06);
+    transform: translateY(-2px);
+    border-color: rgba(21, 101, 192, 0.22);
   }
   .card-hover:active {
-    transform: translateY(0px) scale(0.995);
+    transform: translateY(0px) scale(0.992);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+  .dark .card-hover:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   }
   .card-accent {
     @apply card border-l-4;
@@ -762,6 +767,61 @@ body {
   animation: page-enter 0.18s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+/* Opacity-only route fade — never transform, so position:fixed stays viewport. */
+@keyframes page-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.page-fade {
+  animation: page-fade 0.2s ease-out;
+}
+
+/* Tappable list row — used on Today/Due/You/People. */
+.list-row {
+  position: relative;
+  transition:
+    background 0.15s ease,
+    transform 0.12s ease;
+}
+.list-row:hover {
+  background: rgba(21, 101, 192, 0.035);
+}
+.dark .list-row:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+.list-row:active {
+  transform: scale(0.997);
+}
+.list-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 18%;
+  bottom: 18%;
+  width: 2.5px;
+  border-radius: 99px;
+  background: #1565c0;
+  opacity: 0;
+  transform: scaleY(0.4);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+.list-row:hover::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+/* Stagger children: set --i on each item. */
+.stagger-in {
+  animation: fade-up-stagger 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
 /* ── Stat-card stagger ───────────────────────────────────────────────────── */
 @keyframes fade-up-stagger {
   from {
@@ -834,6 +894,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .fade-up-stagger,
+  .stagger-in,
+  .page-fade,
   .fade-in-late,
   .hero-greeting {
     animation: none !important;
