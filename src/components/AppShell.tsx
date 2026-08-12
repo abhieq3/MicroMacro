@@ -1321,7 +1321,9 @@ export default function AppShell({
           component is itself the source of truth on whether to open: it
           checks `alreadySeen` (server) and a localStorage fast-path, and
           POSTs /api/me/tour-seen on dismissal so it never reappears. */}
-          {!mustChangePw && <FirstTimeTour alreadySeen={!!user.hasSeenTour} role={user.role} />}
+          {!mustChangePw && (user.loginCount ?? 0) >= 2 && (
+            <FirstTimeTour alreadySeen={!!user.hasSeenTour} role={user.role} />
+          )}
 
           {/* Sign-out confirmation — fixed centered modal, works in both expanded and collapsed sidebar */}
           {confirmLogout && (

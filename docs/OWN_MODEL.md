@@ -47,7 +47,7 @@ Whiteboard “Make task” today is **the typed box, verbatim**. If you later wa
 3. Serve it from `/api/tasks/suggest` — you already have a suggest route.
 4. Kill criterion: if the ranker is no better than “last assignee on this project,” delete it.
 
-Until that beats the heuristic, **do not ship a model**. Ship the whiteboard job: think → type → task.
+The live chip now A/Bs `heuristic` vs `ranker` (sticky per user+project). Every add-task logs accept/override on `SuggestionEvent`. Dump the table at `GET /api/admin/training`. Kill the ranker if its accept-rate does not beat the heuristic.
 
 ---
 

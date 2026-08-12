@@ -6,6 +6,14 @@ import { User } from '@/models/User';
 import { requireUser } from '@/lib/auth';
 import { handleError } from '@/lib/http';
 import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
+import { SuggestionEvent } from '@/models/SuggestionEvent';
+import {
+  RANKER_VERSION,
+  assignVariant,
+  dueFromCycle,
+  medianCycleDays,
+  rerankAssignees,
+} from '@/lib/ai/ranker';
 
 export const runtime = 'nodejs';
 
@@ -181,24 +189,99 @@ export async function GET(req: NextRequest) {
       perAssignee.set(doc.assigneeId, cur);
     }
 
-    let assigneeSuggestion: { id: string; name: string; confidence: number; reason: string } | null = null;
-    if (perAssignee.size) {
+    const variant = assignVariant(user!.sub, projectId);
+    const candidates = [...perAssignee.entries()].map(([id, v]) => ({
+      id,
+      tfidf: v.score,
+      count: v.count,
+    }));
+
+    let pickId: string | null = null;
+    let pickReason = '';
+    let pickCount = 0;
+    let pickTerms = '';
+
+    if (variant === 'ranker' && candidates.length) {
+      const queryToks = new Set(queryTokens);
+      let tokenLastAssigneeId = '';
+      for (const t of history as any[]) {
+        if (!t.assigneeId || !t.completedAt) continue;
+        const toks = tokenize(t.title || '');
+        if (toks.some((x) => queryToks.has(x))) {
+          tokenLastAssigneeId = String(t.assigneeId);
+          break; // history is newest-first
+        }
+      }
+      const events = await SuggestionEvent.find({ projectId: { $in: projectIds } })
+        .select('suggestedAssigneeId chosenAssigneeId acceptedAssignee')
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .lean();
+      const acceptByAssignee = new Map<string, { shown: number; accepts: number }>();
+      for (const ev of events as any[]) {
+        const sid = String(ev.suggestedAssigneeId || '');
+        if (!sid) continue;
+        const cur = acceptByAssignee.get(sid) || { shown: 0, accepts: 0 };
+        cur.shown += 1;
+        if (ev.acceptedAssignee) cur.accepts += 1;
+        acceptByAssignee.set(sid, cur);
+      }
+      const reranked = rerankAssignees(candidates, { tokenLastAssigneeId, acceptByAssignee });
+      pickId = reranked[0]?.id || null;
+      const raw = pickId ? perAssignee.get(pickId) : null;
+      pickCount = raw?.count || 0;
+      pickTerms = raw ? [...raw.terms].slice(0, 3).join(', ') : '';
+      pickReason = `Ranker: handled ${pickCount} similar${pickTerms ? ` (${pickTerms})` : ''}`;
+    } else if (candidates.length) {
       const ranked = [...perAssignee.entries()].sort((a, b) => b[1].score - a[1].score);
-      const total = ranked.reduce((s, [, v]) => s + v.score, 0) || 1;
-      const [topId, top] = ranked[0];
-      const u = await User.findById(topId).select('name active').lean();
+      pickId = ranked[0][0];
+      pickCount = ranked[0][1].count;
+      pickTerms = [...ranked[0][1].terms].slice(0, 3).join(', ');
+      pickReason = `Handled ${pickCount} similar task${pickCount === 1 ? '' : 's'}${pickTerms ? ` (${pickTerms})` : ''}`;
+    }
+
+    let assigneeSuggestion: { id: string; name: string; confidence: number; reason: string } | null = null;
+    if (pickId) {
+      const u = await User.findById(pickId).select('name active').lean();
       if (u && (u as any).active !== false) {
-        const terms = [...top.terms].slice(0, 3).join(', ');
+        const total = candidates.reduce((s, c) => s + c.tfidf, 0) || 1;
+        const top = perAssignee.get(pickId);
         assigneeSuggestion = {
-          id: topId,
+          id: pickId,
           name: (u as any).name,
-          confidence: Math.round((top.score / total) * 100) / 100,
-          reason: `Handled ${top.count} similar task${top.count === 1 ? '' : 's'}${terms ? ` (${terms})` : ''}`,
+          confidence: Math.round(((top?.score || 0) / total) * 100) / 100,
+          reason: pickReason,
         };
       }
     }
 
-    return NextResponse.json({ assignee: assigneeSuggestion, dueDate: dueSuggestion });
+    if (variant === 'ranker') {
+      const cycles: number[] = [];
+      const qtoks = new Set(queryTokens);
+      for (const t of history as any[]) {
+        if (!t.completedAt || !t.createdAt) continue;
+        const toks = tokenize(t.title || '');
+        if (!toks.some((x) => qtoks.has(x))) continue;
+        const days = Math.round((+new Date(t.completedAt) - +new Date(t.createdAt)) / 86_400_000);
+        if (days >= 0 && days <= 180) cycles.push(days);
+      }
+      const med = medianCycleDays(cycles);
+      if (med != null) {
+        const d = dueFromCycle(med);
+        dueSuggestion = {
+          date: d.date,
+          days: d.days,
+          reason: `Similar work here usually finishes in ~${d.days} day${d.days === 1 ? '' : 's'}`,
+        };
+      }
+    }
+
+    return NextResponse.json({
+      assignee: assigneeSuggestion,
+      dueDate: dueSuggestion,
+      variant,
+      modelVersion: RANKER_VERSION,
+    });
   } catch (e) {
     return handleError(e);
   }

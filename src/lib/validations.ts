@@ -345,6 +345,14 @@ export const TaskUpdateSchema = z.object({
   deployStage: DeployStageEnum.optional(),
   remarks: z.string().max(5000).optional(),
   pendingWith: z.string().max(120).optional(),
+  // Complete-guard: PIN or password required only for GxP / QA-signoff work.
+  // completeMinutes is effort recorded at the stamp, not a status field.
+  pin: z
+    .string()
+    .regex(/^\d{4}$/)
+    .optional(),
+  password: z.string().min(1).optional(),
+  completeMinutes: z.number().int().min(1).max(24 * 60 * 30).optional(),
 });
 export type TaskUpdateInput = z.infer<typeof TaskUpdateSchema>;
 

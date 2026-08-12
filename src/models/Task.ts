@@ -64,7 +64,11 @@ const TaskSchema = new Schema(
 
     startDate: { type: Date },
     dueDate: { type: Date },
+    // First time the task entered in_progress — the start of real work,
+    // distinct from createdAt (when it was filed).
+    startedAt: { type: Date },
     completedAt: { type: Date },
+    completedByUserId: { type: Schema.Types.ObjectId, ref: 'User' },
     estimatedHours: { type: Number },
     actualHours: { type: Number },
 

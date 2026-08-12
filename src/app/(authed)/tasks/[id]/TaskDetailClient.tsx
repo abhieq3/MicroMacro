@@ -6,12 +6,13 @@ import { notifyCalendarChange } from '@/components/SidebarCalendar';
 import { useLiveRefresh } from '@/lib/client/useLiveRefresh';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/client/api';
-import { Card, PriorityTag, StatusTag, formatDate, useToast } from '@/components/ui';
+import { Card, PriorityTag, StatusTag, formatDate, formatDateTime, useToast } from '@/components/ui';
 import { UserAvatar } from '@/components/AvatarRegistry';
 import { DatePicker } from '@/components/DatePicker';
 import { Select } from '@/components/Select';
 import { UserPicker } from '@/components/UserPicker';
-import { useIsLead, useIsAdmin } from '@/components/CurrentUserContext';
+import { useIsLead, useIsAdmin, useCurrentUser } from '@/components/CurrentUserContext';
+import { ModalPortal } from '@/components/ModalPortal';
 import { chimeIfEnabled } from '@/lib/sound';
 import {
   ChevronRight,
@@ -89,6 +90,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const router = useRouter();
   const isLead = useIsLead();
   const isAdmin = useIsAdmin();
+  const currentUser = useCurrentUser();
   // Seed from the server-rendered payload so real content paints on first
   // byte; the mount-time refetch below keeps it fresh.
   const [task, setTask] = useState<any>(initialTask);
@@ -114,6 +116,9 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   // toast — not a confetti overlay — that recognises the *type* of task that
   // was finished. Stays null until the user actually closes the task.
   const [celebrate, setCelebrate] = useState<any | null>(null);
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [completeMins, setCompleteMins] = useState('');
+  const [completeSecret, setCompleteSecret] = useState('');
   const { showToast, ToastEl } = useToast();
 
   async function load() {
@@ -234,15 +239,26 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   }
 
   async function updateStatus(newStatus: string) {
+    if (newStatus === 'done' && task?.status !== 'done') {
+      setCompleteMins('');
+      setCompleteSecret('');
+      setCompleteOpen(true);
+      return;
+    }
+    await commitStatus(newStatus);
+  }
+
+  async function commitStatus(
+    newStatus: string,
+    extra?: { pin?: string; password?: string; completeMinutes?: number },
+  ) {
     const wasDone = task?.status === 'done';
     setSavingStatus(true);
     setTask((t: any) => ({ ...t, status: newStatus }));
     try {
-      await api(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus } });
+      await api(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus, ...extra } });
       if (newStatus === 'done' && !wasDone) {
         chimeIfEnabled();
-        // The mini-pop replaces the dry "Task marked done ✓" toast — it reads
-        // the task's type and priority so the message feels personal.
         setCelebrate({
           id: task.id,
           title: task.title,
@@ -250,6 +266,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
           gxpCritical: task.gxpCritical,
           priority: task.priority,
         });
+        setCompleteOpen(false);
       }
       load();
     } catch (e: any) {
@@ -348,23 +365,42 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const hasReferenceData =
     task.ccNo || task.documentNo || task.applicableSite !== 'na' || task.deployStage !== 'na';
 
-  // IC edit contract: a contributor may edit ONLY the description and due date,
-  // and ONLY on a task assigned to them. Everything else — status, assignee,
-  // priority, reference/compliance fields — is lead-owned. A task assigned to
-  // someone else (or unassigned) is fully read-only for an IC, and the inputs
-  // are disabled so no save is even attempted. Leads/admins keep full control.
+  // IC edit contract: assignee may move status, edit description and due date.
+  // Structure (assignee, priority, compliance) stays lead-owned.
   const isAssignee = !!(me && task.assigneeId && String(task.assigneeId) === String(me.id));
-  // Description + due date: editable by leads or the assignee.
   const canEditBasics = isLead || isAssignee;
-  // Reference/tracking fields, status, assignee, priority, etc.: leads only.
   const canEditAll = isLead;
   const canComment = isLead || isAssignee;
-  const canEditStatus = isLead;
+  const canEditStatus = isLead || isAssignee;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
       {ToastEl}
       <TaskCompletePop task={celebrate} onDone={() => setCelebrate(null)} />
+      {completeOpen && (
+        <CompleteStampModal
+          title={task.title}
+          gxp={!!(task.gxpCritical || task.requiresQaSignoff)}
+          hasPin={!!currentUser?.hasPin}
+          stamp={new Date()}
+          minutes={completeMins}
+          secret={completeSecret}
+          saving={savingStatus}
+          onMinutes={setCompleteMins}
+          onSecret={setCompleteSecret}
+          onCancel={() => setCompleteOpen(false)}
+          onConfirm={() => {
+            const mins = parseInt(completeMins, 10);
+            const extra: { pin?: string; password?: string; completeMinutes?: number } = {};
+            if (Number.isFinite(mins) && mins > 0) extra.completeMinutes = mins;
+            if (task.gxpCritical || task.requiresQaSignoff) {
+              if (currentUser?.hasPin) extra.pin = completeSecret;
+              else extra.password = completeSecret;
+            }
+            return commitStatus('done', extra);
+          }}
+        />
+      )}
 
       {/* ── Left: main content ─────────────────────────────────────────── */}
       <div className="lg:col-span-2 space-y-4">
@@ -392,6 +428,13 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
               {task.workMemory.lines.join(' · ')}
             </p>
           ) : null}
+          {(task.startedAt || task.completedAt) && (
+            <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+              {task.startedAt ? `Started ${formatDateTime(task.startedAt)}` : null}
+              {task.startedAt && task.completedAt ? ' · ' : null}
+              {task.completedAt ? `Completed ${formatDateTime(task.completedAt)}` : null}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2 mt-2.5">
             <StatusTag status={task.status} />
             <PriorityTag priority={task.priority} />
@@ -1098,5 +1141,100 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         )}
       </div>
     </div>
+  );
+}
+
+function CompleteStampModal({
+  title,
+  gxp,
+  hasPin,
+  stamp,
+  minutes,
+  secret,
+  saving,
+  onMinutes,
+  onSecret,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  gxp: boolean;
+  hasPin: boolean;
+  stamp: Date;
+  minutes: string;
+  secret: string;
+  saving: boolean;
+  onMinutes: (v: string) => void;
+  onSecret: (v: string) => void;
+  onCancel: () => void;
+  onConfirm: () => void | Promise<void>;
+}) {
+  const stampLabel = stamp.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  const ready = !gxp || secret.length >= (hasPin ? 4 : 1);
+  return (
+    <ModalPortal>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 overlay-in"
+        onClick={onCancel}
+      >
+        <div
+          className="bg-white dark:bg-[#2a2a28] rounded-2xl shadow-2xl border border-slate-100 dark:border-white/10 p-5 w-full max-w-sm modal-in"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h2 className="text-base font-bold text-slate-800 dark:text-white/90">Record as complete</h2>
+          <p className="text-xs text-slate-500 dark:text-white/45 mt-1 leading-relaxed">
+            <span className="font-semibold text-slate-700 dark:text-white/70">{title}</span>
+            <br />
+            Completes at <span className="font-semibold tabular-nums">{stampLabel}</span> — the
+            exact time you confirm, not the due date.
+          </p>
+          <label className="block mt-4 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+            Minutes spent (optional)
+            <input
+              type="number"
+              min={1}
+              inputMode="numeric"
+              value={minutes}
+              onChange={(e) => onMinutes(e.target.value)}
+              className="mt-1 w-full input text-sm"
+              placeholder="e.g. 45"
+            />
+          </label>
+          {gxp && (
+            <label className="block mt-3 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+              {hasPin ? 'PIN to sign' : 'Password to sign'}
+              <input
+                type={hasPin ? 'password' : 'password'}
+                inputMode={hasPin ? 'numeric' : 'text'}
+                maxLength={hasPin ? 4 : undefined}
+                value={secret}
+                onChange={(e) => onSecret(hasPin ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value)}
+                className="mt-1 w-full input text-sm"
+                placeholder={hasPin ? '••••' : 'Your password'}
+                autoComplete="off"
+              />
+            </label>
+          )}
+          <div className="flex gap-2 mt-5">
+            <button type="button" className="btn-secondary flex-1 justify-center text-sm" onClick={onCancel}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-primary flex-1 justify-center text-sm"
+              disabled={!ready || saving}
+              onClick={() => void onConfirm()}
+            >
+              {saving ? 'Saving…' : 'Complete'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalPortal>
   );
 }

@@ -751,6 +751,7 @@ function QuickAddTask({
   const [sug, setSug] = useState<{
     assignee: { id: string; name: string; reason: string } | null;
     dueDate: { date: string; days: number; reason: string } | null;
+    variant?: 'heuristic' | 'ranker';
   } | null>(null);
 
   useEffect(() => {
@@ -800,6 +801,20 @@ function QuickAddTask({
           dueDate: due || undefined,
         },
       });
+      if (sug?.variant) {
+        void api('/tasks/suggest/feedback', {
+          method: 'POST',
+          body: {
+            projectId,
+            title: title.trim(),
+            variant: sug.variant,
+            suggestedAssigneeId: sug.assignee?.id || '',
+            suggestedDueDate: sug.dueDate?.date || '',
+            chosenAssigneeId: assignee || '',
+            chosenDueDate: due || '',
+          },
+        }).catch(() => {});
+      }
       setTitle('');
       setDue('');
       setAssignee('');

@@ -177,7 +177,9 @@ export function task(t: any, extras: Any = {}) {
     qaSignoffAt: date(t.qaSignoffAt),
     startDate: date(t.startDate),
     dueDate: date(t.dueDate),
+    startedAt: date(t.startedAt),
     completedAt: date(t.completedAt),
+    completedByUserId: id(t.completedByUserId),
     estimatedHours: t.estimatedHours,
     actualHours: t.actualHours,
     // Pharma fields

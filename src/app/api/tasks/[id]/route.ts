@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/db';
 import { Task } from '@/models/Task';
 import { Project } from '@/models/Project';
@@ -67,49 +68,86 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = await readBody(req, TaskUpdateSchema);
     const current = await Task.findById(params.id)
       .select(
-        'status assigneeId privateToUserId title createdAt completedAt dueDate ccTcd taskType projectId',
+        'status assigneeId privateToUserId title createdAt completedAt startedAt dueDate ccTcd taskType projectId gxpCritical requiresQaSignoff effortLog actualHours',
       )
       .lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    // Contributors may edit only the description and due date, and only on a
-    // task that is assigned to them. Everything else — status, assignee,
-    // priority, compliance flags, reference fields — stays lead-owned, and a
-    // task assigned to someone else (or unassigned) is fully read-only for an
-    // IC. Exception: inside their own personal project the owner edits freely.
-    //
-    // The permission check uses `current.assigneeId`, but we close the TOCTOU
-    // race (a concurrent lead re-assignment sneaking between the permission
-    // read and the actual write) by folding the assignee guard into the update
-    // filter for contributor-scoped edits. If the task was reassigned before
-    // our write lands, findOneAndUpdate returns null and we surface a 403
-    // rather than silently mutating a task the caller no longer owns.
+    // Contributors may move status, edit description and due date — only on
+    // a task assigned to them. Structure (assignee, priority, GxP flags)
+    // stays lead-owned. Personal/private overlays stay owner-editable.
     const icEdit = !canMutate(user!.role) && !ownsPersonal && !ownsPrivate;
     if (icEdit) {
       const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
       const keys = Object.keys(body).filter((k) => body[k as keyof typeof body] !== undefined);
-      const IC_EDITABLE = new Set(['description', 'dueDate']);
+      const IC_EDITABLE = new Set(['description', 'dueDate', 'status', 'pin', 'password', 'completeMinutes']);
       const onlyAllowed = isAssignee && keys.length > 0 && keys.every((k) => IC_EDITABLE.has(k));
       if (!onlyAllowed) {
         return NextResponse.json(
           {
             error:
-              'Contributors can edit only the description and due date of a task assigned to them; everything else is read-only.',
+              'Contributors can update status, description and due date on a task assigned to them; everything else is read-only.',
           },
           { status: 403 },
         );
       }
     }
 
+    const becomingDone = body.status === 'done' && current.status !== 'done';
+    const needsSig = becomingDone && !!((current as any).gxpCritical || (current as any).requiresQaSignoff);
+    if (needsSig) {
+      const pin = (body as any).pin as string | undefined;
+      const password = (body as any).password as string | undefined;
+      if (!pin && !password) {
+        return NextResponse.json(
+          { error: 'GxP work needs your PIN or password to record the completion.', needSignature: true },
+          { status: 400 },
+        );
+      }
+      const signer = await User.findById(user!.sub).select('pinHash passwordHash').lean();
+      if (!signer) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      let ok = false;
+      if (pin && (signer as any).pinHash) ok = bcrypt.compareSync(pin, (signer as any).pinHash);
+      if (!ok && password && (signer as any).passwordHash) {
+        ok = bcrypt.compareSync(password, (signer as any).passwordHash);
+      }
+      if (!ok) {
+        return NextResponse.json({ error: 'Incorrect PIN or password' }, { status: 401 });
+      }
+    }
+
+    const META = new Set(['pin', 'password', 'completeMinutes']);
     const set: any = {};
     for (const [k, v] of Object.entries(body)) {
-      if (v === undefined) continue;
+      if (v === undefined || META.has(k)) continue;
       if (['startDate', 'dueDate', 'ccTcd'].includes(k)) set[k] = v ? new Date(v as string) : null;
       else set[k] = v;
     }
-    if (body.status === 'done' && current.status !== 'done') set.completedAt = new Date();
-    else if (body.status && body.status !== 'done') set.completedAt = null;
-    set.lastActivityAt = new Date();
+    const now = new Date();
+    if (becomingDone) {
+      set.completedAt = now;
+      set.completedByUserId = user!.sub;
+    } else if (body.status && body.status !== 'done') {
+      set.completedAt = null;
+      set.completedByUserId = null;
+    }
+    if (body.status === 'in_progress' && !(current as any).startedAt) {
+      set.startedAt = now;
+    }
+    if (becomingDone && typeof (body as any).completeMinutes === 'number') {
+      const mins = (body as any).completeMinutes as number;
+      const log = Array.isArray((current as any).effortLog) ? (current as any).effortLog.slice() : [];
+      log.push({
+        userId: user!.sub,
+        minutes: mins,
+        note: 'Recorded at completion',
+        onDate: now.toISOString().slice(0, 10),
+        source: 'manual',
+      });
+      set.effortLog = log;
+      set.actualHours = Math.round((((current as any).actualHours || 0) + mins / 60) * 100) / 100;
+    }
+    set.lastActivityAt = now;
 
     // For contributor edits we add `assigneeId` to the update filter so the
     // write is atomic with the permission check — if the task was re-assigned
