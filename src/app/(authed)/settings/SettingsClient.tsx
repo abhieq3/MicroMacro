@@ -16,7 +16,6 @@ import {
   Lock,
   ShieldCheck,
   Copy,
-  CalendarDays,
   Check,
   RefreshCw,
   X,
@@ -812,150 +811,6 @@ function DailyDigestToggle({ initialUser }: { initialUser: any }) {
 /* ── Daily email — workspace settings (admin only) ──────────────────────────
    Lets the admin tune what every user's digest contains and verify delivery
    end-to-end with a test send, all without leaving the page. */
-/* ── Personal calendar feed — the pull-based, zero-cost channel ───────────
-   A tokened read-only iCalendar URL the user subscribes to from Outlook /
-   Google / Apple Calendar. Their calendar app polls it; we never send
-   anything. Rotate to invalidate a leaked URL; turn off to revoke. */
-function CalendarFeedSection() {
-  const [state, setState] = useState<{ enabled: boolean; url: string | null } | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    api('/me/ics-token')
-      .then((d: any) => setState(d))
-      .catch(() => setState({ enabled: false, url: null }));
-  }, []);
-
-  async function mint() {
-    setBusy(true);
-    try {
-      setState((await api('/me/ics-token', { method: 'POST' })) as any);
-    } catch {
-      /* leave state as-is */
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function revoke() {
-    setBusy(true);
-    try {
-      setState((await api('/me/ics-token', { method: 'DELETE' })) as any);
-    } catch {
-      /* leave state as-is */
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div id="calendar-feed" className="scroll-mt-6">
-      <Section
-        icon={CalendarDays}
-        title="Pragati calendar"
-        subtitle="Subscribe once — a Pragati calendar appears in Outlook, Google or Apple with every dated task. Reschedule here and it follows automatically."
-      >
-        {!state ? (
-          <div className="text-xs text-slate-400 py-2">Loading…</div>
-        ) : state.enabled && state.url ? (
-          <div className="space-y-3">
-            {/* First-timer path: pick your app, one click adds it. The raw link
-                + management controls are tucked below so the primary action is
-                unmistakable. */}
-            <p className="text-[12.5px] text-slate-500 dark:text-white/50">
-              Pick your calendar app — one click adds <strong>Pragati</strong>, then it keeps itself up to
-              date.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <a
-                className="btn-primary text-xs inline-flex items-center gap-1.5"
-                href={`https://outlook.office.com/calendar/0/addfromweb?url=${encodeURIComponent(state.url)}&name=${encodeURIComponent('Pragati')}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <CalendarDays size={13} /> Outlook (work)
-              </a>
-              <a
-                className="btn-ghost text-xs inline-flex items-center gap-1.5"
-                href={`https://outlook.live.com/calendar/0/addfromweb?url=${encodeURIComponent(state.url)}&name=${encodeURIComponent('Pragati')}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <CalendarDays size={13} /> Outlook (personal)
-              </a>
-              <a
-                className="btn-ghost text-xs inline-flex items-center gap-1.5"
-                href={`https://calendar.google.com/calendar/r?cid=${encodeURIComponent(state.url.replace(/^https?:\/\//, 'webcal://'))}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <CalendarDays size={13} /> Google
-              </a>
-              <a
-                className="btn-ghost text-xs inline-flex items-center gap-1.5"
-                href={state.url.replace(/^https?:\/\//, 'webcal://')}
-              >
-                <CalendarDays size={13} /> Apple
-              </a>
-            </div>
-
-            {/* Secondary: the raw link, behind a quiet disclosure. Most people
-                never need it; power users / unlisted apps can copy it. */}
-            <details className="group">
-              <summary className="cursor-pointer list-none text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-white/60 inline-flex items-center gap-1">
-                <ChevronRight size={12} className="shrink-0 transition-transform group-open:rotate-90" />
-                Other app, or copy the link
-              </summary>
-              <div className="mt-2 flex items-center gap-2 flex-wrap">
-                <code className="text-[11px] font-mono bg-slate-50 dark:bg-white/[0.05] border border-slate-200 dark:border-white/[0.08] rounded-lg px-2 py-1.5 break-all flex-1 min-w-[200px]">
-                  {state.url}
-                </code>
-                <button
-                  className="btn-ghost text-xs inline-flex items-center gap-1.5"
-                  onClick={() => {
-                    navigator.clipboard?.writeText(state.url!);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                >
-                  {copied ? <Check size={13} /> : <Copy size={13} />} {copied ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-            </details>
-
-            <p className="text-[11px] text-slate-400 leading-relaxed">
-              Changes in Pragati flow through on your calendar app’s next refresh. Anyone with the link can
-              read your agenda — rotate it if it leaks.
-            </p>
-            <div className="flex gap-2">
-              <button className="btn-ghost text-xs" onClick={mint} disabled={busy}>
-                Rotate link
-              </button>
-              <button
-                className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                onClick={revoke}
-                disabled={busy}
-              >
-                Turn off
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <p className="text-sm text-slate-600 dark:text-white/60">
-              Generate your private link, add it to your calendar app once, and you're done — new tasks and
-              date changes flow in by themselves.
-            </p>
-            <button className="btn-primary text-sm" onClick={mint} disabled={busy}>
-              {busy ? 'Generating…' : 'Generate link'}
-            </button>
-          </div>
-        )}
-      </Section>
-    </div>
-  );
-}
-
 function AdminDigestSettings() {
   const [cfg, setCfg] = useState<any | null>(null);
   const [status, setStatus] = useState<any | null>(null);
@@ -1579,7 +1434,6 @@ export default function SettingsClient({ initialUser }: { initialUser: any }) {
 
       {/* ── Daily task email — personal opt-in, then (admin) workspace config ── */}
       <DailyDigestToggle initialUser={initialUser} />
-      <CalendarFeedSection />
       {user.role === 'admin' && <AdminDigestSettings />}
 
       {/* ── Account & security — tucked behind a disclosure so the day-to-day

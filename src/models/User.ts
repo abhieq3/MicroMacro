@@ -160,12 +160,6 @@ const UserSchema = new Schema(
     // how many triggers fire. Cleared implicitly by the date rolling over.
     lastDigestSentOn: { type: String, default: '' },
     lastBriefPushSentOn: { type: String, default: '' },
-    // Capability token for the personal read-only calendar feed
-    // (/api/calendar/<token>/agenda.ics). Calendar clients can't send auth
-    // cookies, so the URL itself is the secret — random, per-user, rotatable
-    // from Settings, revoked by setting null. Grants ONE thing: this user's
-    // own open-task agenda. Never grants login.
-    icsToken: { type: String, default: null },
 
     // ── Monogram avatar ─────────────────────────────────────────────────
     // A user-customised letter-on-a-coloured-circle avatar (Google-style),
