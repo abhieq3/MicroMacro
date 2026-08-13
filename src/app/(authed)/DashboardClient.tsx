@@ -77,6 +77,7 @@ interface TeamTask {
   subtasksDone: number;
   subtaskTitles?: string[];
   gxpCritical?: boolean;
+  pendingWith?: string;
   /** Early warning from the server's delivery model — present only when the
    *  task is judged likely to miss its date; `reason` is the plain-language
    *  factor behind the call (shown as the chip's tooltip). */
@@ -1203,8 +1204,11 @@ function DashboardTaskFlow({
                       </span>
                     )}
                     {isBlocked && !overdue && (
-                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md">
-                        Blocked
+                      <span
+                        className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-1.5 py-0.5 rounded-md max-w-[12rem] truncate"
+                        title={t.pendingWith || 'Blocked'}
+                      >
+                        {t.pendingWith ? `Blocked · ${t.pendingWith}` : 'Blocked'}
                       </span>
                     )}
                     {t.slipRisk && !isDone && !overdue && !isBlocked && (

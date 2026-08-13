@@ -398,6 +398,7 @@ async function computeLeadDashboardData(jwtUser: {
       subtasksDone: ((t as any).subtasks || []).filter((s: any) => s.status === 'done').length,
       subtaskTitles: ((t as any).subtasks || []).slice(0, 3).map((s: any) => s.title),
       gxpCritical: !!(t as any).gxpCritical,
+      pendingWith: String((t as any).pendingWith || ''),
       leverage: lev.score,
       pressing,
       reasons: lev.reasons.slice(0, 2),

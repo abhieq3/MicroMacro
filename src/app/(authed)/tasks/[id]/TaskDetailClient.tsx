@@ -28,6 +28,8 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { FlowSignalTaskStrip } from '@/components/FlowSignalTaskStrip';
+import { BlockedCauseModal } from '@/components/BlockedCauseModal';
+import { blockedNeedsCause } from '@/lib/blockedCause';
 
 // TaskCompletePop is only shown on task completion — off the critical render
 // path so deferring it improves FCP/LCP.
@@ -119,6 +121,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [completeMins, setCompleteMins] = useState('');
   const [completeSecret, setCompleteSecret] = useState('');
+  const [blockOpen, setBlockOpen] = useState(false);
   const { showToast, ToastEl } = useToast();
 
   async function load() {
@@ -245,16 +248,24 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
       setCompleteOpen(true);
       return;
     }
+    if (blockedNeedsCause(newStatus, task?.pendingWith)) {
+      setBlockOpen(true);
+      return;
+    }
     await commitStatus(newStatus);
   }
 
   async function commitStatus(
     newStatus: string,
-    extra?: { pin?: string; password?: string; completeMinutes?: number },
+    extra?: { pin?: string; password?: string; completeMinutes?: number; pendingWith?: string },
   ) {
     const wasDone = task?.status === 'done';
     setSavingStatus(true);
-    setTask((t: any) => ({ ...t, status: newStatus }));
+    setTask((t: any) => ({
+      ...t,
+      status: newStatus,
+      ...(extra?.pendingWith !== undefined ? { pendingWith: extra.pendingWith } : {}),
+    }));
     try {
       await api(`/tasks/${id}`, { method: 'PATCH', body: { status: newStatus, ...extra } });
       if (newStatus === 'done' && !wasDone) {
@@ -268,6 +279,7 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
         });
         setCompleteOpen(false);
       }
+      setBlockOpen(false);
       load();
     } catch (e: any) {
       showToast(e.message || 'Failed to update status', 'err');
@@ -377,6 +389,14 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 max-w-6xl page-enter">
       {ToastEl}
       <TaskCompletePop task={celebrate} onDone={() => setCelebrate(null)} />
+      {blockOpen && (
+        <BlockedCauseModal
+          taskTitle={task.title}
+          initial={task.pendingWith || ''}
+          onCancel={() => setBlockOpen(false)}
+          onConfirm={(cause) => commitStatus('blocked', { pendingWith: cause })}
+        />
+      )}
       {completeOpen && (
         <CompleteStampModal
           title={task.title}
@@ -789,6 +809,11 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
                         )}
                         {active && !savingStatus && (
                           <span className="ml-auto text-[10px] font-bold opacity-60">✓</span>
+                        )}
+                        {s === 'blocked' && active && task.pendingWith && (
+                          <span className="ml-auto text-[10px] font-semibold opacity-80 truncate max-w-[9rem]">
+                            {task.pendingWith}
+                          </span>
                         )}
                       </button>
                     );

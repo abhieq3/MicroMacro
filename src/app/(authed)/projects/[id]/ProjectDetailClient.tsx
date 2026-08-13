@@ -47,6 +47,8 @@ import { chimeIfEnabled, playDropTick } from '@/lib/sound';
 import { Celebration } from '@/components/Celebration';
 import { ProjectClearSurprise } from '@/components/ProjectClearSurprise';
 import { TaskCompletePop } from '@/components/TaskCompletePop';
+import { BlockedCauseModal } from '@/components/BlockedCauseModal';
+import { blockedNeedsCause } from '@/lib/blockedCause';
 import { useCurrentUser } from '@/components/CurrentUserContext';
 import { ExportMenu } from '@/components/ExportMenu';
 import { printProjectReport, downloadProjectReport, downloadProjectCsv } from './report';
@@ -1278,6 +1280,12 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   // (which is the full-screen phase/project milestone) — this pops on every
   // individual task close and reads its type so the line feels personalised.
   const [taskPop, setTaskPop] = useState<any | null>(null);
+  const [blockAsk, setBlockAsk] = useState<{
+    taskId: string;
+    title?: string;
+    toStatus: string;
+    orderedIds?: string[];
+  } | null>(null);
 
   async function load() {
     try {
@@ -1585,14 +1593,22 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
   }
 
   // Kanban drop: persist a status change (if any) and the new column order.
-  async function dropReorder(taskId: string, toStatus: string, orderedIds: string[]) {
+  async function dropReorder(taskId: string, toStatus: string, orderedIds: string[], pendingWith?: string) {
     const cur = tasks.find((t: any) => t.id === taskId);
+    if (blockedNeedsCause(toStatus, pendingWith ?? cur?.pendingWith)) {
+      setBlockAsk({ taskId, title: cur?.title, toStatus, orderedIds });
+      load();
+      return;
+    }
     const statusChanged = !!cur && cur.status !== toStatus;
     const wasNotDone = cur?.status !== 'done';
     setPendingTaskIds((s) => new Set([...s, taskId]));
     try {
       if (statusChanged) {
-        await api(`/tasks/${taskId}`, { method: 'PATCH', body: { status: toStatus } });
+        await api(`/tasks/${taskId}`, {
+          method: 'PATCH',
+          body: { status: toStatus, ...(pendingWith ? { pendingWith } : {}) },
+        });
       }
       // Persisting column order is a lead/admin action; an IC dragging their
       // own card still gets the status change, just not a saved reorder.
@@ -1621,16 +1637,26 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
     }
   }
 
-  async function moveTaskFromPhase(taskId: string, status: string) {
-    const wasNotDone = tasks.find((t: any) => t.id === taskId)?.status !== 'done';
+  async function moveTaskFromPhase(taskId: string, status: string, pendingWith?: string) {
+    const cur = tasks.find((t: any) => t.id === taskId);
+    if (blockedNeedsCause(status, pendingWith ?? cur?.pendingWith)) {
+      setBlockAsk({ taskId, title: cur?.title, toStatus: status });
+      return;
+    }
+    const wasNotDone = cur?.status !== 'done';
     // Optimistic local update
     setProject((p: any) => ({
       ...p,
-      tasks: p.tasks.map((t: any) => (t.id === taskId ? { ...t, status } : t)),
+      tasks: p.tasks.map((t: any) =>
+        t.id === taskId ? { ...t, status, ...(pendingWith ? { pendingWith } : {}) } : t,
+      ),
     }));
     setPendingTaskIds((s) => new Set([...s, taskId]));
     try {
-      await api(`/tasks/${taskId}`, { method: 'PATCH', body: { status } });
+      await api(`/tasks/${taskId}`, {
+        method: 'PATCH',
+        body: { status, ...(pendingWith ? { pendingWith } : {}) },
+      });
       if (status === 'done' && wasNotDone) {
         if (!celebrateIfMilestone(taskId)) {
           chimeIfEnabled();
@@ -1735,6 +1761,18 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
         />
       ) : null}
       <TaskCompletePop task={taskPop} onDone={() => setTaskPop(null)} />
+      {blockAsk && (
+        <BlockedCauseModal
+          taskTitle={blockAsk.title}
+          onCancel={() => setBlockAsk(null)}
+          onConfirm={(cause) => {
+            const ask = blockAsk;
+            setBlockAsk(null);
+            if (ask.orderedIds) void dropReorder(ask.taskId, ask.toStatus, ask.orderedIds, cause);
+            else void moveTaskFromPhase(ask.taskId, ask.toStatus, cause);
+          }}
+        />
+      )}
 
       {/* Header — stacks vertically on mobile (title block → meta → actions),
           flows horizontally with the meta/actions pinned right on md+. The old

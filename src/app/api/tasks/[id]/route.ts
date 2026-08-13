@@ -17,6 +17,7 @@ import { recordTaskFlowEvent } from '@/lib/flow/events';
 import { bustDashboardCache } from '@/lib/leadDashboard';
 import { bustProjectsPageCache } from '@/lib/projectList';
 import { rememberTask, forgetTask } from '@/lib/ai/workMemoryStore';
+import { blockedNeedsCause, namedBlockedCause } from '@/lib/blockedCause';
 
 export const runtime = 'nodejs';
 
@@ -68,7 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const body = await readBody(req, TaskUpdateSchema);
     const current = await Task.findById(params.id)
       .select(
-        'status assigneeId privateToUserId title createdAt completedAt startedAt dueDate ccTcd taskType projectId gxpCritical requiresQaSignoff effortLog actualHours',
+        'status assigneeId privateToUserId title createdAt completedAt startedAt dueDate ccTcd taskType projectId gxpCritical requiresQaSignoff effortLog actualHours pendingWith',
       )
       .lean();
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -80,7 +81,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (icEdit) {
       const isAssignee = current.assigneeId && String(current.assigneeId) === String(user!.sub);
       const keys = Object.keys(body).filter((k) => body[k as keyof typeof body] !== undefined);
-      const IC_EDITABLE = new Set(['description', 'dueDate', 'status', 'pin', 'password', 'completeMinutes']);
+      const IC_EDITABLE = new Set([
+        'description',
+        'dueDate',
+        'status',
+        'pendingWith',
+        'pin',
+        'password',
+        'completeMinutes',
+      ]);
       const onlyAllowed = isAssignee && keys.length > 0 && keys.every((k) => IC_EDITABLE.has(k));
       if (!onlyAllowed) {
         return NextResponse.json(
@@ -91,6 +100,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           { status: 403 },
         );
       }
+    }
+
+    if (blockedNeedsCause(body.status, body.pendingWith ?? (current as any).pendingWith)) {
+      return NextResponse.json({ error: 'Blocked needs a named cause.' }, { status: 400 });
+    }
+    if (body.status === 'blocked' && body.pendingWith === undefined) {
+      const existing = namedBlockedCause((current as any).pendingWith);
+      if (existing) (body as any).pendingWith = existing;
     }
 
     const becomingDone = body.status === 'done' && current.status !== 'done';
