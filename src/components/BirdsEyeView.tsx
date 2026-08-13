@@ -186,11 +186,13 @@ const HEALTH_FILL: Record<string, string> = {
   healthy: '#f0fdf4',
   at_risk: '#fffbeb',
   critical: '#fef2f2',
+  complete: '#eef2ff',
 };
 const HEALTH_STROKE: Record<string, string> = {
   healthy: '#16a34a',
   at_risk: '#d97706',
   critical: '#dc2626',
+  complete: '#4f46e5',
 };
 
 // Urgency color ramp – the visual language that makes this the greatest feature.
@@ -235,7 +237,7 @@ interface Edge {
 // stays scannable from above. Sizes tuned to keep the default (tasks-collapsed)
 // view clean — individual projects expand to show task detail on demand.
 const NODE_WIDTH = { root: 280, team: 226, project: 240, phase: 210, task: 220, count: 202 } as const;
-const NODE_HEIGHT = { root: 88, team: 66, project: 68, phase: 58, task: 46, count: 32 } as const;
+const NODE_HEIGHT = { root: 88, team: 66, project: 68, phase: 58, task: 46, count: 38 } as const;
 // Air between things is what separates "aerial view" from "circuit diagram".
 // These gaps were widened after the dense first pass read as congested: the
 // auto-fit always frames the whole tree anyway, so extra whitespace costs a
@@ -321,6 +323,7 @@ function layout(
   opts: {
     collapseTasks: boolean;
     collapsedIds?: ReadonlySet<string>;
+    expandedProjectIds?: ReadonlySet<string>;
     rebalanceMode?: boolean;
     workFocus?: WorkFocus;
   },
@@ -358,35 +361,27 @@ function layout(
     if (!tasksByProject.has(t.projectId)) tasksByProject.set(t.projectId, []);
     tasksByProject.get(t.projectId)!.push(t);
   }
-  for (const list of tasksByProject.values()) {
+  const allByProject = new Map<string, BirdsEyeTask[]>();
+  for (const t of data.tasks) {
+    if (!allByProject.has(t.projectId)) allByProject.set(t.projectId, []);
+    allByProject.get(t.projectId)!.push(t);
+  }
+  const sortList = (list: BirdsEyeTask[]) => {
     if (opts.rebalanceMode) {
-      // Elon rebalance: urgency rises. This is what makes the view the greatest control surface.
-      // Team level: cross-project priorities surface. Project level: the real work order appears.
       list.sort((a, b) => computeTaskUrgency(b) - computeTaskUrgency(a) || sortTasks(a, b));
     } else {
       list.sort(sortTasks);
     }
-  }
+  };
+  for (const list of tasksByProject.values()) sortList(list);
+  for (const list of allByProject.values()) sortList(list);
 
   type Subtree = { node: PositionedNode; children: Subtree[]; width: number; tasks?: PositionedNode[] };
 
-  // Build a vertical task stack of PositionedNodes (positions filled later).
-  function taskStack(tasks: BirdsEyeTask[], keyPrefix: string): PositionedNode[] {
+  const expandedProjectIds = opts.expandedProjectIds || new Set<string>();
+
+  function taskCards(tasks: BirdsEyeTask[], keyPrefix: string): PositionedNode[] {
     const out: PositionedNode[] = [];
-    if (opts.collapseTasks && tasks.length > 0) {
-      const done = tasks.filter((t) => t.status === 'done').length;
-      out.push({
-        kind: 'count',
-        id: `count:${keyPrefix}`,
-        x: 0,
-        y: 0,
-        width: NODE_WIDTH.count,
-        height: NODE_HEIGHT.count,
-        label: `${tasks.length} task${tasks.length === 1 ? '' : 's'}`,
-        sub: opts.workFocus && opts.workFocus !== 'all' ? `${tasks.length} open` : `${done}/${tasks.length} done`,
-      });
-      return out;
-    }
     const TASK_CAP = 80;
     for (const t of tasks.slice(0, TASK_CAP)) {
       out.push({
@@ -410,10 +405,53 @@ function layout(
         y: 0,
         width: NODE_WIDTH.count,
         height: NODE_HEIGHT.count,
-        label: `+${tasks.length - TASK_CAP} more — use Group tasks`,
+        label: `+${tasks.length - TASK_CAP} more`,
       });
     }
     return out;
+  }
+
+  // Chip when collapsed; every task (including done) when this project is expanded.
+  function taskStack(p: BirdsEyeProject): PositionedNode[] {
+    const focused = tasksByProject.get(p.id) || [];
+    const all = allByProject.get(p.id) || [];
+    const expanded = expandedProjectIds.has(p.id);
+
+    if (expanded) {
+      const cards = taskCards(all, p.id);
+      cards.push({
+        kind: 'count',
+        id: `hide:${p.id}`,
+        x: 0,
+        y: 0,
+        width: NODE_WIDTH.count,
+        height: NODE_HEIGHT.count,
+        label: 'Hide tasks',
+        data: { projectId: p.id, action: 'collapse-tasks' },
+      });
+      return cards;
+    }
+
+    if (opts.collapseTasks) {
+      const nOpen = focused.length;
+      const nAll = all.length;
+      if (nAll === 0) return [];
+      return [
+        {
+          kind: 'count',
+          id: `count:${p.id}`,
+          x: 0,
+          y: 0,
+          width: NODE_WIDTH.count,
+          height: NODE_HEIGHT.count,
+          label: nOpen > 0 ? `Show ${nOpen} task${nOpen === 1 ? '' : 's'}` : `Show ${nAll} done`,
+          sub: nOpen > 0 ? `${nOpen} open · click to expand` : 'all complete · click to expand',
+          data: { projectId: p.id, action: 'expand-tasks' },
+        },
+      ];
+    }
+
+    return taskCards(focused.length ? focused : all, p.id);
   }
 
   // Re-measure a node's height to fit its wrapped title + optional inline
@@ -441,8 +479,7 @@ function layout(
   function buildProjectSubtree(p: BirdsEyeProject): Subtree {
     const id = nodeKey('project', p.id);
     const collapsed = collapsedIds.has(id);
-    const tasks = collapsed ? [] : tasksByProject.get(p.id) || [];
-    const taskNodes = taskStack(tasks, p.id);
+    const taskNodes = collapsed ? [] : taskStack(p);
     taskNodes.forEach((t) => {
       if (t.kind === 'task') fitTaskHeight(t);
     });
@@ -506,8 +543,37 @@ function layout(
       const phaseId = `phase:${i}`;
       const collapsed = collapsedIds.has(phaseId);
       const tasks = byPhase.get(name)!;
-      const visibleTasks = collapsed ? [] : tasks;
-      const taskNodes = taskStack(visibleTasks, `phase-${i}`);
+      const expanded = expandedProjectIds.has(phaseId);
+      let taskNodes: PositionedNode[] = [];
+      if (!collapsed && (expanded || !opts.collapseTasks)) {
+        taskNodes = taskCards(tasks, `phase-${i}`);
+        if (expanded) {
+          taskNodes.push({
+            kind: 'count',
+            id: `hide:${phaseId}`,
+            x: 0,
+            y: 0,
+            width: NODE_WIDTH.count,
+            height: NODE_HEIGHT.count,
+            label: 'Hide tasks',
+            data: { projectId: phaseId, action: 'collapse-tasks' },
+          });
+        }
+      } else if (!collapsed && opts.collapseTasks && tasks.length > 0) {
+        taskNodes = [
+          {
+            kind: 'count',
+            id: `count:${phaseId}`,
+            x: 0,
+            y: 0,
+            width: NODE_WIDTH.count,
+            height: NODE_HEIGHT.count,
+            label: `Show ${tasks.length} task${tasks.length === 1 ? '' : 's'}`,
+            sub: 'click to expand',
+            data: { projectId: phaseId, action: 'expand-tasks' },
+          },
+        ];
+      }
       taskNodes.forEach((t) => {
         if (t.kind === 'task') fitTaskHeight(t);
       });
@@ -791,8 +857,10 @@ function NodeShape({
 
   if (n.kind === 'project') {
     const p = n.data as BirdsEyeProject;
-    const fill = HEALTH_FILL[p?.health || 'healthy'];
-    const stroke = HEALTH_STROKE[p?.health || 'healthy'];
+    const isComplete = (p?.taskCount || 0) > 0 && (p.tasksDone || 0) >= p.taskCount;
+    const tone = isComplete ? 'complete' : p?.health || 'healthy';
+    const fill = HEALTH_FILL[tone];
+    const stroke = HEALTH_STROKE[tone];
 
     // Team-level greatness: project nodes carry visual weight so leaders feel the heat across the whole team instantly.
     // Use precomputed map (simDays aware) to avoid scope issues in pure NodeShape.
@@ -822,8 +890,8 @@ function NodeShape({
         />
         <rect x={n.x} y={n.y} width={4} height={n.height} rx={2} fill={stroke} />
 
-        {/* Urgency top bar on projects – the thing that makes the team-level view magical */}
-        {projUrgency > 25 && (
+        {/* Urgency top bar — skipped on completed projects so they stay calm. */}
+        {projUrgency > 25 && !isComplete && (
           <rect
             x={n.x + 8}
             y={n.y + 4}
@@ -1008,33 +1076,35 @@ function NodeShape({
     );
   }
 
-  // count chip
+  // count chip — this is the hide/expand control, not the blue + on the card.
+  const expandHint = n.data?.action === 'expand-tasks';
+  const hideHint = n.data?.action === 'collapse-tasks';
   return (
     <g>
-      <title>{n.label}</title>
+      <title>{expandHint ? 'Show all tasks under this project' : hideHint ? 'Hide this project’s tasks' : n.label}</title>
       <rect
         x={n.x}
         y={n.y}
         width={n.width}
         height={n.height}
         rx={10}
-        fill="#f8fafc"
-        stroke="#cbd5e1"
+        fill={hideHint ? '#f1f5f9' : '#f8fafc'}
+        stroke="#1565C0"
         strokeDasharray="4,3"
-        strokeWidth={1}
+        strokeWidth={1.2}
       />
       <text
         x={n.x + n.width / 2}
-        y={n.y + (n.sub ? 17 : 24)}
+        y={n.y + (n.sub ? 15 : 21)}
         textAnchor="middle"
         fontSize={11}
         fontWeight={700}
-        fill="#475569"
+        fill="#1565C0"
       >
-        {n.label}
+        {expandHint ? `▾  ${n.label}` : hideHint ? `▴  ${n.label}` : n.label}
       </text>
       {n.sub && (
-        <text x={n.x + n.width / 2} y={n.y + 31} textAnchor="middle" fontSize={9.5} fill="#64748b">
+        <text x={n.x + n.width / 2} y={n.y + 28} textAnchor="middle" fontSize={9} fill="#64748b">
           {n.sub}
         </text>
       )}
@@ -1083,6 +1153,9 @@ export function BirdsEyeView({
   // teams at once) defaults to collapsed, where expanding everything would be a
   // wall; the user expands the branches they care about.
   const [collapseTasks, setCollapseTasks] = useState(data.scope === 'workspace');
+  // Per-project task expand — clicking the dashed chip under a project shows
+  // every task (including done) under that node only.
+  const [expandedProjectIds, setExpandedProjectIds] = useState<Set<string>>(() => new Set());
   const [editing, setEditing] = useState<{ node: PositionedNode; clientX: number; clientY: number } | null>(
     null,
   );
@@ -1240,8 +1313,8 @@ export function BirdsEyeView({
     width: baseWidth,
     height: baseHeight,
   } = useMemo(
-    () => layout(data, { collapseTasks, collapsedIds, rebalanceMode, workFocus }),
-    [data, collapseTasks, collapsedIds, rebalanceMode, workFocus],
+    () => layout(data, { collapseTasks, collapsedIds, expandedProjectIds, rebalanceMode, workFocus }),
+    [data, collapseTasks, collapsedIds, expandedProjectIds, rebalanceMode, workFocus],
   );
 
   // Apply drag overrides to the computed layout (and expand canvas if dragged
@@ -2118,7 +2191,16 @@ export function BirdsEyeView({
                       const dragProps = {
                         'data-be-node': n.id,
                         'data-be-kind': n.kind,
-                        style: { cursor: n.kind === 'root' || n.kind === 'count' ? 'default' : 'grab' },
+                        style: {
+                          cursor:
+                            n.kind === 'count'
+                              ? n.data?.action
+                                ? 'pointer'
+                                : 'default'
+                              : n.kind === 'root'
+                                ? 'default'
+                                : 'grab',
+                        },
                       } as const;
                       const shape = (
                         <NodeShape
@@ -2220,8 +2302,7 @@ export function BirdsEyeView({
                         </g>
                       ) : null;
 
-                      // "+" add-task affordance — bottom-right corner of project/phase
-                      // nodes. Opens an inline new-task popover that posts to /tasks.
+                      // Add-task — labelled pill so it is never mistaken for expand.
                       const addBtn = canAddTask ? (
                         <g
                           data-be-action="add"
@@ -2236,26 +2317,25 @@ export function BirdsEyeView({
                           }}
                           style={{ cursor: 'pointer' }}
                         >
-                          <title>Add a task under this {n.kind}</title>
-                          <circle cx={n.x + n.width - 11} cy={n.y + n.height - 11} r={8.5} fill="#1565C0" />
-                          <line
-                            x1={n.x + n.width - 15}
-                            y1={n.y + n.height - 11}
-                            x2={n.x + n.width - 7}
-                            y2={n.y + n.height - 11}
-                            stroke="#ffffff"
-                            strokeWidth={1.7}
-                            strokeLinecap="round"
+                          <title>Add a new task under this {n.kind}</title>
+                          <rect
+                            x={n.x + n.width - 46}
+                            y={n.y + n.height - 18}
+                            width={40}
+                            height={15}
+                            rx={7}
+                            fill="#1565C0"
                           />
-                          <line
-                            x1={n.x + n.width - 11}
-                            y1={n.y + n.height - 15}
-                            x2={n.x + n.width - 11}
-                            y2={n.y + n.height - 7}
-                            stroke="#ffffff"
-                            strokeWidth={1.7}
-                            strokeLinecap="round"
-                          />
+                          <text
+                            x={n.x + n.width - 26}
+                            y={n.y + n.height - 7.5}
+                            textAnchor="middle"
+                            fontSize={8}
+                            fontWeight={700}
+                            fill="#ffffff"
+                          >
+                            + Add
+                          </text>
                         </g>
                       ) : null;
 
@@ -2272,6 +2352,20 @@ export function BirdsEyeView({
                             e.preventDefault();
                             e.stopPropagation();
                             if (clickTimer.current) clearTimeout(clickTimer.current);
+                            if (n.kind === 'count') {
+                              const action = (n.data as any)?.action;
+                              const pid = (n.data as any)?.projectId as string | undefined;
+                              if (action === 'expand-tasks' && pid) {
+                                setExpandedProjectIds((s) => new Set(s).add(pid));
+                              } else if (action === 'collapse-tasks' && pid) {
+                                setExpandedProjectIds((s) => {
+                                  const next = new Set(s);
+                                  next.delete(pid);
+                                  return next;
+                                });
+                              }
+                              return;
+                            }
                             if (isTask) {
                               setEditing({
                                 node: n,
@@ -2508,7 +2602,9 @@ export function BirdsEyeView({
             </div>
 
             <div className="flex-1" />
-            <span className="text-slate-400 hidden md:inline">Click a task to update it · double-click to open</span>
+            <span className="text-slate-400 hidden md:inline">
+              Click the dashed chip to show tasks · + Add makes a task
+            </span>
           </div>
 
           {/* Original status legend, now even more powerful next to urgency focus */}

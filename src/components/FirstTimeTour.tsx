@@ -95,7 +95,7 @@ function buildSteps(role: string): Step[] {
     },
     {
       target: '[data-tour="nav-whiteboard"]',
-      title: 'Think here first',
+      title: 'The project board',
       body: 'One board per project. The team sees it. Type the next move, make it a task. When the problem is solved, wipe it.',
       icon: Presentation,
       iconBg: '#E0F7FA',

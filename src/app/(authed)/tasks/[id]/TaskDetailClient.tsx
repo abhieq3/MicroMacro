@@ -423,11 +423,6 @@ export default function TaskDetailClient(props: TaskDetailClientProps) {
             )}
           </div>
           <h1 className="text-xl font-bold text-slate-900 leading-snug">{task.title}</h1>
-          {task.workMemory?.lines?.length ? (
-            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-              {task.workMemory.lines.join(' · ')}
-            </p>
-          ) : null}
           {(task.startedAt || task.completedAt) && (
             <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
               {task.startedAt ? `Started ${formatDateTime(task.startedAt)}` : null}

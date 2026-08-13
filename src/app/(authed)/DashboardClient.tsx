@@ -372,18 +372,6 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               the correct product state. */}
           <FlowSignalStrip data={dash.flowSignal} />
 
-          {/* Learned from completed work — silent until there are enough
-              samples. Facts only; no forecast, no pep. */}
-          {dash.workMemory?.lines?.length ? (
-            <div className="mb-4 -mt-1 space-y-0.5">
-              {dash.workMemory.lines.map((line) => (
-                <p key={line} className="text-[13px] text-slate-500 dark:text-slate-400">
-                  {line}
-                </p>
-              ))}
-            </div>
-          ) : null}
-
           {/* ── Summary strip ──────────────────────────────────────────── */}
           <div className="flex flex-wrap gap-2 mb-5">
             <SummaryChip

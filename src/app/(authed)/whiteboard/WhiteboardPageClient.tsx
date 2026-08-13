@@ -47,7 +47,7 @@ export default function WhiteboardPageClient() {
       <div className="mb-2.5 shrink-0 flex items-center gap-2 min-w-0 flex-wrap">
         <PenLine size={13} className="text-slate-400 dark:text-white/30 shrink-0" />
         <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 dark:text-white/40 shrink-0">
-          Think
+          Board
         </span>
         <span className="text-slate-300 dark:text-white/15 shrink-0">·</span>
         <div className="min-w-[220px] max-w-sm flex-1">

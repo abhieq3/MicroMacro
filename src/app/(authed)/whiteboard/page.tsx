@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentUserFromCookie } from '@/lib/auth';
 import WhiteboardPageClient from './WhiteboardPageClient';
 
-export const metadata: Metadata = { title: 'Think — Pragati' };
+export const metadata: Metadata = { title: 'Board — Pragati' };
 
 /**
  * One living board per project. The team sees it. Text boxes become tasks.

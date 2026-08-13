@@ -599,7 +599,7 @@ export function Whiteboard({
             <div className="text-center max-w-sm">
               <Pen size={26} className="mx-auto mb-2 text-slate-300" />
               <div className="text-sm font-bold text-slate-500">
-                {projectId ? 'Think out loud on this project' : 'Start drawing'}
+                {projectId ? 'Meeting board for this project' : 'Start drawing'}
               </div>
               <div className="text-xs text-slate-400 mt-1 leading-relaxed">
                 {projectId
