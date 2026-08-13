@@ -12,7 +12,6 @@ import {
   Trash2,
   ArrowRight,
   X,
-  Sparkles,
   Calendar,
   Zap,
   ChevronRight,
@@ -617,7 +616,7 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
                 <input
                   ref={inputRef}
                   className="flex-1 bg-transparent text-[15px] text-slate-800 dark:text-white/90 placeholder-slate-400 dark:placeholder-white/30 border-0 outline-none py-1 min-w-0"
-                  placeholder="Empty your mind — what do you want to get done today?"
+                  placeholder="Add a note"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   autoFocus
@@ -639,19 +638,10 @@ export default function MyDayClient({ initialData }: { initialData: { open: Note
             </div>
           </form>
 
-          {/* ── Empty state ──────────────────────────────────────── */}
           {open.length === 0 && done.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/[0.08] p-12 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 flex items-center justify-center mx-auto mb-3">
-                <Sparkles size={22} className="text-blue-400 dark:text-blue-400/70" />
-              </div>
-              <div className="text-sm font-bold text-slate-700 dark:text-white/60 mb-1">
-                A clear head starts here
-              </div>
-              <div className="text-xs text-slate-400 dark:text-white/25 max-w-xs mx-auto leading-relaxed">
-                Jot anything — ideas, blockers, follow-ups. Unfinished notes carry over automatically.
-              </div>
-            </div>
+            <p className="text-xs text-slate-400 dark:text-white/30 px-1 mb-2">
+              Unfinished notes carry over.
+            </p>
           )}
 
           {/* ── Open notes list ──────────────────────────────────── */}
