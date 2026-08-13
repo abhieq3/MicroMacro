@@ -173,7 +173,7 @@ function buildSteps(role: string): Step[] {
               yours: [
                 'Create teams & shared projects; assign and rebalance work',
                 "Bird's-eye any team or project; export Excel / PDF reports",
-                'Edit any task in your scope; spot work that may slip before it does',
+                'Edit any task in your scope; expand a project to see the work',
                 'My Day & personal projects — private to you',
               ],
               context: [

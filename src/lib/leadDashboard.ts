@@ -9,17 +9,8 @@ import { getLeadScope, projectsVisibleFilter } from '@/lib/leadScope';
 import { computeFlowStrip, type FlowSignalPayload } from '@/lib/flow/computeStrip';
 import { getFlowConfig, isUiEnabled, isPilotTeamVisible } from '@/lib/flow/config';
 import { cached, cacheBust } from '@/lib/cache';
-import {
-  buildWorkMixerFromDashboardData,
-  scoreWorkCandidate,
-  classifyWorkCandidate,
-  taskToCandidate,
-  type WorkMixerResult,
-} from '@/lib/workMixer';
+import { buildWorkMixerFromDashboardData, type WorkMixerResult } from '@/lib/workMixer';
 import { normalizeRole } from '@/lib/auth';
-import { buildDeliveryProfiles, buildOpenLoad, scoreSlipRisk } from '@/lib/ai/slipRisk';
-import { factsForViewer } from '@/lib/ai/workMemoryStore';
-import type { WorkMemoryFacts } from '@/lib/ai/workMemory';
 
 const STATUS_ORDER: Record<string, number> = { in_progress: 0, review: 1, blocked: 2, todo: 3, done: 4 };
 
@@ -58,8 +49,6 @@ export interface LeadDashboardData {
    *  WORK_MIXER_ENABLED=true; absent (undefined) by default, so existing
    *  consumers are unaffected. Never used to render UI in Phase 1. */
   workMixer?: WorkMixerResult | null;
-  /** Learned facts from completed work. Empty `lines` = render nothing. */
-  workMemory?: WorkMemoryFacts | null;
 }
 
 /**
@@ -227,12 +216,6 @@ async function computeLeadDashboardData(jwtUser: {
           .lean(),
   ]);
 
-  // Delivery profiles + open load for the slip-risk early warning — computed
-  // once over rows already in memory (done tasks teach the model; open tasks
-  // supply the pressure feature).
-  const deliveryProfiles = buildDeliveryProfiles(teamTasksRaw as any);
-  const openLoadByAssignee = buildOpenLoad(teamTasksRaw as any);
-
   const assigneeIds = [
     ...new Set(
       teamTasksRaw
@@ -364,22 +347,6 @@ async function computeLeadDashboardData(jwtUser: {
 
   const teamTasks = teamTasksRaw.map((t) => {
     const p = projMap.get(String(t.projectId));
-    // Leverage score + the reasons behind it, from the (pure, tested) Work
-    // Mixer engine — the same signals that decide priority: overdue,
-    // blocked/waiting, due-soon, critical/business-critical, staleness. The
-    // dashboard uses this to lead with the one thing that matters and to show
-    // WHY, instead of a naive status sort.
-    const candidate = taskToCandidate(t);
-    const lev = scoreWorkCandidate(candidate, now);
-    // `pressing` = is there a genuine near-term CAUSE to act, not just a high
-    // static score? A task can score well purely on attributes (critical /
-    // business-critical / needs-QA-sign-off) while its date is weeks out — that
-    // has no business hijacking someone's morning. So the morning spotlight
-    // only spawns when the work is actually overdue, due this week, blocked,
-    // waiting, or stalled. Same engine, same instant — just the time/flow
-    // signals, not the always-on flags.
-    const ws = classifyWorkCandidate(candidate, now);
-    const pressing = ws.overdue || ws.dueSoon || ws.blocked || ws.waiting || ws.stalled;
     return {
       id: String(t._id),
       title: t.title,
@@ -399,23 +366,6 @@ async function computeLeadDashboardData(jwtUser: {
       subtaskTitles: ((t as any).subtasks || []).slice(0, 3).map((s: any) => s.title),
       gxpCritical: !!(t as any).gxpCritical,
       pendingWith: String((t as any).pendingWith || ''),
-      leverage: lev.score,
-      pressing,
-      reasons: lev.reasons.slice(0, 2),
-      // Slip-risk early warning — learned from each assignee's delivery
-      // history in the SAME rows we already loaded (no extra queries; see
-      // lib/ai/slipRisk). Null for most tasks; a {reason} object when the
-      // model judges the date likely to be missed.
-      slipRisk: ((): { reason: string } | null => {
-        if (!t.assigneeId) return null;
-        const sig = scoreSlipRisk(
-          t as any,
-          deliveryProfiles.get(String(t.assigneeId)),
-          openLoadByAssignee.get(String(t.assigneeId)) || 0,
-          now,
-        );
-        return sig ? { reason: sig.reason } : null;
-      })(),
     };
   });
 
@@ -480,22 +430,6 @@ async function computeLeadDashboardData(jwtUser: {
     }
   }
 
-  // Work memory — incremental facts from completed work. Silent until there
-  // are enough samples. Never blocks the dashboard if the store is empty.
-  let workMemory: WorkMemoryFacts | null = null;
-  try {
-    workMemory = await factsForViewer({
-      userId: jwtUser.sub,
-      teamIds: teams.map((t) => String(t._id)),
-      projects: projects.map((p) => ({ _id: p._id, teamId: (p as any).teamId })),
-      fallbackTasks: teamTasksRaw as any,
-    });
-    if (!workMemory.lines.length) workMemory = null;
-  } catch (e) {
-    console.error('[work-memory] dashboard', e);
-    workMemory = null;
-  }
-
   return {
     user: { id: jwtUser.sub, name: jwtUser.name, email: jwtUser.email, role: jwtUser.role },
     projects: projectList,
@@ -505,6 +439,5 @@ async function computeLeadDashboardData(jwtUser: {
     // Number of teams the viewer belongs to (or all teams, for admin).
     teamCount: teams.length,
     flowSignal,
-    workMemory,
   };
 }
