@@ -63,6 +63,30 @@ export interface LifecycleTemplate {
   phases: LifecyclePhaseTemplate[];
 }
 
+/** Flatten a lifecycle into seedable tasks. First-workspace and POST /projects
+ *  both need this so a new board is never a row of empty phases. */
+export function lifecycleTaskSeeds(lc: Pick<LifecycleTemplate, 'phases'>): {
+  phaseIndex: number;
+  title: string;
+  taskType: LifecycleTaskTemplate['type'];
+  position: number;
+}[] {
+  const out: {
+    phaseIndex: number;
+    title: string;
+    taskType: LifecycleTaskTemplate['type'];
+    position: number;
+  }[] = [];
+  lc.phases.forEach((ph, i) => {
+    ph.tasks.forEach((t, ti) => {
+      const title = (t.title || '').trim();
+      if (!title) return;
+      out.push({ phaseIndex: i, title, taskType: t.type || 'task', position: ti });
+    });
+  });
+  return out;
+}
+
 export const LIFECYCLES: Record<LifecycleKey, LifecycleTemplate> = {
   generic: {
     label: 'Generic project',

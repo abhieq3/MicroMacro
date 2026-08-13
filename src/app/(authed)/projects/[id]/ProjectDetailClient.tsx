@@ -734,13 +734,15 @@ function QuickAddTask({
   phaseId,
   teamId,
   onAdded,
+  startOpen = false,
 }: {
   projectId: string;
   phaseId?: string;
   teamId?: string | null;
   onAdded: () => void;
+  startOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [title, setTitle] = useState('');
   const [assignee, setAssignee] = useState('');
   const [due, setDue] = useState('');
@@ -2315,6 +2317,7 @@ export default function ProjectDetailClient(props: ProjectDetailClientProps) {
                     phaseId={ph.id}
                     teamId={project.teamId}
                     onAdded={load}
+                    startOpen={tasks.length === 0 && i === 0}
                   />
                 )}
               </Card>

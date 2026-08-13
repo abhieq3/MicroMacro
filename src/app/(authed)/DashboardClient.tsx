@@ -853,7 +853,7 @@ function FirstRunGuide({ hasTeam }: { hasTeam: boolean }) {
     <div className="mb-6 max-w-lg">
       <h2 className="text-sm font-bold text-slate-800 dark:text-white/80 mb-1">Your first workspace</h2>
       <p className="text-xs text-slate-500 dark:text-white/40 leading-relaxed mb-4">
-        Name the team and the first project. You can add people from the project page after this.
+        Name the team and the first project. It opens with starter tasks you can rename or assign.
       </p>
       <form
         onSubmit={start}

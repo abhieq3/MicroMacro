@@ -4,13 +4,14 @@ import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { Team } from '@/models/Team';
 import { Project } from '@/models/Project';
+import { Task } from '@/models/Task';
 import { isLead, requireUser } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { team as teamS, project as projectS } from '@/lib/serialize';
 import { logOperation } from '@/lib/audit';
 import { bustDashboardCache } from '@/lib/leadDashboard';
 import { bustProjectsPageCache } from '@/lib/projectList';
-import { LIFECYCLES } from '@/lib/lifecycles';
+import { LIFECYCLES, lifecycleTaskSeeds } from '@/lib/lifecycles';
 
 export const runtime = 'nodejs';
 
@@ -20,9 +21,10 @@ const Body = z.object({
 });
 
 /**
- * Day-one: one call creates the team (caller as lead) and a blank project.
- * First-time users were dying on Teams → People → New project. This is the
- * path they should have had.
+ * Day-one: one call creates the team (caller as lead) and a project with
+ * the generic starter tasks. First-time users were dying on Teams → People
+ * → New project, then landing on empty phases. This is the path they
+ * should have had.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -78,6 +80,20 @@ export async function POST(req: NextRequest) {
       regulatoryRefs: lc.regulatoryRefs || '',
       phases: phaseDocs,
     });
+
+    // Same starter tasks POST /projects seeds from the generic lifecycle.
+    // Kick-off is assigned to the lead so Today and the project are not
+    // empty on the first paint.
+    const taskDocs = lifecycleTaskSeeds(lc).map((seed, n) => ({
+      projectId: project._id,
+      phaseId: phaseDocs[seed.phaseIndex]!._id,
+      title: seed.title,
+      taskType: seed.taskType,
+      priority: 'medium',
+      position: seed.position,
+      assigneeId: n === 0 ? user!.sub : undefined,
+    }));
+    if (taskDocs.length) await Task.insertMany(taskDocs);
 
     await logOperation({
       action: 'workspace.first',
