@@ -3,20 +3,24 @@ import bcrypt from 'bcryptjs';
 import { connectDB } from '@/lib/db';
 import { AccessRequest } from '@/models/AccessRequest';
 import { User } from '@/models/User';
+import { Team } from '@/models/Team';
 import { requireUser, isAdmin } from '@/lib/auth';
 import { handleError, readBody } from '@/lib/http';
 import { logOperation } from '@/lib/audit';
 import { AccessRequestReviewSchema, serializeAccessRequest } from '@/lib/accessRequest';
 import { issueInitialPassword } from '@/lib/defaultPassword';
 import { bustPeopleDirectoryCache } from '@/lib/peopleDirectory';
+import { bustDashboardCache } from '@/lib/leadDashboard';
 import { mailerConfigured, sendEmail } from '@/lib/mailer';
 import { appBaseUrl } from '@/lib/digest';
+import mongoose from 'mongoose';
 
 export const runtime = 'nodejs';
 
 // PATCH /api/access-requests/:id — dismiss closes the row. Approve creates
-// the contributor (username + employee ID + one-time password) so a
-// stranger's request actually converts — no second trip to People.
+// the contributor (username + employee ID + one-time password) and, when
+// a team is picked, puts them on it so they land on a board, not an
+// empty "ask your lead" card.
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { error, user } = await requireUser(req);
@@ -81,6 +85,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       );
     }
 
+    let team: { _id: mongoose.Types.ObjectId; name: string } | null = null;
+    if (body.teamId) {
+      team = await Team.findById(body.teamId).select('_id name').lean();
+      if (!team) {
+        return NextResponse.json({ error: 'That team no longer exists.' }, { status: 404 });
+      }
+    }
+
     const issued = issueInitialPassword(row.name, employeeId);
     const created = await User.create({
       email: loginEmail,
@@ -96,12 +108,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       hasSeenTour: false,
     });
 
+    if (team) {
+      await Team.updateOne({ _id: team._id }, { $addToSet: { memberIds: created._id } });
+    }
+
     row.status = 'approved';
     row.reviewedAt = new Date();
     row.reviewedBy = user.sub as any;
     row.reviewedByName = user.name || '';
     row.provisionedUserId = created._id;
     row.provisionedUsername = username;
+    row.provisionedTeamName = team?.name || '';
     await row.save();
 
     await logOperation({
@@ -111,10 +128,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       targetType: 'user',
       targetId: String(created._id),
       targetLabel: row.name,
-      summary: `Approved ${row.name} — created @${username}`,
+      summary: team
+        ? `Approved ${row.name} — created @${username} on ${team.name}`
+        : `Approved ${row.name} — created @${username}`,
     });
 
     void bustPeopleDirectoryCache();
+    void bustDashboardCache(user.sub, user.role);
 
     if (mailerConfigured()) {
       const base = appBaseUrl();
@@ -135,6 +155,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       username,
       tempPassword: issued.password,
       isDefault: issued.isDefault,
+      teamName: team?.name || '',
     });
   } catch (e) {
     return handleError(e);

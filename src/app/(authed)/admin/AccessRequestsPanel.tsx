@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { api } from '@/lib/client/api';
 import { suggestedUsername } from '@/lib/accessRequest';
 import { Inbox, Check, X, Copy } from 'lucide-react';
@@ -16,6 +15,7 @@ type Row = {
   status: 'pending' | 'approved' | 'dismissed';
   createdAt?: string;
   provisionedUsername?: string;
+  provisionedTeamName?: string;
 };
 
 type Issued = {
@@ -23,20 +23,25 @@ type Issued = {
   username: string;
   tempPassword: string;
   isDefault: boolean;
+  teamName: string;
 };
+
+type TeamOpt = { id: string; name: string };
 
 /**
  * Admin inbox for public access requests. Approve creates the contributor
- * (username + employee ID + one-time password) on this page — the request
- * converts here, not after a second trip to People.
+ * (username + employee ID + one-time password) and puts them on a team
+ * so they land on a board, not an empty "ask your lead" card.
  */
 export function AccessRequestsPanel() {
   const [rows, setRows] = useState<Row[] | null>(null);
+  const [teams, setTeams] = useState<TeamOpt[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [username, setUsername] = useState('');
   const [employeeId, setEmployeeId] = useState('');
+  const [teamId, setTeamId] = useState('');
   const [issued, setIssued] = useState<Issued | null>(null);
 
   async function load() {
@@ -51,13 +56,21 @@ export function AccessRequestsPanel() {
 
   useEffect(() => {
     void load();
+    api<TeamOpt[]>('/teams')
+      .then((list) => setTeams((list || []).map((t) => ({ id: t.id, name: t.name }))))
+      .catch(() => setTeams([]));
   }, []);
+
+  useEffect(() => {
+    if (approvingId && !teamId && teams[0]) setTeamId(teams[0].id);
+  }, [approvingId, teamId, teams]);
 
   function startApprove(r: Row) {
     setErr('');
     setApprovingId(r.id);
     setUsername(suggestedUsername(r.email));
     setEmployeeId('');
+    setTeamId(teams[0]?.id || '');
   }
 
   async function dismiss(id: string) {
@@ -82,13 +95,17 @@ export function AccessRequestsPanel() {
     setBusy(r.id);
     setErr('');
     try {
-      const updated = await api<Row & { tempPassword?: string; isDefault?: boolean; username?: string }>(
-        `/access-requests/${r.id}`,
-        {
-          method: 'PATCH',
-          body: { status: 'approved', username: username.trim(), employeeId: employeeId.trim() },
+      const updated = await api<
+        Row & { tempPassword?: string; isDefault?: boolean; username?: string; teamName?: string }
+      >(`/access-requests/${r.id}`, {
+        method: 'PATCH',
+        body: {
+          status: 'approved',
+          username: username.trim(),
+          employeeId: employeeId.trim(),
+          ...(teamId ? { teamId } : {}),
         },
-      );
+      });
       setRows((prev) => (prev || []).map((row) => (row.id === r.id ? { ...row, ...updated } : row)));
       setApprovingId(null);
       if (updated.tempPassword) {
@@ -97,6 +114,7 @@ export function AccessRequestsPanel() {
           username: updated.username || updated.provisionedUsername || username.trim(),
           tempPassword: updated.tempPassword,
           isDefault: !!updated.isDefault,
+          teamName: updated.teamName || updated.provisionedTeamName || '',
         });
       }
     } catch (e: any) {
@@ -183,7 +201,7 @@ export function AccessRequestsPanel() {
                   }}
                 >
                   <p className="text-[11px] text-emerald-800/80 dark:text-emerald-200/70 leading-snug">
-                    Creates their account. You get a one-time password to share.
+                    Creates their account and puts them on a team. You get a one-time password to share.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <label className="block">
@@ -217,6 +235,23 @@ export function AccessRequestsPanel() {
                       />
                     </label>
                   </div>
+                  <label className="block">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                      Team
+                    </span>
+                    <select
+                      className="input mt-0.5 text-sm"
+                      value={teamId}
+                      onChange={(e) => setTeamId(e.target.value)}
+                    >
+                      {teams.length === 0 && <option value="">No team yet — create one first</option>}
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <div className="flex items-center gap-2">
                     <button
                       type="submit"
@@ -250,6 +285,7 @@ export function AccessRequestsPanel() {
               <span className="text-xs text-slate-600 dark:text-white/60 truncate">
                 {r.name}
                 {r.provisionedUsername ? ` · @${r.provisionedUsername}` : ` · ${r.email}`}
+                {r.provisionedTeamName ? ` · ${r.provisionedTeamName}` : ''}
               </span>
             </div>
           ))}
@@ -258,11 +294,8 @@ export function AccessRequestsPanel() {
 
       {pending.length > 0 && (
         <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 text-[11px] text-slate-400 dark:text-white/40 leading-snug">
-          Approve creates the account here. They set their own password on first sign-in. Open{' '}
-          <Link href="/people" className="text-blue-600 dark:text-blue-300 font-semibold hover:underline">
-            People
-          </Link>{' '}
-          to put them on a team.
+          Approve creates the account and puts them on the team. They set their own password on first
+          sign-in.
         </div>
       )}
     </div>
@@ -276,7 +309,8 @@ function IssuedCard({ issued, onDismiss }: { issued: Issued; onDismiss: () => vo
         <div>
           <div className="text-sm font-bold text-emerald-900 dark:text-emerald-200">{issued.name} is in</div>
           <p className="text-[11px] text-emerald-800/80 dark:text-emerald-200/70 mt-0.5 leading-snug">
-            Share this once. Shown only here — they set their own password on first sign-in.
+            Share this once. Shown only here — they set their own password on first sign-in
+            {issued.teamName ? ` · on ${issued.teamName}` : ''}.
           </p>
         </div>
         <button

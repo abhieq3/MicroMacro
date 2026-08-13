@@ -5,7 +5,8 @@
  * is the contract for "ask to be let in": validate the form, decide what the
  * stranger sees (never a stack trace, never an enumeration leak beyond
  * "you already have an account"), and shape the row the admin reviews —
- * including the username + employee ID that turn approve into an account.
+ * including the username + employee ID + optional team that turn approve
+ * into an account who can actually see work.
  *
  * Kept dependency-free of Next / Mongo so unit tests can pin the copy and
  * the schema without spinning up a database.
@@ -30,14 +31,20 @@ export const AccessRequestCreateSchema = z.object({
 export type AccessRequestCreate = z.infer<typeof AccessRequestCreateSchema>;
 
 /**
- * Approve provisions the account (username + employee ID, same as People).
- * Dismiss only closes the inbox row.
+ * Approve provisions the account (username + employee ID, same as People)
+ * and optionally puts them on a team so they land with a board, not an
+ * empty "ask your lead" card. Dismiss only closes the inbox row.
  */
 export const AccessRequestReviewSchema = z.union([
   z.object({
     status: z.literal('approved'),
     username: UsernameSchema,
     employeeId: z.string().trim().min(1, 'Employee ID is required').max(40),
+    teamId: z
+      .string()
+      .trim()
+      .regex(/^[a-f0-9]{24}$/i, 'Pick a team')
+      .optional(),
   }),
   z.object({
     status: z.literal('dismissed'),
@@ -110,6 +117,7 @@ export function serializeAccessRequest(doc: {
   reviewedByName?: string;
   provisionedUserId?: unknown;
   provisionedUsername?: string;
+  provisionedTeamName?: string;
 }): {
   id: string;
   name: string;
@@ -123,6 +131,7 @@ export function serializeAccessRequest(doc: {
   reviewedByName: string;
   provisionedUserId: string | null;
   provisionedUsername: string;
+  provisionedTeamName: string;
 } {
   return {
     id: String(doc._id),
@@ -139,6 +148,7 @@ export function serializeAccessRequest(doc: {
     reviewedByName: doc.reviewedByName || '',
     provisionedUserId: doc.provisionedUserId ? String(doc.provisionedUserId) : null,
     provisionedUsername: doc.provisionedUsername || '',
+    provisionedTeamName: doc.provisionedTeamName || '',
   };
 }
 

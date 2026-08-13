@@ -98,6 +98,7 @@ describe('serializeAccessRequest', () => {
     assert.equal(row.status, 'pending');
     assert.equal(row.provisionedUserId, null);
     assert.equal(row.provisionedUsername, '');
+    assert.equal(row.provisionedTeamName, '');
     assert.equal('ip' in row, false);
   });
 
@@ -139,8 +140,24 @@ describe('AccessRequestReviewSchema', () => {
     if (parsed.status === 'approved') {
       assert.equal(parsed.username, 'priya.sharma');
       assert.equal(parsed.employeeId, '100245');
+      assert.equal(parsed.teamId, undefined);
     }
+    const withTeam = AccessRequestReviewSchema.parse({
+      status: 'approved',
+      username: 'priya.sharma',
+      employeeId: '100245',
+      teamId: '64b1f0c2a1b2c3d4e5f60789',
+    });
+    if (withTeam.status === 'approved') assert.equal(withTeam.teamId, '64b1f0c2a1b2c3d4e5f60789');
     assert.throws(() => AccessRequestReviewSchema.parse({ status: 'approved' }));
+    assert.throws(() =>
+      AccessRequestReviewSchema.parse({
+        status: 'approved',
+        username: 'priya.sharma',
+        employeeId: '100245',
+        teamId: 'not-an-id',
+      }),
+    );
   });
 
   it('lets dismiss close the row with no extra fields', () => {
