@@ -15,6 +15,9 @@ import {
 import { DatePicker } from '@/components/DatePicker';
 import { UserAvatar } from '@/components/AvatarRegistry';
 import { useIsLead } from '@/components/CurrentUserContext';
+import { api } from '@/lib/client/api';
+import { notifyCalendarChange } from '@/components/SidebarCalendar';
+import { chimeIfEnabled } from '@/lib/sound';
 import dynamic from 'next/dynamic';
 // Lazy — only the lead's contributor-activity modal needs it, so it stays out
 // of the main dashboard bundle (helps FCP/LCP).
@@ -49,6 +52,11 @@ const BirdsEyeView = dynamic(() => import('@/components/BirdsEyeView').then((m) 
 import type { BirdsEyeData } from '@/components/BirdsEyeView';
 import { BirdEyeButton } from '@/components/BirdEyeButton';
 import { FlowSignalStrip, type FlowSignalPayload } from '@/components/FlowSignalStrip';
+
+const TaskCompletePop = dynamic(() => import('@/components/TaskCompletePop').then((m) => m.TaskCompletePop), {
+  ssr: false,
+  loading: () => null,
+});
 
 /* ── Types matching /api/lead-dashboard ──────────────────────────────────── */
 interface TeamTask {
@@ -334,9 +342,11 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
   }, [visibleTasks]);
 
   const firstName = (dash.user.name || '').split(' ')[0] || 'there';
+  const [popTask, setPopTask] = useState<TeamTask | null>(null);
 
   return (
     <div className="pb-12 max-w-[1440px]">
+      <TaskCompletePop task={popTask} onDone={() => setPopTask(null)} />
       {/* ── Greeting ────────────────────────────────────────────────────── */}
       <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -464,6 +474,8 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
               projects={ongoingProjects}
               tasksByProject={tasksByProject}
               suppressHeaderDesktop
+              myId={myId}
+              onCompleted={setPopTask}
             />
 
             {/* Right column — Due Center + "My tasks" (for leads: also Contributors). */}
@@ -473,8 +485,10 @@ export default function DashboardClient({ initialData }: { initialData: DashResp
                 expanded={upNextExpanded}
                 onExpandedChange={setUpNextExpanded}
                 suppressHeaderDesktop
+                myId={myId}
+                onCompleted={setPopTask}
               />
-              <MyTasksPanel tasks={visibleTasks} myId={myId} />
+              <MyTasksPanel tasks={visibleTasks} myId={myId} onCompleted={setPopTask} />
               {/* Leads see workload across their ICs. */}
               {isLead && <ContributorsPanel people={dash.people} tasksByAssignee={tasksByAssignee} />}
             </div>
@@ -899,10 +913,14 @@ function ProjectsColumn({
   projects,
   tasksByProject,
   suppressHeaderDesktop,
+  myId,
+  onCompleted,
 }: {
   projects: DashProject[];
   tasksByProject: Map<string, TeamTask[]>;
   suppressHeaderDesktop?: boolean;
+  myId: string;
+  onCompleted: (t: TeamTask) => void;
 }) {
   const isLead = useIsLead();
   const [showExpandNudge, setShowExpandNudge] = useState(true);
@@ -959,6 +977,8 @@ function ProjectsColumn({
               project={p}
               tasks={tasksByProject.get(p.id) || []}
               nudgeExpand={showExpandNudge && index === 0}
+              myId={myId}
+              onCompleted={onCompleted}
             />
           ))}
         </div>
@@ -973,7 +993,81 @@ function ProjectsColumn({
    and the view is identical for every viewer on every reload. (We deliberately
    removed dashboard drag-reordering: a quick bird's-eye list shouldn't carry
    hidden per-user state, and TCD order is the one an auditor expects.) */
-function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId: string }) {
+function canFinishFromToday(task: TeamTask, myId: string, isLead: boolean): boolean {
+  if (task.status === 'done') return false;
+  if (isLead) return true;
+  return !!task.assigneeId && task.assigneeId === myId;
+}
+
+/** Checkbox on Today rows — assignees (and leads) finish work here instead
+ *  of opening the task. GxP-critical work still goes to the task page for
+ *  the PIN. */
+function TodayCompleteButton({
+  task,
+  canComplete,
+  onCompleted,
+}: {
+  task: TeamTask;
+  canComplete: boolean;
+  onCompleted: (t: TeamTask) => void;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  if (task.status === 'done') {
+    return <CheckCircle2 size={16} className="text-emerald-500/45 shrink-0" aria-hidden />;
+  }
+  if (!canComplete) return <span className="w-4 shrink-0" aria-hidden />;
+
+  async function finish(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (task.gxpCritical) {
+      router.push(`/tasks/${task.id}`);
+      return;
+    }
+    setBusy(true);
+    try {
+      await api(`/tasks/${task.id}`, { method: 'PATCH', body: { status: 'done' } });
+      notifyCalendarChange();
+      chimeIfEnabled();
+      onCompleted(task);
+    } catch (err: any) {
+      if (/PIN or password|GxP/i.test(err?.message || '')) {
+        router.push(`/tasks/${task.id}`);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={finish}
+      disabled={busy}
+      aria-label={`Mark ${task.title} done`}
+      title={task.gxpCritical ? 'Open to sign off' : 'Mark done'}
+      className="shrink-0 w-[18px] h-[18px] rounded-[5px] border border-slate-300 dark:border-white/20 flex items-center justify-center hover:border-emerald-400 hover:bg-emerald-50 dark:hover:border-emerald-400/50 dark:hover:bg-emerald-400/[0.08] transition-colors disabled:opacity-50"
+    >
+      {busy && (
+        <span className="w-2 h-2 border border-slate-400 border-t-transparent rounded-full animate-spin" />
+      )}
+    </button>
+  );
+}
+
+function DashboardTaskFlow({
+  tasks,
+  projectId,
+  myId,
+  onCompleted,
+}: {
+  tasks: TeamTask[];
+  projectId: string;
+  myId: string;
+  onCompleted: (t: TeamTask) => void;
+}) {
   const sorted = useMemo(() => {
     const keyOf = (t: TeamTask) => {
       const d = t.ccTcd || t.dueDate;
@@ -982,6 +1076,7 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
     return [...tasks].sort((a, b) => keyOf(a) - keyOf(b));
   }, [tasks]);
 
+  const isLead = useIsLead();
   const visible = sorted.slice(0, 20);
   const doneCount = sorted.filter((t) => t.status === 'done').length;
 
@@ -1068,16 +1163,14 @@ function DashboardTaskFlow({ tasks, projectId }: { tasks: TeamTask[]; projectId:
                   style={{ background: dotColor, opacity: isDone ? 0.25 : 0.75 }}
                 />
 
-                {/* Status dot */}
                 <div className="shrink-0 mt-0.5">
                   {isDone ? (
                     <CheckCircle2 size={15} style={{ color: dotColor, opacity: 0.5 }} />
                   ) : (
-                    <span
-                      title={dotTitle}
-                      aria-label={dotTitle}
-                      className="block w-2.5 h-2.5 rounded-full"
-                      style={{ background: dotColor, boxShadow: `0 0 0 3px ${dotColor}28` }}
+                    <TodayCompleteButton
+                      task={t}
+                      canComplete={canFinishFromToday(t, myId, isLead)}
+                      onCompleted={onCompleted}
                     />
                   )}
                 </div>
@@ -1167,10 +1260,14 @@ function ProjectRow({
   project,
   tasks,
   nudgeExpand = false,
+  myId,
+  onCompleted,
 }: {
   project: DashProject;
   tasks: TeamTask[];
   nudgeExpand?: boolean;
+  myId: string;
+  onCompleted: (t: TeamTask) => void;
 }) {
   // Collapsed by default — the dashboard should land quiet. The user expands
   // only what they want to inspect.
@@ -1315,7 +1412,12 @@ function ProjectRow({
               </Link>
             </div>
           ) : (
-            <DashboardTaskFlow tasks={tasks} projectId={project.id} />
+            <DashboardTaskFlow
+              tasks={tasks}
+              projectId={project.id}
+              myId={myId}
+              onCompleted={onCompleted}
+            />
           )}
         </div>
       )}
@@ -1396,7 +1498,15 @@ function TaskTableRow({ t }: { t: TeamTask }) {
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  MY TASKS PANEL — tasks assigned to the current user (all roles)           */
 /* ────────────────────────────────────────────────────────────────────────── */
-function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
+function MyTasksPanel({
+  tasks,
+  myId,
+  onCompleted,
+}: {
+  tasks: TeamTask[];
+  myId: string;
+  onCompleted: (t: TeamTask) => void;
+}) {
   const myTasks = tasks.filter((t) => t.assigneeId === myId && t.status !== 'done');
   const myDone = tasks.filter((t) => t.assigneeId === myId && t.status === 'done').length;
   const myOverdue = myTasks.filter((t) => isOverdue(t.ccTcd || t.dueDate, t.status)).length;
@@ -1433,24 +1543,15 @@ function MyTasksPanel({ tasks, myId }: { tasks: TeamTask[]; myId: string }) {
             const due = t.ccTcd || t.dueDate;
             const dueIn = daysUntil(due);
             const overdue = isOverdue(due, t.status);
-            const dotColor =
-              t.status === 'in_progress'
-                ? '#3B82F6'
-                : t.status === 'review'
-                  ? '#8B5CF6'
-                  : t.status === 'blocked'
-                    ? '#EF4444'
-                    : '#94A3B8';
             return (
               <li key={t.id}>
                 <Link
                   href={`/tasks/${t.id}`}
                   className={`flex items-start gap-3 px-4 py-2.5 transition-colors group ${overdue ? 'hover:bg-red-50/40 dark:hover:bg-red-500/[0.05]' : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'}`}
                 >
-                  <span
-                    className="mt-1.5 w-2 h-2 rounded-full shrink-0"
-                    style={{ background: dotColor, boxShadow: `0 0 0 3px ${dotColor}28` }}
-                  />
+                  <span className="mt-0.5">
+                    <TodayCompleteButton task={t} canComplete onCompleted={onCompleted} />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/75 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-400">
                       {t.title}
@@ -1511,11 +1612,15 @@ function UpNextPanel({
   expanded,
   onExpandedChange,
   suppressHeaderDesktop,
+  myId,
+  onCompleted,
 }: {
   tasks: TeamTask[];
   expanded: boolean;
   onExpandedChange: (v: boolean) => void;
   suppressHeaderDesktop?: boolean;
+  myId: string;
+  onCompleted: (t: TeamTask) => void;
 }) {
   const [filter, setFilter] = useState<ActionFilter>('week');
   const [untilDate, setUntilDate] = useState<string | null>(null);
@@ -1618,6 +1723,8 @@ function UpNextPanel({
               tasks={overdue}
               isOverdue
               showAll={expanded}
+              myId={myId}
+              onCompleted={onCompleted}
             />
           )}
 
@@ -1680,6 +1787,8 @@ function UpNextPanel({
                   : 'Nothing due — all clear.'
               }
               hideHeader
+              myId={myId}
+              onCompleted={onCompleted}
             />
           </div>
         </div>
@@ -1709,6 +1818,8 @@ function ActionGroup({
   emptyHint,
   showAll,
   hideHeader,
+  myId,
+  onCompleted,
 }: {
   title: string;
   count: number;
@@ -1722,7 +1833,10 @@ function ActionGroup({
    *  already rendered its own (e.g. the Up Next panel pulls the Due header
    *  out so the filter chips can sit between it and the list). */
   hideHeader?: boolean;
+  myId: string;
+  onCompleted: (t: TeamTask) => void;
 }) {
+  const isLead = useIsLead();
   const limit = showAll ? tasks.length : 12;
   return (
     <div>
@@ -1786,6 +1900,11 @@ function ActionGroup({
                       : 'hover:bg-slate-50/70 dark:hover:bg-white/[0.03]'
                   }`}
                 >
+                  <TodayCompleteButton
+                    task={t}
+                    canComplete={canFinishFromToday(t, myId, isLead)}
+                    onCompleted={onCompleted}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="text-[12.5px] font-semibold text-slate-700 dark:text-white/85 line-clamp-1 group-hover:text-blue-700 dark:group-hover:text-blue-300">
                       {t.title}
