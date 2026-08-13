@@ -15,6 +15,7 @@ import {
   isHoneypot,
   publicSubmitResult,
   serializeAccessRequest,
+  suggestedUsername,
 } from '../../src/lib/accessRequest';
 
 describe('AccessRequestCreateSchema', () => {
@@ -95,13 +96,54 @@ describe('serializeAccessRequest', () => {
     });
     assert.equal(row.id, 'abc');
     assert.equal(row.status, 'pending');
+    assert.equal(row.provisionedUserId, null);
+    assert.equal(row.provisionedUsername, '');
     assert.equal('ip' in row, false);
+  });
+
+  it('surfaces the login handle after approve provisions the account', () => {
+    const row = serializeAccessRequest({
+      _id: 'abc',
+      name: 'Priya',
+      email: 'priya@co.com',
+      status: 'approved',
+      provisionedUserId: 'user-1',
+      provisionedUsername: 'priya.sharma',
+    });
+    assert.equal(row.provisionedUserId, 'user-1');
+    assert.equal(row.provisionedUsername, 'priya.sharma');
+  });
+});
+
+describe('suggestedUsername', () => {
+  it('takes the local part of a work email', () => {
+    assert.equal(suggestedUsername('Priya.Sharma@Alembic.co.in'), 'priya.sharma');
+    assert.equal(suggestedUsername('sam@co.com'), 'sam');
+  });
+
+  it('always returns a valid username even for awkward local parts', () => {
+    assert.match(suggestedUsername('ab@co.com'), /^[a-z][a-z0-9_.]{1,28}[a-z0-9_]$/);
+    assert.match(suggestedUsername('12lead@co.com'), /^[a-z][a-z0-9_.]{1,28}[a-z0-9_]$/);
+    assert.match(suggestedUsername('.dotty@co.com'), /^[a-z][a-z0-9_.]{1,28}[a-z0-9_]$/);
   });
 });
 
 describe('AccessRequestReviewSchema', () => {
-  it('only accepts approve or dismiss', () => {
-    assert.equal(AccessRequestReviewSchema.parse({ status: 'approved' }).status, 'approved');
+  it('requires username and employee ID to approve', () => {
+    const parsed = AccessRequestReviewSchema.parse({
+      status: 'approved',
+      username: 'priya.sharma',
+      employeeId: '100245',
+    });
+    assert.equal(parsed.status, 'approved');
+    if (parsed.status === 'approved') {
+      assert.equal(parsed.username, 'priya.sharma');
+      assert.equal(parsed.employeeId, '100245');
+    }
+    assert.throws(() => AccessRequestReviewSchema.parse({ status: 'approved' }));
+  });
+
+  it('lets dismiss close the row with no extra fields', () => {
     assert.equal(AccessRequestReviewSchema.parse({ status: 'dismissed' }).status, 'dismissed');
     assert.throws(() => AccessRequestReviewSchema.parse({ status: 'pending' }));
   });

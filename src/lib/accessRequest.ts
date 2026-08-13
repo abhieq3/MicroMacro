@@ -4,13 +4,15 @@
  * The workspace is invite-only. A stranger cannot self-register. This module
  * is the contract for "ask to be let in": validate the form, decide what the
  * stranger sees (never a stack trace, never an enumeration leak beyond
- * "you already have an account"), and shape the row the admin reviews.
+ * "you already have an account"), and shape the row the admin reviews —
+ * including the username + employee ID that turn approve into an account.
  *
  * Kept dependency-free of Next / Mongo so unit tests can pin the copy and
  * the schema without spinning up a database.
  */
 
 import { z } from 'zod';
+import { UsernameSchema } from '@/lib/validations';
 
 export const ACCESS_REQUEST_STATUSES = ['pending', 'approved', 'dismissed'] as const;
 export type AccessRequestStatus = (typeof ACCESS_REQUEST_STATUSES)[number];
@@ -27,9 +29,35 @@ export const AccessRequestCreateSchema = z.object({
 
 export type AccessRequestCreate = z.infer<typeof AccessRequestCreateSchema>;
 
-export const AccessRequestReviewSchema = z.object({
-  status: z.enum(['approved', 'dismissed']),
-});
+/**
+ * Approve provisions the account (username + employee ID, same as People).
+ * Dismiss only closes the inbox row.
+ */
+export const AccessRequestReviewSchema = z.union([
+  z.object({
+    status: z.literal('approved'),
+    username: UsernameSchema,
+    employeeId: z.string().trim().min(1, 'Employee ID is required').max(40),
+  }),
+  z.object({
+    status: z.literal('dismissed'),
+  }),
+]);
+
+/**
+ * Login handle from a work email. `priya.sharma@co.com` → `priya.sharma`.
+ * Always a valid UsernameSchema value so the approve form can prefill it.
+ */
+export function suggestedUsername(email: string): string {
+  const local = (email.split('@')[0] || '').toLowerCase();
+  let s = local.replace(/[^a-z0-9_.]/g, '').replace(/^\.+/, '').replace(/\.+$/, '');
+  if (!/^[a-z]/.test(s)) s = `u${s}`;
+  if (s.length > 30) s = s.slice(0, 30).replace(/\.+$/, '');
+  if (!/[a-z0-9_]$/.test(s)) s = s.replace(/[^a-z0-9_]+$/, '');
+  if (s.length < 3) s = `${s}xxx`.slice(0, 3);
+  if (!/^[a-z][a-z0-9_.]{1,28}[a-z0-9_]$/.test(s)) return 'user';
+  return s;
+}
 
 export function isHoneypot(website?: string | null): boolean {
   return !!(website && website.trim());
@@ -80,6 +108,8 @@ export function serializeAccessRequest(doc: {
   createdAt?: Date;
   reviewedAt?: Date | null;
   reviewedByName?: string;
+  provisionedUserId?: unknown;
+  provisionedUsername?: string;
 }): {
   id: string;
   name: string;
@@ -91,6 +121,8 @@ export function serializeAccessRequest(doc: {
   createdAt: Date | undefined;
   reviewedAt: Date | null;
   reviewedByName: string;
+  provisionedUserId: string | null;
+  provisionedUsername: string;
 } {
   return {
     id: String(doc._id),
@@ -105,6 +137,8 @@ export function serializeAccessRequest(doc: {
     createdAt: doc.createdAt,
     reviewedAt: doc.reviewedAt || null,
     reviewedByName: doc.reviewedByName || '',
+    provisionedUserId: doc.provisionedUserId ? String(doc.provisionedUserId) : null,
+    provisionedUsername: doc.provisionedUsername || '',
   };
 }
 

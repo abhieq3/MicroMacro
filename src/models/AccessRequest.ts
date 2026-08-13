@@ -6,8 +6,8 @@ import { ACCESS_REQUEST_STATUSES } from '@/lib/accessRequest';
  *
  * Public registration is permanently off. This is the only inbound path a
  * person without an account has: they leave a name and a work email, an
- * admin reviews it on the console, and the admin provisions them through
- * People (username + employee ID) — same as every other account.
+ * admin approves with a username + employee ID, and the account is created
+ * on that click — same shape as People, without the second form.
  *
  * Not a GxP record. Rows older than 180 days are dropped (TTL) so a public
  * form cannot grow an unbounded PII pile. The audit trail still records
@@ -31,6 +31,10 @@ const AccessRequestSchema = new Schema(
     reviewedAt: { type: Date, default: null },
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     reviewedByName: { type: String, default: '' },
+    // Set only when approve provisions the contributor. Lets the inbox
+    // show the login handle after the one-time password card is dismissed.
+    provisionedUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    provisionedUsername: { type: String, default: '' },
   },
   { timestamps: true },
 );

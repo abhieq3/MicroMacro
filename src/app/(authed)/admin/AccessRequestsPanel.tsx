@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/client/api';
-import { Inbox, Check, X } from 'lucide-react';
+import { suggestedUsername } from '@/lib/accessRequest';
+import { Inbox, Check, X, Copy } from 'lucide-react';
 
 type Row = {
   id: string;
@@ -14,18 +15,29 @@ type Row = {
   note: string;
   status: 'pending' | 'approved' | 'dismissed';
   createdAt?: string;
+  provisionedUsername?: string;
+};
+
+type Issued = {
+  name: string;
+  username: string;
+  tempPassword: string;
+  isDefault: boolean;
 };
 
 /**
- * Admin inbox for public access requests. Approve / dismiss only marks the
- * row — the person is still added on People (username + employee ID), same
- * as every other account. This panel exists so a request is never lost in
- * email.
+ * Admin inbox for public access requests. Approve creates the contributor
+ * (username + employee ID + one-time password) on this page — the request
+ * converts here, not after a second trip to People.
  */
 export function AccessRequestsPanel() {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState('');
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [username, setUsername] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
+  const [issued, setIssued] = useState<Issued | null>(null);
 
   async function load() {
     try {
@@ -41,14 +53,54 @@ export function AccessRequestsPanel() {
     void load();
   }, []);
 
-  async function review(id: string, status: 'approved' | 'dismissed') {
+  function startApprove(r: Row) {
+    setErr('');
+    setApprovingId(r.id);
+    setUsername(suggestedUsername(r.email));
+    setEmployeeId('');
+  }
+
+  async function dismiss(id: string) {
     setBusy(id);
     setErr('');
     try {
-      const updated = await api<Row>(`/access-requests/${id}`, { method: 'PATCH', body: { status } });
+      const updated = await api<Row>(`/access-requests/${id}`, {
+        method: 'PATCH',
+        body: { status: 'dismissed' },
+      });
       setRows((prev) => (prev || []).map((r) => (r.id === id ? { ...r, ...updated } : r)));
+      if (approvingId === id) setApprovingId(null);
     } catch (e: any) {
       setErr(e.message || 'Could not update that request.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function confirmApprove(r: Row) {
+    if (!username.trim() || !employeeId.trim()) return;
+    setBusy(r.id);
+    setErr('');
+    try {
+      const updated = await api<Row & { tempPassword?: string; isDefault?: boolean; username?: string }>(
+        `/access-requests/${r.id}`,
+        {
+          method: 'PATCH',
+          body: { status: 'approved', username: username.trim(), employeeId: employeeId.trim() },
+        },
+      );
+      setRows((prev) => (prev || []).map((row) => (row.id === r.id ? { ...row, ...updated } : row)));
+      setApprovingId(null);
+      if (updated.tempPassword) {
+        setIssued({
+          name: r.name,
+          username: updated.username || updated.provisionedUsername || username.trim(),
+          tempPassword: updated.tempPassword,
+          isDefault: !!updated.isDefault,
+        });
+      }
+    } catch (e: any) {
+      setErr(e.message || 'Could not create that account.');
     } finally {
       setBusy(null);
     }
@@ -70,6 +122,8 @@ export function AccessRequestsPanel() {
       </div>
 
       {err && <div className="px-5 py-2 text-xs text-red-600 bg-red-50 dark:bg-red-500/10">{err}</div>}
+
+      {issued && <IssuedCard issued={issued} onDismiss={() => setIssued(null)} />}
 
       {rows === null ? (
         <div className="px-5 py-8 text-center text-sm text-slate-400">Loading…</div>
@@ -98,25 +152,90 @@ export function AccessRequestsPanel() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    disabled={busy === r.id}
-                    onClick={() => review(r.id, 'approved')}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
-                  >
-                    <Check size={12} /> Approve
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy === r.id}
-                    onClick={() => review(r.id, 'dismissed')}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:text-white/50 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
-                  >
-                    <X size={12} /> Dismiss
-                  </button>
-                </div>
+                {approvingId !== r.id && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      disabled={busy === r.id}
+                      onClick={() => startApprove(r)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-300 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+                    >
+                      <Check size={12} /> Approve
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy === r.id}
+                      onClick={() => dismiss(r.id)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:text-white/50 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
+                    >
+                      <X size={12} /> Dismiss
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {approvingId === r.id && (
+                <form
+                  className="mt-3 rounded-xl border border-emerald-200 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/[0.06] p-3 space-y-2.5"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void confirmApprove(r);
+                  }}
+                >
+                  <p className="text-[11px] text-emerald-800/80 dark:text-emerald-200/70 leading-snug">
+                    Creates their account. You get a one-time password to share.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        Username
+                      </span>
+                      <input
+                        className="input mt-0.5 font-mono text-sm"
+                        required
+                        minLength={3}
+                        maxLength={30}
+                        autoCapitalize="none"
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        Employee ID
+                      </span>
+                      <input
+                        className="input mt-0.5 font-mono text-sm"
+                        required
+                        maxLength={40}
+                        autoComplete="off"
+                        autoFocus
+                        value={employeeId}
+                        onChange={(e) => setEmployeeId(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="submit"
+                      disabled={busy === r.id || !username.trim() || !employeeId.trim()}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded-lg disabled:opacity-50"
+                    >
+                      {busy === r.id ? 'Creating…' : 'Create account'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy === r.id}
+                      onClick={() => setApprovingId(null)}
+                      className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-white/50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           ))}
           {recent.map((r) => (
@@ -129,7 +248,8 @@ export function AccessRequestsPanel() {
                 {r.status}
               </span>
               <span className="text-xs text-slate-600 dark:text-white/60 truncate">
-                {r.name} · {r.email}
+                {r.name}
+                {r.provisionedUsername ? ` · @${r.provisionedUsername}` : ` · ${r.email}`}
               </span>
             </div>
           ))}
@@ -138,13 +258,72 @@ export function AccessRequestsPanel() {
 
       {pending.length > 0 && (
         <div className="px-5 py-3 border-t border-slate-100 dark:border-white/10 text-[11px] text-slate-400 dark:text-white/40 leading-snug">
-          Approve marks it handled. Add them on{' '}
+          Approve creates the account here. They set their own password on first sign-in. Open{' '}
           <Link href="/people" className="text-blue-600 dark:text-blue-300 font-semibold hover:underline">
             People
           </Link>{' '}
-          with a username and employee ID.
+          to put them on a team.
         </div>
       )}
+    </div>
+  );
+}
+
+function IssuedCard({ issued, onDismiss }: { issued: Issued; onDismiss: () => void }) {
+  return (
+    <div className="mx-4 my-3 rounded-xl border border-emerald-200 dark:border-emerald-500/25 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <div className="text-sm font-bold text-emerald-900 dark:text-emerald-200">{issued.name} is in</div>
+          <p className="text-[11px] text-emerald-800/80 dark:text-emerald-200/70 mt-0.5 leading-snug">
+            Share this once. Shown only here — they set their own password on first sign-in.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="text-emerald-700/60 hover:text-emerald-900 dark:text-emerald-200/50"
+          aria-label="Dismiss credentials"
+        >
+          <X size={14} />
+        </button>
+      </div>
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <CopyField label="Username" value={issued.username} />
+        <CopyField
+          label={issued.isDefault ? 'Default password' : 'Temporary password'}
+          value={issued.tempPassword}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="rounded-lg bg-white/80 dark:bg-black/20 border border-emerald-200/70 dark:border-emerald-500/20 px-2.5 py-2">
+      <div className="text-[10px] font-bold uppercase tracking-wide text-emerald-700/70 dark:text-emerald-300/70">
+        {label}
+      </div>
+      <div className="flex items-center gap-1 mt-0.5">
+        <span className="text-xs font-mono font-semibold text-slate-800 dark:text-white truncate flex-1">
+          {value}
+        </span>
+        <button
+          type="button"
+          title="Copy"
+          onClick={() => {
+            void navigator.clipboard.writeText(value).then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 1600);
+            });
+          }}
+          className="text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 shrink-0"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+        </button>
+      </div>
     </div>
   );
 }
